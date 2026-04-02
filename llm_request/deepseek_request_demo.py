@@ -2,7 +2,6 @@
 import os
 import json
 from openai import OpenAI
-from pydantic import Json
 
 client = OpenAI(
     api_key=os.environ.get('DEEPSEEK_API_KEY'),
