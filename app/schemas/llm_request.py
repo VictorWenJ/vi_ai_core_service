@@ -1,0 +1,58 @@
+"""Normalized request models for LLM access."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+ALLOWED_MESSAGE_ROLES = {"system", "user", "assistant", "tool"}
+
+
+@dataclass
+class LLMMessage:
+    """A single normalized LLM message."""
+
+    role: str
+    content: str
+
+    def __post_init__(self) -> None:
+        self.role = self.role.strip().lower()
+        self.content = self.content.strip()
+
+        if self.role not in ALLOWED_MESSAGE_ROLES:
+            raise ValueError(
+                f"Unsupported message role '{self.role}'. "
+                f"Supported roles: {', '.join(sorted(ALLOWED_MESSAGE_ROLES))}."
+            )
+        if not self.content:
+            raise ValueError("Message content must not be empty.")
+
+
+@dataclass
+class LLMRequest:
+    """Normalized request model shared by service and providers."""
+
+    provider: str | None = None
+    model: str | None = None
+    messages: list[LLMMessage] = field(default_factory=list)
+    system_prompt: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+    stream: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.provider is not None:
+            self.provider = self.provider.strip().lower()
+
+        if self.model is not None:
+            self.model = self.model.strip() or None
+
+        if self.system_prompt is not None:
+            self.system_prompt = self.system_prompt.strip() or None
+
+        if self.temperature is not None and not 0 <= self.temperature <= 2:
+            raise ValueError("temperature must be between 0 and 2.")
+
+        if self.max_tokens is not None and self.max_tokens <= 0:
+            raise ValueError("max_tokens must be greater than 0.")
