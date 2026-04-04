@@ -252,3 +252,24 @@ API 层建议至少覆盖：
 ## 14. 一句话总结
 
 `app/api/` 是系统的外部接入门面，职责是 **接入、校验、转发、返回**，而不是承担内部核心业务实现。
+
+---
+
+## 15. 本模块任务执行链路（强制）
+
+API 类任务必须按以下顺序执行：
+
+1. 先读根目录四文档（`AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`）
+2. 再读本文件
+3. 再执行 `skills/python-api-capability/SKILL.md` 与其 checklist/reference
+4. 再改 `app/api/` 代码
+5. 再按根 `CODE_REVIEW.md` + 本文件 + skill checklist 自审
+6. 若接口契约或边界事实变化，回写对应文档
+
+---
+
+## 16. 本模块交付门禁（新增）
+
+- 未通过 `python-api-capability` checklist，不视为完成
+- 发现 API 越层调用（直连 provider/prompt/context）必须先整改
+- 变更影响主链路时，必须补充或更新 API 测试

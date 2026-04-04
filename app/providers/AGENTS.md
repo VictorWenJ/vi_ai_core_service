@@ -251,3 +251,27 @@ provider 层建议至少覆盖：
 ## 14. 一句话总结
 
 `app/providers/` 是系统的模型接入适配层，负责 **统一抽象、协议适配、结果归一化与 provider 注册管理**。
+
+---
+
+## 15. 本模块任务执行链路（强制）
+
+Provider 类任务必须按以下顺序执行：
+
+1. 先读根目录四文档
+2. 再读本文件
+3. 再按任务类型选择 skill：
+   - 通用 provider：`skills/python-ai-provider-capability/`
+   - LLM provider：`skills/python-llm-provider-capability/`
+4. 执行选中 skill 的 `SKILL.md` + checklist/test matrix/reference
+5. 再改 `app/providers/` 代码
+6. 再按根 `CODE_REVIEW.md` + 本文件 + skill checklist 自审
+7. 若 provider contract/能力声明/边界事实变化，回写文档
+
+---
+
+## 16. 本模块交付门禁（新增）
+
+- 发现 provider 逻辑外溢到 API/service 层时必须先整改
+- 变更 request/response/stream 归一化行为时必须补充或更新测试
+- 未通过对应 provider skill checklist，不视为完成

@@ -237,3 +237,24 @@ Prompt 层建议至少覆盖：
 ## 14. 一句话总结
 
 `app/prompts/` 是系统的 Prompt 资产中心，负责 **模板资产管理、注册与渲染**，而不是承担应用主流程逻辑。
+
+---
+
+## 15. 本模块任务执行链路（强制）
+
+Prompt 类任务必须按以下顺序执行：
+
+1. 先读根目录四文档
+2. 再读本文件
+3. 再执行 `skills/python-prompt-capability/SKILL.md` 与其 checklist/reference
+4. 再改 `app/prompts/` 代码/模板
+5. 再按根 `CODE_REVIEW.md` + 本文件 + skill checklist 自审
+6. 若 Prompt 资产结构或契约事实变化，回写文档
+
+---
+
+## 16. 本模块交付门禁（新增）
+
+- 发现 Prompt 文本在无关层大面积散落时必须先收敛
+- 变更模板注册与渲染行为时必须补充或更新测试
+- 未通过 `python-prompt-capability` checklist，不视为完成

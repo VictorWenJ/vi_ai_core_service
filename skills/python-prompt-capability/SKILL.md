@@ -270,3 +270,17 @@ Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，
 - python-prompt-tool-guidance-skill
 - python-prompt-cache-friendly-layout-skill
 - python-prompt-governance-and-versioning-skill
+
+---
+
+# Governance Linkage
+
+执行本 skill 时必须遵循统一闭环：
+
+`根目录文档 -> app/prompts/AGENTS.md -> 本 skill -> 代码实现 -> review -> 文档回写`
+
+强制要求：
+
+1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
+2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist 联合自审。
+3. 若 Prompt 资产结构、渲染行为或测试事实变化，必须同步更新对应文档与测试。

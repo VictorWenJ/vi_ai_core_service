@@ -111,3 +111,15 @@ After coding, provide:
 - how to run
 - how to verify
 - next incremental step
+
+# Governance Linkage
+
+When executing this skill in `vi_ai_core_service`, the workflow is mandatory:
+
+`root docs -> app/providers/AGENTS.md -> this skill -> code changes -> review -> doc write-back`
+
+Required gates:
+
+1. Do not start implementation before reading root docs and module AGENTS.
+2. Review against root `CODE_REVIEW.md`, module `AGENTS.md`, and this skill checklist.
+3. If provider contracts, boundaries, or tests change, update related markdown docs and tests in the same change.

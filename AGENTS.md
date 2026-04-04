@@ -253,3 +253,68 @@
 本仓库采用“项目总纲 + 模块细则”的治理方式。  
 根目录文档负责**全局原则、总体规划、总体架构与总体审查标准**；  
 各模块目录文档负责**该模块的详细规则与实现边界**。
+
+---
+
+## 14. 文档驱动执行链路（强制）
+
+本项目后续所有开发任务，必须按以下顺序执行，不得跳步：
+
+1. 先读根目录文档（`AGENTS.md` -> `PROJECT_PLAN.md` -> `ARCHITECTURE.md` -> `CODE_REVIEW.md`）
+2. 定位归属模块并阅读该模块 `AGENTS.md`
+3. 匹配并执行对应 skill（`SKILL.md` + checklist/test matrix + boundary/acceptance 文档）
+4. 实施代码改动（仅在模块边界内）
+5. 按根目录 `CODE_REVIEW.md` + 模块 `AGENTS.md` + skill checklist 进行自审
+6. 若代码事实变化影响文档描述，执行文档回写（根文档/模块文档/skill 文档）
+
+标准闭环为：
+
+`根目录文档 -> 模块 AGENTS -> 对应 skill -> 代码实现 -> review -> 文档回写`
+
+---
+
+## 15. 模块到 Skill 映射（强制）
+
+模块任务必须映射到对应 skill，不允许“无 skill 自由发挥”：
+
+- API 类任务：根目录四文档 -> `app/api/AGENTS.md` -> `skills/python-api-capability/`
+- Context 类任务：根目录四文档 -> `app/context/AGENTS.md` -> `skills/python-context-capability/`
+- Prompt 类任务：根目录四文档 -> `app/prompts/AGENTS.md` -> `skills/python-prompt-capability/`
+- Provider 通用任务：根目录四文档 -> `app/providers/AGENTS.md` -> `skills/python-ai-provider-capability/`
+- LLM Provider 任务：根目录四文档 -> `app/providers/AGENTS.md` -> `skills/python-llm-provider-capability/`
+- Services 类任务：根目录四文档 -> `app/services/AGENTS.md`，并按任务内容匹配 API/Context/Prompt/Provider 对应 skill
+- Schemas 类任务：根目录四文档 -> `app/schemas/AGENTS.md`，并按契约关联能力选择对应 skill
+
+---
+
+## 16. 文档更新触发规则（强制）
+
+### 必须更新根目录文档的场景
+
+- 项目分层变化
+- 全局依赖方向变化
+- 项目阶段目标变化
+- 全局审查门禁变化
+- 新增 `app/` 一级能力目录
+
+### 必须更新模块 `AGENTS.md` 的场景
+
+- 模块职责变化
+- 模块内边界变化
+- 模块调用入口/出口变化
+- 模块内 review 重点变化
+
+### 必须更新 skill 文档的场景
+
+- 任务执行步骤变化
+- checklist/test matrix 变化
+- 模块映射关系变化
+- 产出物和验收标准变化
+
+### 新增能力的先后顺序
+
+1. 先更新根目录文档（若影响全局）
+2. 再更新目标模块 `AGENTS.md`
+3. 再更新对应 skill 与 checklist/test matrix
+4. 最后进行代码实现与测试
+5. 合并前完成文档回写一致性检查

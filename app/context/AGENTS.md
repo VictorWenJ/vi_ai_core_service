@@ -238,3 +238,24 @@
 ## 13. 一句话总结
 
 `app/context/` 是系统的上下文能力模块，负责 **上下文的表示、管理、存储抽象与演进承接**，而不是业务流程中心。
+
+---
+
+## 14. 本模块任务执行链路（强制）
+
+Context 类任务必须按以下顺序执行：
+
+1. 先读根目录四文档
+2. 再读本文件
+3. 再执行 `skills/python-context-capability/SKILL.md` 与其 checklist/reference
+4. 再改 `app/context/` 代码
+5. 再按根 `CODE_REVIEW.md` + 本文件 + skill checklist 自审
+6. 若上下文模型/边界事实变化，回写文档
+
+---
+
+## 15. 本模块交付门禁（新增）
+
+- 发现 context 层承担 provider/API/service 主流程职责时必须先整改
+- 变更 manager/store/models 契约时必须补充或更新测试
+- 未通过 `python-context-capability` checklist，不视为完成

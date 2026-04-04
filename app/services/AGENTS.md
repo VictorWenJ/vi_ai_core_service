@@ -247,3 +247,28 @@ service 的输入输出应尽量稳定、明确，便于：
 ## 14. 一句话总结
 
 `app/services/` 是系统的业务主链路编排层，负责 **组织流程**，不负责替代底层能力模块本身。
+
+---
+
+## 15. 本模块任务执行链路（强制）
+
+Services 类任务必须按以下顺序执行：
+
+1. 先读根目录四文档
+2. 再读本文件
+3. 再按编排涉及能力匹配 skill：
+   - API 编排相关：`skills/python-api-capability/`
+   - Context 编排相关：`skills/python-context-capability/`
+   - Prompt 编排相关：`skills/python-prompt-capability/`
+   - Provider 编排相关：`skills/python-ai-provider-capability/` 或 `skills/python-llm-provider-capability/`
+4. 再改 `app/services/` 代码
+5. 再按根 `CODE_REVIEW.md` + 本文件 + 对应 skill checklist 自审
+6. 若编排边界或主链路事实变化，回写文档
+
+---
+
+## 16. 本模块交付门禁（新增）
+
+- 发现 service 越权承载 API/provider/prompt/context 细节时必须先整改
+- 变更主链路时必须补充或更新 service 级测试
+- 未完成文档回写一致性检查，不视为完成

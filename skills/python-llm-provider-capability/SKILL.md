@@ -366,3 +366,17 @@ Provider 负责“我如何调用这一家”，
 - python-gemini-provider-skill
 - python-llm-provider-streaming-skill
 - python-llm-provider-structured-output-skill
+
+---
+
+# Governance Linkage
+
+执行本 skill 时必须遵循统一闭环：
+
+`根目录文档 -> app/providers/AGENTS.md -> 本 skill -> 代码实现 -> review -> 文档回写`
+
+强制要求：
+
+1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
+2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist/test matrix 联合自审。
+3. 若 request/response/stream contract、能力声明或测试事实变化，必须同步更新对应文档与测试。

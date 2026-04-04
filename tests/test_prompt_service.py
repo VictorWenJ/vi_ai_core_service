@@ -33,3 +33,19 @@ class PromptServiceTests(unittest.TestCase):
     def test_build_messages_requires_input(self) -> None:
         with self.assertRaises(ValueError):
             self.prompt_service.build_messages()
+
+    def test_build_chat_messages_uses_default_system_template(self) -> None:
+        messages = self.prompt_service.build_chat_messages(user_prompt="Hello")
+
+        self.assertEqual(messages[0].role, "system")
+        self.assertIn("helpful AI assistant", messages[0].content)
+        self.assertEqual(messages[1].role, "user")
+        self.assertEqual(messages[1].content, "Hello")
+
+    def test_build_chat_messages_accepts_system_override(self) -> None:
+        messages = self.prompt_service.build_chat_messages(
+            user_prompt="Hello",
+            system_prompt="Custom system prompt",
+        )
+
+        self.assertEqual(messages[0].content, "Custom system prompt")

@@ -39,6 +39,13 @@ class LLMRequest:
     temperature: float | None = None
     max_tokens: int | None = None
     stream: bool = False
+    session_id: str | None = None
+    conversation_id: str | None = None
+    request_id: str | None = None
+    tools: list[dict[str, Any]] = field(default_factory=list)
+    tool_choice: str | dict[str, Any] | None = None
+    response_format: dict[str, Any] | None = None
+    attachments: list[dict[str, Any]] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -50,6 +57,15 @@ class LLMRequest:
 
         if self.system_prompt is not None:
             self.system_prompt = self.system_prompt.strip() or None
+
+        if self.session_id is not None:
+            self.session_id = self.session_id.strip() or None
+
+        if self.conversation_id is not None:
+            self.conversation_id = self.conversation_id.strip() or None
+
+        if self.request_id is not None:
+            self.request_id = self.request_id.strip() or None
 
         if self.temperature is not None and not 0 <= self.temperature <= 2:
             raise ValueError("temperature must be between 0 and 2.")

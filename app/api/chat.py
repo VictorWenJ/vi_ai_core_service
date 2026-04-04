@@ -9,7 +9,12 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.config import AppConfig
-from app.schemas.llm_request import LLMRequest
+from app.providers.base import (
+    ProviderConfigurationError,
+    ProviderInvocationError,
+    ProviderNotImplementedError,
+    StreamNotImplementedError,
+)
 from app.services.llm_service import LLMService
 from app.services.prompt_service import PromptService
 
@@ -21,6 +26,14 @@ class ChatRequest(BaseModel):
     provider: str | None = Field(default=None, description="Optional provider override.")
     model: str | None = Field(default=None, description="Optional model override.")
     system: str | None = Field(default=None, description="Optional system prompt.")
+    stream: bool = Field(default=False, description="Streaming response toggle (reserved).")
+    session_id: str | None = Field(default=None, description="Optional stateful session id.")
+    conversation_id: str | None = Field(
+        default=None,
+        description="Optional conversation id for cross-request continuity.",
+    )
+    request_id: str | None = Field(default=None, description="Optional external request id.")
+    metadata: dict[str, Any] | None = Field(default=None, description="Optional metadata.")
 
 
 @lru_cache(maxsize=1)
@@ -33,20 +46,32 @@ def _get_chat_service() -> LLMService:
 @router.post("/chat")
 def chat(request: ChatRequest) -> dict[str, Any]:
     llm_service = _get_chat_service()
-    prompt_service = PromptService()
 
     try:
-        messages = prompt_service.build_messages(
-            system_prompt=request.system,
+        response = llm_service.chat_from_user_prompt(
             user_prompt=request.prompt,
-        )
-        llm_request = LLMRequest(
             provider=request.provider,
             model=request.model,
-            messages=messages,
+            system_prompt=request.system,
+            stream=request.stream,
+            session_id=request.session_id,
+            conversation_id=request.conversation_id,
+            request_id=request.request_id,
+            metadata=request.metadata,
         )
-        response = llm_service.chat(llm_request)
-    except Exception as exc:
+    except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except StreamNotImplementedError as exc:
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    except ProviderNotImplementedError as exc:
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    except ProviderConfigurationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ProviderInvocationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except NotImplementedError as exc:
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return response.to_dict()

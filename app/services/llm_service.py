@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Any
 
 from app.config import AppConfig
+from app.context.manager import ContextManager
 from app.providers.registry import ProviderRegistry
-from app.schemas.llm_request import LLMRequest
+from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.schemas.llm_response import LLMResponse
 from app.services.prompt_service import PromptService
 
@@ -19,15 +21,77 @@ class LLMService:
         config: AppConfig,
         registry: ProviderRegistry | None = None,
         prompt_service: PromptService | None = None,
+        context_manager: ContextManager | None = None,
     ) -> None:
         self._config = config
         self._registry = registry or ProviderRegistry(config)
         self._prompt_service = prompt_service or PromptService()
+        self._context_manager = context_manager or ContextManager()
 
     def chat(self, request: LLMRequest) -> LLMResponse:
         normalized_request = self._normalize_request(request)
         provider = self._registry.get_provider(normalized_request.provider or "")
         return provider.chat(normalized_request)
+
+    def chat_from_user_prompt(
+        self,
+        user_prompt: str,
+        provider: str | None = None,
+        model: str | None = None,
+        system_prompt: str | None = None,
+        stream: bool = False,
+        session_id: str | None = None,
+        conversation_id: str | None = None,
+        request_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> LLMResponse:
+        normalized_session_id = _normalize_optional_text(session_id)
+        normalized_conversation_id = _normalize_optional_text(conversation_id)
+        normalized_request_id = _normalize_optional_text(request_id)
+
+        history_messages: list[LLMMessage] = []
+        if normalized_session_id:
+            context_window = self._context_manager.get_context(normalized_session_id)
+            history_messages = [
+                LLMMessage(role=message.role, content=message.content)
+                for message in context_window.messages
+            ]
+
+        assembled_messages = self._prompt_service.build_chat_messages(
+            user_prompt=user_prompt,
+            system_prompt=system_prompt,
+            messages=history_messages,
+        )
+
+        request_metadata = dict(metadata or {})
+        if normalized_conversation_id:
+            request_metadata["conversation_id"] = normalized_conversation_id
+        if normalized_request_id:
+            request_metadata["request_id"] = normalized_request_id
+        if normalized_session_id:
+            request_metadata["session_id"] = normalized_session_id
+
+        response = self.chat(
+            LLMRequest(
+                provider=provider,
+                model=model,
+                messages=assembled_messages,
+                stream=stream,
+                session_id=normalized_session_id,
+                conversation_id=normalized_conversation_id,
+                request_id=normalized_request_id,
+                metadata=request_metadata,
+            )
+        )
+
+        if normalized_session_id:
+            self._context_manager.append_user_message(normalized_session_id, user_prompt)
+            self._context_manager.append_assistant_message(
+                normalized_session_id,
+                response.content,
+            )
+
+        return response
 
     def _normalize_request(self, request: LLMRequest) -> LLMRequest:
         provider_name = request.provider or self._config.default_provider
@@ -62,3 +126,10 @@ class LLMService:
             model=model_name,
             messages=normalized_messages,
         )
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    stripped_value = value.strip()
+    return stripped_value or None

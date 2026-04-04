@@ -3,11 +3,13 @@ from __future__ import annotations
 import unittest
 
 from app.config import AppConfig, ProviderConfig
+from app.context.models import ContextMessage, ContextWindow
 from app.providers.base import BaseLLMProvider, ProviderNotImplementedError
 from app.providers.registry import ProviderRegistry
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.schemas.llm_response import LLMResponse
 from app.services.llm_service import LLMService
+from app.services.prompt_service import PromptService
 
 
 class FakeProvider(BaseLLMProvider):
@@ -37,6 +39,29 @@ class FakeGeminiProvider(FakeProvider):
 
     def chat(self, request: LLMRequest) -> LLMResponse:
         raise ProviderNotImplementedError("Gemini scaffold")
+
+
+class FakeContextManager:
+    def __init__(self) -> None:
+        self.last_get_session_id: str | None = None
+        self.user_appends: list[tuple[str, str]] = []
+        self.assistant_appends: list[tuple[str, str]] = []
+        self._window = ContextWindow(
+            session_id="session-1",
+            messages=[ContextMessage(role="assistant", content="history")],
+        )
+
+    def get_context(self, session_id: str) -> ContextWindow:
+        self.last_get_session_id = session_id
+        return self._window
+
+    def append_user_message(self, session_id: str, content: str) -> ContextWindow:
+        self.user_appends.append((session_id, content))
+        return self._window
+
+    def append_assistant_message(self, session_id: str, content: str) -> ContextWindow:
+        self.assistant_appends.append((session_id, content))
+        return self._window
 
 
 class LLMServiceTests(unittest.TestCase):
@@ -153,3 +178,27 @@ class LLMServiceTests(unittest.TestCase):
         )
 
         self.assertEqual(response.provider, "openai")
+
+    def test_chat_from_user_prompt_uses_context_and_persists_turns(self) -> None:
+        fake_context_manager = FakeContextManager()
+        service = LLMService(
+            config=self.config,
+            registry=self.registry,
+            prompt_service=PromptService(),
+            context_manager=fake_context_manager,
+        )
+
+        response = service.chat_from_user_prompt(
+            user_prompt="new question",
+            session_id="session-1",
+            provider="openai",
+        )
+
+        self.assertEqual(response.provider, "openai")
+        self.assertEqual(fake_context_manager.last_get_session_id, "session-1")
+        self.assertEqual(fake_context_manager.user_appends, [("session-1", "new question")])
+        self.assertEqual(len(fake_context_manager.assistant_appends), 1)
+
+        sent_messages = self.providers["openai"].last_request.messages
+        sent_roles = [message.role for message in sent_messages]
+        self.assertEqual(sent_roles, ["system", "assistant", "user"])
