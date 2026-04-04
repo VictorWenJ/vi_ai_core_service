@@ -68,13 +68,6 @@ def main() -> None:
     print(response.content)
 
 
-# python -m app.main --provider deepseek --prompt "hello"
-# python -m app.main --provider deepseek --prompt "hello" --json
-# python -m app.main --provider deepseek --prompt "hello" --debug
-# python -m app.main --provider deepseek --prompt "hello" --json --debug
-
-
-
 def _build_config_summary(config: AppConfig) -> dict[str, Any]:
     providers_summary: dict[str, dict[str, Any]] = {}
     for provider_name in sorted(config.providers.keys()):

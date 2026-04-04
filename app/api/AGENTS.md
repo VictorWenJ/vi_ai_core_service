@@ -1,19 +1,254 @@
-# AGENTS.md (app/api)
+# app/api/AGENTS.md
 
-## Scope
+## 1. 文档定位
 
-`app/api/` is the HTTP protocol layer for `vi_ai_core_service`.
+本文件定义 `app/api/` 目录的职责、边界、结构约束、演进方向与代码审查标准。
 
-## Rules
+当前阶段，本文件临时同时承担该模块的：
 
-- Keep API handlers thin.
-- Do not call vendor SDKs directly from API modules.
-- API should delegate AI operations to service-layer abstractions.
-- Validate protocol input/output shape and convert to/from canonical schemas.
-- Avoid embedding business orchestration in route handlers.
+- AGENTS.md
+- PROJECT_PLAN.md
+- ARCHITECTURE.md
+- CODE_REVIEW.md
 
-## Current Round Guidance
+功能。
 
-- Keep endpoints minimal and non-streaming.
-- Provide only skeleton-ready routes (`/health`, `/chat`) with clean extension points.
-- Do not implement advanced API concerns yet (auth, quota, multi-tenant policy, etc.).
+本文件只约束 API 接入层，不定义全项目规则，不替代根目录文档。
+
+---
+
+## 2. 模块定位
+
+`app/api/` 是系统的 **API 接入层**。
+
+它负责将外部 HTTP 请求接入系统，并将内部应用编排能力暴露为稳定、清晰、可测试的接口。
+
+当前目录下已有文件：
+
+- `chat.py`：聊天相关接口
+- `health.py`：健康检查相关接口
+- `__init__.py`
+
+---
+
+## 3. 本层职责
+
+API 接入层负责：
+
+1. 定义 HTTP 路由与接口入口
+2. 接收并解析请求
+3. 做接口层的输入校验与基础错误处理
+4. 调用应用编排层（`app/services/`）
+5. 将内部结果映射为外部响应
+6. 输出标准化 HTTP 状态码与错误语义
+7. 承载接口层必要的日志、可观测性与追踪入口
+
+---
+
+## 4. 本层不负责什么
+
+API 层不负责：
+
+1. 不负责模型厂商 API 适配
+2. 不负责 Prompt 模板渲染细节
+3. 不负责上下文存储与上下文裁剪策略
+4. 不负责具体业务流程编排
+5. 不负责 provider 选择、provider fallback、provider 归一化
+6. 不负责将大量业务逻辑堆在路由函数中
+
+一句话：**API 层只做接入与转发，不做底层实现与复杂业务编排。**
+
+---
+
+## 5. 依赖边界
+
+### 允许依赖
+
+`app/api/` 可以依赖：
+
+- `app/services/`
+- `app/schemas/`
+- 必要的框架基础设施（如 FastAPI）
+- 少量配置读取（仅限接口层确实需要）
+
+### 禁止直接依赖
+
+`app/api/` 不应直接依赖：
+
+- `app/providers/` 作为常规调用路径
+- `app/prompts/` 作为常规调用路径
+- `app/context/` 作为常规调用路径
+
+说明：
+
+- 正常业务请求应通过 `app/services/` 进入系统
+- API 层不允许绕过应用编排层直接拼装 provider/prompt/context 逻辑
+- 健康检查等极特殊场景可有限例外，但必须保持极简
+
+---
+
+## 6. 当前建议结构
+
+当前 API 层建议维持“薄路由”结构：
+
+- `chat.py`
+  - 仅负责 chat 接口定义与请求转发
+- `health.py`
+  - 仅负责 liveness / readiness / basic health 能力
+- 若未来增加新接口，按资源或能力拆文件，而不是继续堆在 `chat.py`
+
+后续可扩展方向包括：
+
+- `completion.py`
+- `models.py`
+- `admin.py`
+- `metrics.py`
+
+但只有在能力真实出现后再新增，不提前造目录。
+
+---
+
+## 7. 设计原则
+
+### 7.1 薄路由原则
+
+每个路由函数应尽量只包含：
+
+- 请求接收
+- 参数校验
+- 调用 service
+- 返回响应
+
+不要把复杂业务逻辑写在路由中。
+
+### 7.2 显式错误语义
+
+接口层返回值必须让调用方能明确区分：
+
+- 参数错误
+- 服务不可用
+- provider 错误
+- 内部系统错误
+
+### 7.3 响应结构稳定
+
+同一类接口响应结构应保持稳定，不随内部实现变化频繁变更。
+
+### 7.4 易测性优先
+
+API 层应保持简单，以便：
+
+- 单元测试
+- 接口测试
+- 错误路径测试
+- 健康检查测试
+
+---
+
+## 8. 新增接口时的规则
+
+新增接口时，必须遵守以下规则：
+
+1. 先判断该能力是否真的属于 HTTP API 暴露层
+2. 接口命名应体现资源或能力，而不是体现内部实现细节
+3. 路由函数不得直接组装 provider 请求
+4. 路由函数不得直接读取 prompt 模板并渲染
+5. 路由函数不得直接操作上下文存储
+6. 必须将核心流程委托给 `app/services/`
+7. 必须定义清晰的请求模型与响应模型
+8. 必须补充对应测试
+
+---
+
+## 9. 当前阶段演进计划
+
+本层当前阶段目标：
+
+1. 保持 chat 接口清晰、可运行、可测试
+2. 保持 health 接口简单可靠
+3. 稳定 API 层与 service 层之间的调用边界
+4. 避免 API 层提前承载流式输出、鉴权、限流等大量复杂逻辑
+
+后续阶段可演进：
+
+1. 流式响应接口
+2. 模型列表查询接口
+3. 会话管理接口
+4. 管理类接口
+5. 监控与诊断接口
+
+这些扩展必须在真实需求出现后，再进行结构拆分。
+
+---
+
+## 10. 代码修改约束
+
+修改 API 层代码时，必须优先检查：
+
+1. 是否把业务逻辑错误地塞进了路由层
+2. 是否绕过了 service 层直接调用 provider/context/prompts
+3. 是否引入了不稳定的响应结构
+4. 是否破坏了现有 HTTP 语义
+5. 是否增加了难以测试的分支逻辑
+6. 是否影响健康检查的简单性与可靠性
+
+---
+
+## 11. Code Review 清单
+
+评审 `app/api/` 代码时，重点检查：
+
+### 职责边界
+
+- 路由层是否保持薄
+- 是否有越层调用
+- 是否把 provider/prompt/context 细节拉进 API 层
+
+### 接口设计
+
+- 接口命名是否清晰
+- 请求/响应结构是否稳定
+- 状态码是否合理
+- 错误信息是否可理解
+
+### 可维护性
+
+- 路由函数是否过长
+- 是否存在重复的参数处理
+- 是否存在重复的异常转换逻辑
+
+### 可测试性
+
+- 是否容易写接口测试
+- 是否覆盖成功路径与失败路径
+- 是否有基础健康检查覆盖
+
+---
+
+## 12. 测试要求
+
+API 层建议至少覆盖：
+
+1. 健康检查成功路径
+2. chat 请求成功路径
+3. 非法输入路径
+4. service 抛错后的错误映射路径
+5. 基本响应结构断言
+
+---
+
+## 13. 禁止事项
+
+以下做法在本层应避免：
+
+- 在路由里写 provider 调用细节
+- 在路由里拼接 prompt
+- 在路由里直接读写 context store
+- 在路由里做复杂分支编排
+- 将 API 层写成“第二个 service 层”
+
+---
+
+## 14. 一句话总结
+
+`app/api/` 是系统的外部接入门面，职责是 **接入、校验、转发、返回**，而不是承担内部核心业务实现。

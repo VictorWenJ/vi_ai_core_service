@@ -1,108 +1,255 @@
 # AGENTS.md
 
-## 1. Project Identity
+## 1. 文档定位
 
-This repository is `vi_ai_core_service`, the Python AI Core subsystem of a larger consumer-facing AI product portfolio.
+本文件用于定义 `vi_ai_core_service` 仓库级别的协作规则、工程边界、开发原则与文档治理方式。
 
-It is not a demo repo. It is a long-lived engineering codebase that evolves into a production-grade AI capability layer.
+它是本项目的**顶层协作文档**。
 
-## 2. Platform Boundary (Python vs Java)
+本文件不替代模块级文档。  
+当开发者、协作成员或 Codex 需要修改某个具体模块时，必须按以下顺序阅读文档：
 
-The overall platform is split into two subsystems:
+1. 根目录 `AGENTS.md`
+2. 根目录 `PROJECT_PLAN.md`
+3. 根目录 `ARCHITECTURE.md`
+4. 根目录 `CODE_REVIEW.md`
+5. 目标模块目录下的 `AGENTS.md`
 
-- Python AI Core (`vi_ai_core_service`)
-  - model invocation
-  - provider abstraction
-  - prompt assets and rendering
-  - context engineering foundation
-  - future RAG / Agent / multimodal capability integration
-- Java Product Backend
-  - user/session/project/task lifecycle
-  - state transitions, retries, quota/audit
-  - product-oriented APIs for frontend applications
+---
 
-Python must stay focused on AI capability concerns. Java concerns must not leak into this repository.
+## 2. 项目定位
 
-## 3. Current Stage Priority
+`vi_ai_core_service` 是 VI AI Project 中的 Python AI 子系统。
 
-Current priority: **LLM full flow first, structure first**.
+当前阶段，本仓库聚焦于以下能力：
 
-This round is for structure governance and skeleton hardening. Avoid business expansion.
+- 大模型 API 接入
+- Prompt 资产组织与渲染
+- 上下文管理
+- AI 请求编排
+- 对外 API 暴露
+- AI 能力相关的数据契约管理
 
-### In Scope (Current Round)
+本仓库的目标不是做一个“大而全”的业务系统，  
+而是作为整个项目中的 **Python 侧 AI 能力核心服务**。
 
-- directory structure governance
-- AGENTS.md rules at root and key subdirectories
-- skills governance and skeleton skills
-- minimal API/server/prompt/context skeletons
+---
 
-### Out of Scope (Current Round)
+## 3. 当前项目范围
 
-- RAG implementation
-- Agent runtime implementation
-- multimodal implementation
-- Redis/DB integration
-- workflow engine / MQ / Celery / LangGraph
-- Java-side implementation
+当前版本的项目范围明确限定为以下六层：
 
-## 4. Core Engineering Rules
+1. API 接入层（`app/api/`）
+2. 应用编排层（`app/services/`）
+3. 上下文管理层（`app/context/`）
+4. Prompt 资产层（`app/prompts/`）
+5. 模型 API 接入层（`app/providers/`）
+6. 数据模型层（`app/schemas/`）
 
-### 4.1 Layer boundaries are strict
+未来如果需要新增新层，例如 `app/rag/`、`app/agents/` 等，必须在项目级文档中明确纳入，并同步定义边界。
 
-- `app/api/`: protocol layer only, no vendor SDK calls
-- `app/services/`: capability orchestration, no direct SDK internals
-- `app/providers/`: vendor adapters and provider-specific logic only
-- `app/schemas/`: canonical request/response contracts
-- `app/prompts/`: prompt assets and rendering helpers
-- `app/context/`: context engineering foundation for future session memory
+---
 
-### 4.2 Main entrypoint rule
+## 4. 项目级治理原则
 
-`app/main.py` is only for local smoke tests.
+### 4.1 文档分层治理
 
-It is not the formal system entrypoint.
+本仓库采用“文档分层治理”模式：
 
-### 4.3 Provider design rule
+- 根目录文档只负责项目总体规则
+- 模块目录文档只负责该模块自身规则
+- 根目录文档不得越权写模块内部细节
+- 模块文档不得随意突破项目总体原则
 
-Business-facing layers must not depend on vendor SDK response structures.
+### 4.2 边界清晰优先
 
-Provider differences are normalized inside provider modules and returned as canonical schemas.
+每个目录、每一层都必须有明确职责。  
+不允许无边界地混合：
 
-### 4.4 Prompt asset rule
+- 路由逻辑
+- 编排逻辑
+- Provider 适配逻辑
+- Prompt 逻辑
+- Context 逻辑
+- Schema 契约逻辑
 
-Prompt content should be managed under `app/prompts/` as assets.
+### 4.3 渐进式演进优先于过度设计
 
-Avoid scattering stable prompt text across unrelated service files.
+项目允许演进，但不接受没有实际需求支撑的提前抽象。  
+当前阶段应优先保证：
 
-### 4.5 Context foundation rule
+- 结构清晰
+- 调用链清晰
+- 模块边界稳定
+- 代码易于继续扩展
 
-`app/context/` is a structural foundation for future multi-turn/session memory.
+### 4.4 可替换、可维护、可扩展
 
-Keep it minimal in this round; do not implement advanced memory policies yet.
+本项目应尽量具备以下特征：
 
-## 5. Security Rules
+- 抽象合理
+- 依赖方向清晰
+- 底层实现可替换
+- 上层调用稳定
+- 模块之间低耦合
 
-- Never commit real API keys, tokens, or secrets.
-- `.env.example` must contain placeholders only.
-- If a real key is accidentally exposed, rotate it immediately at the provider platform.
+### 4.5 AI 工程能力是核心能力，不是附属能力
 
-## 6. Implementation Workflow
+在本仓库中：
 
-For non-trivial tasks:
+- Prompt
+- Context
+- Provider
+- 模型调用契约
 
-1. Understand scope and constraints.
-2. Propose a minimal, architecture-safe plan.
-3. Wait for user confirmation.
-4. Implement incrementally without unrelated refactors.
-5. Report changed files, run/verify steps, and next increment.
+都属于核心工程组成部分，而不是零散辅助代码。
 
-## 7. Definition of Good Changes
+---
 
-Good changes should:
+## 5. 全局依赖方向
 
-- improve structure clarity
-- preserve provider/service/schema boundaries
-- keep current LLM foundation runnable
-- increase extensibility with minimal risk
-- avoid over-engineering at this stage
+本仓库整体上应遵守如下依赖方向：
 
+`api -> services -> context/prompts/providers -> schemas`
+
+更准确地说：
+
+- `api` 负责接收请求并转发
+- `services` 负责用例级编排
+- `context/prompts/providers` 负责提供专项能力
+- `schemas` 负责提供共享数据契约
+
+### 全局规则
+
+1. 上层可以依赖下层或共享层，但必须符合架构定义
+2. 下层不得反向依赖 API 层或编排层
+3. `schemas` 应作为最稳定的共享契约层之一
+4. 严禁产生循环依赖
+5. 模块之间的跨层调用必须有明确理由，不能随意穿透
+
+---
+
+## 6. 根目录文档的职责边界
+
+### 根目录文档应该定义什么
+
+根目录文档应该定义：
+
+- 项目目标
+- 项目总体架构
+- 项目阶段规划
+- 全局工程规则
+- 全局 Code Review 标准
+- 全局文档治理方式
+- 全局模块边界与依赖原则
+
+### 根目录文档不应该定义什么
+
+根目录文档不应该定义：
+
+- 某个 provider 如何接入
+- 某个 prompt 模板如何命名
+- 某个 context store 如何实现
+- 某个 service 内部如何拆分函数
+- 某个 API 文件内部怎么组织路由
+- 某个 schema 的字段设计细节
+
+这些内容属于模块级文档职责。
+
+---
+
+## 7. 新增目录或新增能力的规则
+
+未来向 `app/` 下新增新目录时，必须满足以下条件：
+
+1. 新能力与现有层职责有明显差异
+2. 新目录的职责可以用一小段清楚解释
+3. 新目录的依赖方向是明确的
+4. 新目录不会和已有模块职责重复
+5. 新目录建立后，必须补充对应模块文档
+
+例如未来可能新增：
+
+- `app/rag/`
+- `app/agents/`
+- `app/tooling/`
+- `app/observability/`
+
+但必须在项目进入相应阶段后再新增，不能提前空建。
+
+---
+
+## 8. 与 Codex / AI Coding Agent 协作规则
+
+当使用 Codex 或其他 AI Coding Agent 协助开发时，必须遵守：
+
+1. 先阅读根目录四个总文档
+2. 再阅读目标模块自己的 `AGENTS.md`
+3. 不允许只根据文件名臆断架构
+4. 不允许把项目级规则和模块级规则混写
+5. 修改代码前应先判断代码应落在哪一层
+6. 进行较大改动前，应先说明是否影响模块边界
+
+---
+
+## 9. 全局开发原则
+
+整个仓库范围内，代码应尽量满足：
+
+- 显式优于隐式
+- 稳定优于花哨
+- 清晰优于过度抽象
+- 分层优于混写
+- 可测试优于难验证
+- 可替换优于强绑定
+- 可审查优于“看不懂但能跑”
+
+---
+
+## 10. 全局测试原则
+
+项目整体应持续保障以下核心能力的回归安全：
+
+- 配置加载正确性
+- API 到 service 主链路正确性
+- Prompt 查找与渲染行为
+- Provider 归一化行为
+- Context 基础行为
+- 核心数据契约稳定性
+
+测试体系可以逐步演进，但核心路径必须始终可验证。
+
+---
+
+## 11. 文档维护原则
+
+1. 根目录文档只在项目级规则发生变化时更新
+2. 模块内部细节变化时，应优先更新模块自己的 `AGENTS.md`
+3. 不允许把模块细节补丁式堆到根目录文档中
+4. 当某模块复杂度上升时，可将其局部 `AGENTS.md` 拆分为：
+   - `AGENTS.md`
+   - `PROJECT_PLAN.md`
+   - `ARCHITECTURE.md`
+   - `CODE_REVIEW.md`
+
+---
+
+## 12. 当前阶段项目总体目标
+
+当前阶段，本项目的总体目标不是做全能力 AI 平台，而是先把以下能力做稳定：
+
+- 基础 API 接入能力
+- 基础 LLM 调用主链路
+- 基础 Prompt 资产能力
+- 基础 Context 能力
+- 多 Provider 接入能力
+- 基础 Schema 契约能力
+- 基础测试与文档治理能力
+
+---
+
+## 13. 一句话总结
+
+本仓库采用“项目总纲 + 模块细则”的治理方式。  
+根目录文档负责**全局原则、总体规划、总体架构与总体审查标准**；  
+各模块目录文档负责**该模块的详细规则与实现边界**。
