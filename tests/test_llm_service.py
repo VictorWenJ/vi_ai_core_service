@@ -8,6 +8,7 @@ from app.providers.base import BaseLLMProvider, ProviderNotImplementedError
 from app.providers.registry import ProviderRegistry
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.schemas.llm_response import LLMResponse
+from app.services.errors import ServiceNotImplementedError, ServiceValidationError
 from app.services.llm_service import LLMService
 from app.services.prompt_service import PromptService
 
@@ -127,11 +128,11 @@ class LLMServiceTests(unittest.TestCase):
         self.assertEqual(roles, ["system", "user"])
 
     def test_chat_rejects_missing_messages(self) -> None:
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ServiceValidationError):
             self.service.chat(LLMRequest())
 
     def test_chat_rejects_stream_requests(self) -> None:
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(ServiceNotImplementedError):
             self.service.chat(
                 LLMRequest(
                     messages=[LLMMessage(role="user", content="hello")],
@@ -140,7 +141,7 @@ class LLMServiceTests(unittest.TestCase):
             )
 
     def test_scaffold_provider_surfaces_not_implemented(self) -> None:
-        with self.assertRaises(ProviderNotImplementedError):
+        with self.assertRaises(ServiceNotImplementedError) as context:
             self.service.chat(
                 LLMRequest(
                     provider="gemini",
@@ -148,6 +149,7 @@ class LLMServiceTests(unittest.TestCase):
                     messages=[LLMMessage(role="user", content="hello")],
                 )
             )
+        self.assertIsInstance(context.exception.__cause__, ProviderNotImplementedError)
 
     def test_unused_provider_missing_key_does_not_break_default_provider(self) -> None:
         providers = {

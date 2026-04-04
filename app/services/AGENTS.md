@@ -155,6 +155,19 @@ service 的输入输出应尽量稳定、明确，便于：
 
 即使当前实现还比较轻，也应朝这个方向收敛。
 
+### 当前阶段能力声明（强约束）
+
+- 本阶段已实现并验收：
+  - 单轮非流式 LLM 主链路编排
+  - Prompt/Context/Provider 的最小协作
+  - service-facing error 向 API 层传播
+- 本阶段仅预留，不要求落地：
+  - streaming 编排
+  - 多模态编排
+  - tools/function calling 编排
+  - structured output 编排
+  - 复杂 context 治理（持久化/摘要/压缩）
+
 ---
 
 ## 9. 当前阶段演进计划

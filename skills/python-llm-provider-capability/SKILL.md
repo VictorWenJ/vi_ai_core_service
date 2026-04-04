@@ -42,6 +42,17 @@ description: 用于为 vi_ai_core_service 搭建和标准化面向主流 C 端 A
 
 ---
 
+# Current Phase Constraint (Must Follow)
+
+在 `vi_ai_core_service` 当前阶段，执行本 skill 时必须默认遵守以下范围：
+
+- provider 层当前只要求稳定非流式文本 chat 主路径。
+- `streaming`、多模态、tools/function calling、structured output 仅做 contract/capability 预留，不做真实功能落地。
+- 不引入复杂 routing/fallback/retry 引擎，不做大型 provider 平台化重构。
+- 重点是保证 provider 抽象稳定、错误语义清晰、与 service 层边界清晰。
+
+---
+
 # Use This Skill When
 
 在以下场景中使用本 skill：

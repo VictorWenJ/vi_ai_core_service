@@ -41,6 +41,17 @@ description: 用于为 vi_ai_core_service 搭建和标准化面向主流 C 端 A
 
 ---
 
+# Current Phase Constraint (Must Follow)
+
+在 `vi_ai_core_service` 当前阶段，执行本 skill 时必须默认遵守以下范围：
+
+- Prompt 层只要求“基础资产目录 + registry + renderer + 默认 chat system prompt”稳定可用。
+- tools、structured output、多模态等仅做提示层预留，不做完整 orchestration engine。
+- 不把 Prompt 层扩展成策略平台或业务规则引擎。
+- 重点是收敛散落 Prompt、稳定渲染行为、保持与 service/provider/context 的边界清晰。
+
+---
+
 # Use This Skill When
 
 在以下场景中使用本 skill：

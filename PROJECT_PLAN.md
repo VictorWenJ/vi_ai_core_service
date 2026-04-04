@@ -64,6 +64,24 @@
 如果边界不清晰，即使功能跑通，也会让后续演进成本快速上升。  
 所以当前阶段，架构边界和文档治理优先级很高。
 
+### 3.4 当前阶段能力声明（强约束）
+
+当前阶段只要求“基础设施 + 主链路可运行可测试”，实现边界明确如下：
+
+- 已实现并要求稳定：
+  - LLM API 单轮会话
+  - 非流式输出（`stream=False`）
+  - API -> services -> prompts/context/providers 主链路
+  - 最小必要测试回归
+- 仅预留，不作为本阶段验收项：
+  - streaming
+  - 多模态真实落地
+  - tools/function calling 真正实现
+  - structured output 真正实现
+  - context persistence / summary / compaction
+  - prompt orchestration engine
+  - 新 provider 的完整接入
+
 ---
 
 ## 4. 当前已确认的系统层次

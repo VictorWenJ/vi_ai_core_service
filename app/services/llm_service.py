@@ -7,9 +7,22 @@ from typing import Any
 
 from app.config import AppConfig
 from app.context.manager import ContextManager
+from app.providers.base import (
+    ProviderConfigurationError,
+    ProviderInvocationError,
+    ProviderNotImplementedError,
+    StreamNotImplementedError,
+)
 from app.providers.registry import ProviderRegistry
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.schemas.llm_response import LLMResponse
+from app.services.errors import (
+    ServiceConfigurationError,
+    ServiceDependencyError,
+    ServiceError,
+    ServiceNotImplementedError,
+    ServiceValidationError,
+)
 from app.services.prompt_service import PromptService
 
 
@@ -29,9 +42,20 @@ class LLMService:
         self._context_manager = context_manager or ContextManager()
 
     def chat(self, request: LLMRequest) -> LLMResponse:
-        normalized_request = self._normalize_request(request)
-        provider = self._registry.get_provider(normalized_request.provider or "")
-        return provider.chat(normalized_request)
+        try:
+            normalized_request = self._normalize_request(request)
+            provider = self._registry.get_provider(normalized_request.provider or "")
+            return provider.chat(normalized_request)
+        except ServiceError:
+            raise
+        except ProviderConfigurationError as exc:
+            raise ServiceConfigurationError(str(exc)) from exc
+        except ProviderInvocationError as exc:
+            raise ServiceDependencyError(str(exc)) from exc
+        except (ProviderNotImplementedError, StreamNotImplementedError, NotImplementedError) as exc:
+            raise ServiceNotImplementedError(str(exc)) from exc
+        except ValueError as exc:
+            raise ServiceValidationError(str(exc)) from exc
 
     def chat_from_user_prompt(
         self,
@@ -100,13 +124,13 @@ class LLMService:
 
         if not model_name:
             env_var_name = f"{provider_name.upper()}_DEFAULT_MODEL"
-            raise ValueError(
+            raise ServiceValidationError(
                 f"Model is required for provider '{provider_name}'. "
                 f"Provide it in the request or configure {env_var_name}."
             )
 
         if request.stream:
-            raise NotImplementedError(
+            raise ServiceNotImplementedError(
                 "Streaming is intentionally out of scope for this Phase 1 implementation."
             )
 
@@ -118,7 +142,7 @@ class LLMService:
             )
 
         if not normalized_messages:
-            raise ValueError("At least one message is required.")
+            raise ServiceValidationError("At least one message is required.")
 
         return replace(
             request,

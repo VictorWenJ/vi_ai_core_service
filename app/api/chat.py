@@ -9,11 +9,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.config import AppConfig
-from app.providers.base import (
-    ProviderConfigurationError,
-    ProviderInvocationError,
-    ProviderNotImplementedError,
-    StreamNotImplementedError,
+from app.services.errors import (
+    ServiceConfigurationError,
+    ServiceDependencyError,
+    ServiceNotImplementedError,
+    ServiceValidationError,
 )
 from app.services.llm_service import LLMService
 from app.services.prompt_service import PromptService
@@ -59,19 +59,15 @@ def chat(request: ChatRequest) -> dict[str, Any]:
             request_id=request.request_id,
             metadata=request.metadata,
         )
-    except ValueError as exc:
+    except (ServiceValidationError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except StreamNotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
-    except ProviderNotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
-    except ProviderConfigurationError as exc:
+    except ServiceConfigurationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ProviderInvocationError as exc:
+    except ServiceNotImplementedError as exc:
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    except ServiceDependencyError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except NotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise HTTPException(status_code=500, detail="Internal server error.") from exc
 
     return response.to_dict()

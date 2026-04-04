@@ -143,6 +143,17 @@ Prompt 不应散落在 service 或 provider 代码中。
 3. 避免 Prompt 分散在各层硬编码
 4. 让 chat 场景具有稳定默认模板入口
 
+### 当前阶段能力声明（强约束）
+
+- 本阶段已实现并验收：
+  - 基础模板资产目录
+  - registry + renderer 最小闭环
+  - 单轮 chat 默认 system prompt 支撑
+- 本阶段仅预留，不要求落地：
+  - Prompt orchestration engine
+  - 大规模 Prompt 版本治理平台
+  - tools/structured output/multimodal 的完整提示编排体系
+
 后续演进方向：
 
 1. 多场景模板

@@ -78,6 +78,7 @@ API 层不负责：
 - `app/providers/` 作为常规调用路径
 - `app/prompts/` 作为常规调用路径
 - `app/context/` 作为常规调用路径
+- provider 层异常类型（API 仅处理 service-facing error）
 
 说明：
 
@@ -168,6 +169,18 @@ API 层应保持简单，以便：
 2. 保持 health 接口简单可靠
 3. 稳定 API 层与 service 层之间的调用边界
 4. 避免 API 层提前承载流式输出、鉴权、限流等大量复杂逻辑
+
+### 当前阶段能力声明（强约束）
+
+- 本阶段已实现并验收：
+  - `/health` 基础健康检查
+  - `/chat` 单轮非流式调用
+  - 基础输入校验与状态码映射
+- 本阶段仅预留，不要求落地：
+  - streaming 接口真实实现
+  - 多模态输入真实处理
+  - tools/function calling 真实执行链路
+  - structured output 真实输出链路
 
 后续阶段可演进：
 
