@@ -73,6 +73,7 @@
   - 非流式输出（`stream=False`）
   - API -> services -> prompts/context/providers 主链路
   - 最小必要测试回归
+  - observability 文档治理与目录基础（为后续 logging 落地做前置）
 - 仅预留，不作为本阶段验收项：
   - streaming
   - 多模态真实落地
@@ -82,18 +83,36 @@
   - prompt orchestration engine
   - 新 provider 的完整接入
 
+### 3.5 当前阶段 observability 建设目标（新增）
+
+当前阶段 observability 只做基础设施治理，不做平台化建设。范围限定为：
+
+- 统一 logging 基础设施设计（Python 标准库 `logging`）
+- JSON 结构化日志规范
+- request context 字段贯穿规范（如 `request_id` / `session_id` / `conversation_id`）
+- exception logging 与边界日志规范（startup/API/service/provider）
+- `.env` true/false 开关控制日志行为的规则约束
+
+当前阶段明确不做：
+
+- tracing 平台
+- metrics 平台
+- alerting 平台
+- APM 平台
+
 ---
 
 ## 4. 当前已确认的系统层次
 
-当前项目先按以下六层组织：
+当前项目先按以下七层组织：
 
 1. API 接入层
 2. 应用编排层
 3. 上下文管理层
 4. Prompt 资产层
 5. 模型 API 接入层
-6. 数据模型层
+6. 可观测性基础设施层
+7. 数据模型层
 
 本阶段不继续额外拆出更多系统层次，除非出现明确需求。
 
@@ -115,7 +134,7 @@
   - `ARCHITECTURE.md`
   - `CODE_REVIEW.md`
 - 完成各模块目录的 `AGENTS.md`
-- 固化当前六层系统划分
+- 固化当前七层系统划分（含 observability 横切层）
 - 明确根目录文档与模块文档的职责边界
 
 ### 本阶段完成标准
@@ -140,6 +159,7 @@
 - 稳定 Prompt 读取与渲染行为
 - 稳定 Provider 注册与归一化能力
 - 稳定 Context 的基础管理能力
+- 固化 observability 的 logging/request context/exception logging 基础规范
 - 维持 Schema 层的共享契约清晰性
 
 ### 本阶段完成标准
@@ -197,14 +217,14 @@
 
 ### 目标
 
-在现有六层稳定后，为未来新增能力模块做准备。
+在现有七层稳定后，为未来新增能力模块做准备。
 
 ### 可能方向
 
 - `app/rag/`
 - `app/agents/`
 - `app/tooling/`
-- `app/observability/`
+- `app/evaluation/`
 - 更细的内部 contract 分层
 - integration tests / e2e tests
 
@@ -223,7 +243,7 @@
 
 - 根目录文档体系正确建立
 - 模块级文档体系正确建立
-- 当前六层边界清晰
+- 当前七层边界清晰（含 observability 横切层）
 - 基础主链路清晰
 - 基础测试可用
 
@@ -277,7 +297,7 @@
 标志：
 
 - 根目录四个总文档完成
-- 六个模块级 `AGENTS.md` 完成
+- 七个模块级 `AGENTS.md` 完成
 - 文档边界清晰
 
 ### M2：主链路稳定

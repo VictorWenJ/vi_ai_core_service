@@ -73,7 +73,7 @@
 
 1. 这段代码为什么在这个目录，而不是别的目录？
 2. 这段逻辑属于哪个层？
-3. 是否破坏当前六层边界？
+3. 是否破坏当前七层边界（含 observability 横切层）？
 4. 是否出现跨层绕过？
 5. 是否引入循环依赖风险？
 6. 是否让未来演进更困难？
@@ -100,6 +100,13 @@
 
 - 这三个专项能力模块是否仍然职责分离
 - 是否出现相互侵入和混写
+
+### Observability 层边界（新增）
+
+- logging / request context / exception logging 是否收敛在 `app/observability/`
+- 是否存在到处 `print`、到处手写日志格式的散落实现
+- observability 是否被错误写成 `utils/common` 杂项层
+- observability 是否越权承担业务流程、provider 接入或 prompt/context 管理
 
 ### Schema 边界
 
@@ -181,6 +188,12 @@
 5. 是否保留了必要的定位信息
 
 目标是让错误处理既有边界，又可追踪。
+
+同时，异常日志审查还应关注：
+
+1. 是否按级别区分 `info` 与 `error`
+2. 是否存在敏感信息泄露（如 API key、Authorization、完整用户敏感 payload）
+3. 是否在日志中保留必要 request context 字段（如 `request_id`、`session_id`、`conversation_id`）
 
 ---
 
@@ -288,3 +301,16 @@ Review 时，建议优先从以下几个维度给出结论：
 - 绕过模块 `AGENTS.md` 直接做模块改动
 - 无 skill 支撑的自由发挥式实现
 - 只改代码不改文档，或只改文档不校验代码
+
+---
+
+## 18. Observability 专项审查门禁（新增）
+
+涉及 observability 相关改动时，必须额外检查：
+
+1. 是否使用 Python 标准库 `logging`，而非额外重型日志框架
+2. 日志是否采用 JSON 结构化输出约束
+3. 日志开关是否由 `.env` true/false 配置控制
+4. startup / API / services / providers / exception 关键边界是否有清晰日志策略
+5. 是否存在敏感字段脱敏或避免输出策略
+6. 当前阶段是否错误引入 tracing/metrics/alerting/APM 平台建设

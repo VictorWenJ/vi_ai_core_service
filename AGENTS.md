@@ -28,6 +28,7 @@
 - 上下文管理
 - AI 请求编排
 - 对外 API 暴露
+- 可观测性基础设施治理
 - AI 能力相关的数据契约管理
 
 本仓库的目标不是做一个“大而全”的业务系统，  
@@ -37,14 +38,17 @@
 
 ## 3. 当前项目范围
 
-当前版本的项目范围明确限定为以下六层：
+当前版本的项目范围明确限定为以下七层：
 
 1. API 接入层（`app/api/`）
 2. 应用编排层（`app/services/`）
 3. 上下文管理层（`app/context/`）
 4. Prompt 资产层（`app/prompts/`）
 5. 模型 API 接入层（`app/providers/`）
-6. 数据模型层（`app/schemas/`）
+6. 可观测性基础设施层（`app/observability/`）
+7. 数据模型层（`app/schemas/`）
+
+其中 `app/observability/` 为横切基础设施模块，负责统一 logging / request context / exception logging 的工程规则与实现承接，不承担业务流程编排。
 
 未来如果需要新增新层，例如 `app/rag/`、`app/agents/` 等，必须在项目级文档中明确纳入，并同步定义边界。
 
@@ -71,6 +75,7 @@
 - Provider 适配逻辑
 - Prompt 逻辑
 - Context 逻辑
+- Observability 基础设施逻辑
 - Schema 契约逻辑
 
 ### 4.3 渐进式演进优先于过度设计
@@ -100,6 +105,7 @@
 - Prompt
 - Context
 - Provider
+- Observability
 - 模型调用契约
 
 都属于核心工程组成部分，而不是零散辅助代码。
@@ -117,15 +123,17 @@
 - `api` 负责接收请求并转发
 - `services` 负责用例级编排
 - `context/prompts/providers` 负责提供专项能力
+- `observability` 负责提供横切可观测性基础设施（logging/request context/exception logging）
 - `schemas` 负责提供共享数据契约
 
 ### 全局规则
 
 1. 上层可以依赖下层或共享层，但必须符合架构定义
 2. 下层不得反向依赖 API 层或编排层
-3. `schemas` 应作为最稳定的共享契约层之一
-4. 严禁产生循环依赖
-5. 模块之间的跨层调用必须有明确理由，不能随意穿透
+3. `observability` 可被 API/services/providers 等层依赖，但不得反向依赖业务编排实现
+4. `schemas` 应作为最稳定的共享契约层之一
+5. 严禁产生循环依赖
+6. 模块之间的跨层调用必须有明确理由，不能随意穿透
 
 ---
 
@@ -173,9 +181,18 @@
 - `app/rag/`
 - `app/agents/`
 - `app/tooling/`
-- `app/observability/`
+- `app/evaluation/`
 
 但必须在项目进入相应阶段后再新增，不能提前空建。
+
+### 基础设施模块新增规则（新增）
+
+若新增的是横切基础设施模块（如 observability），必须额外满足：
+
+1. 明确技术选型（当前 observability 统一使用 Python 标准库 `logging`）
+2. 明确日志格式与开关策略（当前统一 JSON 输出，`.env` 布尔开关控制）
+3. 明确模块边界（不承担业务编排、不替代 API/service/provider）
+4. 明确当前阶段只落最小基础设施，不做 tracing/metrics/alerting 平台化建设
 
 ---
 
@@ -215,6 +232,7 @@
 - Prompt 查找与渲染行为
 - Provider 归一化行为
 - Context 基础行为
+- Observability 基础行为（日志开关、结构化输出、异常日志语义）
 - 核心数据契约稳定性
 
 测试体系可以逐步演进，但核心路径必须始终可验证。
@@ -243,6 +261,7 @@
 - 基础 Prompt 资产能力
 - 基础 Context 能力
 - 多 Provider 接入能力
+- 基础 observability 规则与目录能力
 - 基础 Schema 契约能力
 - 基础测试与文档治理能力
 
@@ -255,6 +274,7 @@
   - 非流式输出（`stream=False`）
   - API -> services -> context/prompts/providers -> schemas 基础调用链
   - 覆盖主链路的最小测试门禁
+  - observability 文档治理闭环与目录基础
 - 当前仅预留，不作为本阶段已实现能力：
   - streaming
   - 多模态真实链路
@@ -301,6 +321,7 @@
 - LLM Provider 任务：根目录四文档 -> `app/providers/AGENTS.md` -> `skills/python-llm-provider-capability/`
 - Services 类任务：根目录四文档 -> `app/services/AGENTS.md`，并按任务内容匹配 API/Context/Prompt/Provider 对应 skill
 - Schemas 类任务：根目录四文档 -> `app/schemas/AGENTS.md`，并按契约关联能力选择对应 skill
+- Observability 类任务：根目录四文档 -> `app/observability/AGENTS.md` -> `skills/python-observability-capability/`
 
 ---
 
