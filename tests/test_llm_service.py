@@ -8,7 +8,11 @@ from app.providers.base import BaseLLMProvider, ProviderNotImplementedError
 from app.providers.registry import ProviderRegistry
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.schemas.llm_response import LLMResponse
-from app.services.errors import ServiceNotImplementedError, ServiceValidationError
+from app.services.errors import (
+    ServiceConfigurationError,
+    ServiceNotImplementedError,
+    ServiceValidationError,
+)
 from app.services.llm_service import LLMService
 from app.services.prompt_service import PromptService
 
@@ -137,6 +141,15 @@ class LLMServiceTests(unittest.TestCase):
                 LLMRequest(
                     messages=[LLMMessage(role="user", content="hello")],
                     stream=True,
+                )
+            )
+
+    def test_chat_rejects_unsupported_provider(self) -> None:
+        with self.assertRaises(ServiceConfigurationError):
+            self.service.chat(
+                LLMRequest(
+                    provider="unknown-provider",
+                    messages=[LLMMessage(role="user", content="hello")],
                 )
             )
 

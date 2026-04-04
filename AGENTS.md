@@ -246,6 +246,23 @@
 - 基础 Schema 契约能力
 - 基础测试与文档治理能力
 
+### 当前阶段能力声明（强约束）
+
+当前阶段只验收“基础设施 + 单轮非流式主链路”，明确为：
+
+- 当前已实现并要求稳定：
+  - `/chat` 单轮会话主路径
+  - 非流式输出（`stream=False`）
+  - API -> services -> context/prompts/providers -> schemas 基础调用链
+  - 覆盖主链路的最小测试门禁
+- 当前仅预留，不作为本阶段已实现能力：
+  - streaming
+  - 多模态真实链路
+  - tools/function calling 真正执行链路
+  - structured output 真正能力
+  - context persistence/summary/compaction
+  - 新 provider 的完整落地
+
 ---
 
 ## 13. 一句话总结

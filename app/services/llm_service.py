@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-from app.config import AppConfig
+from app.config import AppConfig, ConfigError
 from app.context.manager import ContextManager
 from app.providers.base import (
     ProviderConfigurationError,
@@ -49,6 +49,8 @@ class LLMService:
         except ServiceError:
             raise
         except ProviderConfigurationError as exc:
+            raise ServiceConfigurationError(str(exc)) from exc
+        except ConfigError as exc:
             raise ServiceConfigurationError(str(exc)) from exc
         except ProviderInvocationError as exc:
             raise ServiceDependencyError(str(exc)) from exc

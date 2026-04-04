@@ -1,5 +1,11 @@
 # AI Provider 层边界与验收标准
 
+## 当前阶段约束（vi_ai_core_service）
+
+- 本阶段验收目标是非流式 LLM provider 基础设施稳定，不是全类型 AI provider 平台落地。
+- streaming、多模态、tools、structured output、长任务轮询等能力在当前阶段仅允许预留，不作为已实现能力宣称。
+- 审查重点是边界、契约、错误语义与测试可回归性。
+
 ## 一、边界定义
 
 ### Provider 层负责什么

@@ -144,6 +144,17 @@ schema 主要是数据契约，不是业务服务对象。
 3. 控制 schema 层膨胀速度
 4. 避免一开始就拆成大量零散 contract 文件
 
+### 当前阶段能力声明（强约束）
+
+- 本阶段已实现并验收：
+  - `llm_request` / `llm_response` 基础契约
+  - 单轮非流式主链路所需字段稳定性
+- 本阶段仅预留，不要求落地：
+  - tools/function calling contract 完整落地
+  - structured output contract 完整落地
+  - 多模态 contract 完整落地
+  - 大规模内外 contract 分层重构
+
 后续演进方向：
 
 1. 内外部契约分层
