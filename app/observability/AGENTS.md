@@ -43,7 +43,7 @@
 
 可观测性基础设施层负责：
 
-1. 提供统一日志基础设施入口（后续实现）
+1. 提供统一日志基础设施入口
 2. 提供结构化日志字段约束（JSON）
 3. 定义 request context 字段贯穿规则（如 `request_id` / `session_id` / `conversation_id` / `provider` / `model`）
 4. 定义 startup / API / service / provider / exception 的边界日志规范
@@ -97,19 +97,18 @@
 
 当前阶段（本轮）：
 
-- `app/observability/AGENTS.md`（已建立）
-
-后续代码实现阶段建议结构（预留）：
-
 - `logging_setup.py`：logging 初始化
 - `json_formatter.py`：JSON 日志格式化
 - `context.py`：request context 管理
 - `events.py`：边界日志事件封装
 - `exception_logging.py`：异常日志封装
+- `middleware.py`：FastAPI request logging middleware
+- `__init__.py`：统一导出入口
 
-注意：
+当前阶段状态：
 
-- 本轮只做文档层与目录层补齐，不创建上述实现文件。
+- 上述基础设施文件已落地，并已接入启动、API、service、provider 主链路的最小日志能力。
+- 仍保持 Phase 1 最小范围：非流式单轮主链路可观测，不引入平台化能力。
 
 ---
 
@@ -143,18 +142,19 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 
 1. 建立 observability 模块级治理文档
 2. 建立 observability skill 执行规范与 checklist/reference
-3. 明确技术选型与边界约束
-4. 为后续代码实现阶段提供清晰落地顺序
+3. 落地最小可用 observability 代码骨架并接入主链路
+4. 明确技术选型与边界约束
 
 ### 当前阶段能力声明（强约束）
 
 - 本阶段已完成：
   - 目录与文档治理补齐
-  - logging/JSON/request context/exception logging 的规则定义
-- 本阶段未实现：
-  - 具体 logging 代码
-  - API middleware / formatter / contextvars 实现
+  - logging/JSON/request context/exception logging 规则定义
+  - `logging_setup.py` / `json_formatter.py` / `context.py` / `events.py` / `exception_logging.py` / `middleware.py` 最小实现
+  - startup / API / service / provider / exception 边界日志最小接入
+- 本阶段仅预留：
   - tracing/metrics/alerting/APM 能力
+  - 高级日志采集与平台化能力
 
 ---
 
@@ -199,9 +199,9 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 
 ---
 
-## 11. 测试要求（后续实现阶段）
+## 11. 测试要求（当前阶段最小门禁）
 
-后续进入代码实现阶段时，建议至少覆盖：
+当前阶段至少覆盖：
 
 1. logging 初始化行为
 2. JSON 日志格式正确性
@@ -238,7 +238,7 @@ Observability 类任务必须按以下顺序执行：
 1. 先读根目录四文档（`AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`）
 2. 再读本文件
 3. 再执行 `skills/python-observability-capability/SKILL.md` 与其 checklist/reference
-4. 再改 `app/observability/` 代码（后续阶段）
+4. 再改 `app/observability/` 代码
 5. 再按根 `CODE_REVIEW.md` + 本文件 + skill checklist 自审
 6. 若 observability 规则或边界事实变化，回写对应文档
 

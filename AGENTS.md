@@ -261,7 +261,7 @@
 - 基础 Prompt 资产能力
 - 基础 Context 能力
 - 多 Provider 接入能力
-- 基础 observability 规则与目录能力
+- 基础 observability 代码与治理能力
 - 基础 Schema 契约能力
 - 基础测试与文档治理能力
 
@@ -274,7 +274,7 @@
   - 非流式输出（`stream=False`）
   - API -> services -> context/prompts/providers -> schemas 基础调用链
   - 覆盖主链路的最小测试门禁
-  - observability 文档治理闭环与目录基础
+  - observability 最小基础设施实现（logging/JSON/request context/exception logging/middleware）与文档治理闭环
 - 当前仅预留，不作为本阶段已实现能力：
   - streaming
   - 多模态真实链路

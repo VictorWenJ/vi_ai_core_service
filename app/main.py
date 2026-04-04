@@ -8,6 +8,8 @@ import sys
 from typing import Any
 
 from app.config import AppConfig
+from app.observability.events import log_startup_config_summary
+from app.observability.logging_setup import configure_logging
 from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse
 from app.services.llm_service import LLMService
@@ -37,6 +39,9 @@ def main() -> None:
     args = parse_args()
 
     config = AppConfig.from_env()
+    configure_logging(config.observability)
+    log_startup_config_summary(config)
+
     if args.debug:
         _debug_print("Config Summary", _build_config_summary(config))
 

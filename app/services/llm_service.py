@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from time import perf_counter
 from typing import Any
 
 from app.config import AppConfig, ConfigError
 from app.context.manager import ContextManager
+from app.observability.context import update_request_context
+from app.observability.events import log_service_request, log_service_response
+from app.observability.exception_logging import log_exception
+from app.observability.logging_setup import get_logger
 from app.providers.base import (
     ProviderConfigurationError,
     ProviderInvocationError,
@@ -25,6 +30,8 @@ from app.services.errors import (
 )
 from app.services.prompt_service import PromptService
 
+_service_logger = get_logger("services.llm")
+
 
 class LLMService:
     """Business-facing entrypoint for Phase 1 chat requests."""
@@ -42,21 +49,93 @@ class LLMService:
         self._context_manager = context_manager or ContextManager()
 
     def chat(self, request: LLMRequest) -> LLMResponse:
+        started_at = perf_counter()
+        provider_for_log = request.provider or self._config.default_provider
+        model_for_log = request.model
+        update_request_context(
+            request_id=request.request_id,
+            session_id=request.session_id,
+            conversation_id=request.conversation_id,
+            provider=provider_for_log,
+            model=model_for_log,
+        )
+
         try:
             normalized_request = self._normalize_request(request)
+            provider_for_log = normalized_request.provider
+            model_for_log = normalized_request.model
+            update_request_context(
+                provider=provider_for_log,
+                model=model_for_log,
+            )
+            log_service_request(
+                provider=normalized_request.provider,
+                model=normalized_request.model,
+                stream=normalized_request.stream,
+                message_count=len(normalized_request.messages),
+                used_context_history=bool(
+                    normalized_request.metadata.get("used_context_history")
+                ),
+            )
+
             provider = self._registry.get_provider(normalized_request.provider or "")
-            return provider.chat(normalized_request)
-        except ServiceError:
+            response = provider.chat(normalized_request)
+            log_service_response(
+                provider=response.provider,
+                model=response.model,
+                latency_ms=(perf_counter() - started_at) * 1000,
+                content=response.content,
+                finish_reason=response.finish_reason,
+                usage=response.usage,
+            )
+            return response
+        except ServiceError as exc:
+            _log_service_exception(
+                exc,
+                provider=provider_for_log,
+                model=model_for_log,
+                started_at=started_at,
+            )
             raise
         except ProviderConfigurationError as exc:
+            _log_service_exception(
+                exc,
+                provider=provider_for_log,
+                model=model_for_log,
+                started_at=started_at,
+            )
             raise ServiceConfigurationError(str(exc)) from exc
         except ConfigError as exc:
+            _log_service_exception(
+                exc,
+                provider=provider_for_log,
+                model=model_for_log,
+                started_at=started_at,
+            )
             raise ServiceConfigurationError(str(exc)) from exc
         except ProviderInvocationError as exc:
+            _log_service_exception(
+                exc,
+                provider=provider_for_log,
+                model=model_for_log,
+                started_at=started_at,
+            )
             raise ServiceDependencyError(str(exc)) from exc
         except (ProviderNotImplementedError, StreamNotImplementedError, NotImplementedError) as exc:
+            _log_service_exception(
+                exc,
+                provider=provider_for_log,
+                model=model_for_log,
+                started_at=started_at,
+            )
             raise ServiceNotImplementedError(str(exc)) from exc
         except ValueError as exc:
+            _log_service_exception(
+                exc,
+                provider=provider_for_log,
+                model=model_for_log,
+                started_at=started_at,
+            )
             raise ServiceValidationError(str(exc)) from exc
 
     def chat_from_user_prompt(
@@ -96,6 +175,7 @@ class LLMService:
             request_metadata["request_id"] = normalized_request_id
         if normalized_session_id:
             request_metadata["session_id"] = normalized_session_id
+        request_metadata["used_context_history"] = bool(history_messages)
 
         response = self.chat(
             LLMRequest(
@@ -159,3 +239,21 @@ def _normalize_optional_text(value: str | None) -> str | None:
         return None
     stripped_value = value.strip()
     return stripped_value or None
+
+
+def _log_service_exception(
+    exc: BaseException,
+    *,
+    provider: str | None,
+    model: str | None,
+    started_at: float,
+) -> None:
+    log_exception(
+        exc,
+        event="service.chat.error",
+        message="Service failed to complete chat request.",
+        logger=_service_logger,
+        provider=provider,
+        model=model,
+        latency_ms=round((perf_counter() - started_at) * 1000, 2),
+    )

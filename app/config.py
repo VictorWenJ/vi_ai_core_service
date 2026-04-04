@@ -7,8 +7,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 SUPPORTED_PROVIDER_NAMES = ("openai", "deepseek", "gemini", "doubao", "tongyi")
+SUPPORTED_LOG_FORMATS = ("json",)
+SUPPORTED_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
+DEFAULT_LOG_ENABLED = True
+DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_LOG_FORMAT = "json"
+DEFAULT_LOG_API_PAYLOAD = False
+DEFAULT_LOG_PROVIDER_PAYLOAD = False
 DEFAULT_BASE_URLS: dict[str, str | None] = {
     "openai": None,
     "deepseek": "https://api.deepseek.com",
@@ -34,12 +41,24 @@ class ProviderConfig:
 
 
 @dataclass(frozen=True)
+class ObservabilityConfig:
+    """Configuration for observability and logging behavior."""
+
+    log_enabled: bool = DEFAULT_LOG_ENABLED
+    log_level: str = DEFAULT_LOG_LEVEL
+    log_format: str = DEFAULT_LOG_FORMAT
+    log_api_payload: bool = DEFAULT_LOG_API_PAYLOAD
+    log_provider_payload: bool = DEFAULT_LOG_PROVIDER_PAYLOAD
+
+
+@dataclass(frozen=True)
 class AppConfig:
     """Top-level application configuration."""
 
     default_provider: str = "openai"
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
+    observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
 
     @classmethod
     def from_env(
@@ -73,10 +92,22 @@ class AppConfig:
             for provider_name in SUPPORTED_PROVIDER_NAMES
         }
 
+        observability = ObservabilityConfig(
+            log_enabled=_read_bool("LOG_ENABLED", DEFAULT_LOG_ENABLED),
+            log_level=_read_log_level("LOG_LEVEL", DEFAULT_LOG_LEVEL),
+            log_format=_read_log_format("LOG_FORMAT", DEFAULT_LOG_FORMAT),
+            log_api_payload=_read_bool("LOG_API_PAYLOAD", DEFAULT_LOG_API_PAYLOAD),
+            log_provider_payload=_read_bool(
+                "LOG_PROVIDER_PAYLOAD",
+                DEFAULT_LOG_PROVIDER_PAYLOAD,
+            ),
+        )
+
         return cls(
             default_provider=default_provider,
             timeout_seconds=timeout_seconds,
             providers=providers,
+            observability=observability,
         )
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig:
@@ -108,6 +139,50 @@ def _read_float(name: str, default: float) -> float:
         return float(raw_value)
     except ValueError as exc:
         raise ConfigError(f"Environment variable '{name}' must be a number.") from exc
+
+
+def _read_bool(name: str, default: bool) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized_value = raw_value.strip().lower()
+    if normalized_value in {"1", "true", "yes", "on"}:
+        return True
+    if normalized_value in {"0", "false", "no", "off"}:
+        return False
+    raise ConfigError(
+        f"Environment variable '{name}' must be a boolean "
+        "(true/false/1/0/yes/no/on/off)."
+    )
+
+
+def _read_log_level(name: str, default: str) -> str:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized_value = raw_value.strip().upper()
+    if normalized_value not in SUPPORTED_LOG_LEVELS:
+        raise ConfigError(
+            f"Environment variable '{name}' must be one of: "
+            f"{', '.join(SUPPORTED_LOG_LEVELS)}."
+        )
+    return normalized_value
+
+
+def _read_log_format(name: str, default: str) -> str:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized_value = raw_value.strip().lower()
+    if normalized_value not in SUPPORTED_LOG_FORMATS:
+        raise ConfigError(
+            f"Environment variable '{name}' must be one of: "
+            f"{', '.join(SUPPORTED_LOG_FORMATS)}."
+        )
+    return normalized_value
 
 
 def _load_dotenv(dotenv_path: str | None) -> None:

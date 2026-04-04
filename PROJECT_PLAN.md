@@ -73,7 +73,7 @@
   - 非流式输出（`stream=False`）
   - API -> services -> prompts/context/providers 主链路
   - 最小必要测试回归
-  - observability 文档治理与目录基础（为后续 logging 落地做前置）
+  - observability 最小基础设施实现（logging/JSON/request context/startup&边界日志）
 - 仅预留，不作为本阶段验收项：
   - streaming
   - 多模态真实落地
@@ -85,13 +85,13 @@
 
 ### 3.5 当前阶段 observability 建设目标（新增）
 
-当前阶段 observability 只做基础设施治理，不做平台化建设。范围限定为：
+当前阶段 observability 只做最小基础设施落地，不做平台化建设。范围限定为：
 
-- 统一 logging 基础设施设计（Python 标准库 `logging`）
-- JSON 结构化日志规范
-- request context 字段贯穿规范（如 `request_id` / `session_id` / `conversation_id`）
-- exception logging 与边界日志规范（startup/API/service/provider）
-- `.env` true/false 开关控制日志行为的规则约束
+- 统一 logging 基础设施实现（Python 标准库 `logging`）
+- JSON 结构化日志输出
+- request context 字段贯穿（如 `request_id` / `session_id` / `conversation_id` / `provider` / `model`）
+- exception logging 与边界日志（startup/API/service/provider）
+- `.env` 开关控制（`LOG_ENABLED` / `LOG_LEVEL` / `LOG_FORMAT` / `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD`）
 
 当前阶段明确不做：
 

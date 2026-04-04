@@ -91,7 +91,7 @@ Observability 层不负责：
 
 使用本 skill 后，交付物应至少包括：
 
-1. 位于 `app/observability/` 的基础设施文件（后续实现阶段）
+1. 位于 `app/observability/` 的基础设施文件
 2. 统一 logging 初始化入口
 3. JSON 日志格式化约束
 4. request context 贯穿方案
@@ -107,7 +107,7 @@ Observability 层不负责：
 2. 先阅读根目录四文档与 `app/observability/AGENTS.md`。
 3. 明确本次只做最小 observability 基础设施，不引入重型平台。
 4. 设计 logging / context / exception 的边界与字段规范。
-5. 在 `app/observability/` 内部落地实现（后续阶段）。
+5. 在 `app/observability/` 内部落地实现。
 6. 对照 checklist 做边界、安全、阶段约束自检。
 7. 按 `CODE_REVIEW.md` 做专项 review。
 8. 若规则或事实变化，回写根文档、模块文档与 skill 文档。
