@@ -24,7 +24,7 @@
 它是横切基础设施模块，负责为系统提供统一的：
 
 - logging 初始化
-- JSON 结构化日志输出
+- log4j 风格控制台前缀 + `message=<json>` 输出
 - request context 管理
 - exception logging
 - API / services / providers 的通用日志事件支持
@@ -32,7 +32,7 @@
 技术选型约束（当前阶段强制）：
 
 - 使用 Python 标准库 `logging`
-- 日志输出格式统一为 JSON
+- 日志输出格式统一为：`<time> <level> [<thread>] <logger> <file>:<line> event=<event> message=<json>`
 - 日志开关由 `.env` true/false 标识控制
 - `info` 级别用于普通结构化日志
 - `error` 级别用于异常日志
@@ -44,7 +44,7 @@
 可观测性基础设施层负责：
 
 1. 提供统一日志基础设施入口
-2. 提供结构化日志字段约束（JSON）
+2. 提供“系统前缀 + 业务 JSON”字段约束
 3. 定义 request context 字段贯穿规则（如 `request_id` / `session_id` / `conversation_id` / `provider` / `model`）
 4. 定义 startup / API / service / provider / exception 的边界日志规范
 5. 为后续 observability 代码实现提供稳定文档治理基础
@@ -120,7 +120,7 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 
 ### 7.2 结构化优先
 
-日志必须默认结构化（JSON），禁止长期依赖非结构化字符串拼接日志。
+日志必须默认采用“可检索前缀 + `message=<json>`”，禁止长期依赖不可解析字符串拼接日志。
 
 ### 7.3 关联优先
 
@@ -149,7 +149,7 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 
 - 本阶段已完成：
   - 目录与文档治理补齐
-  - logging/JSON/request context/exception logging 规则定义
+  - logging/前缀+message JSON/request context/exception logging 规则定义
   - `logging_setup.py` / `json_formatter.py` / `context.py` / `events.py` / `exception_logging.py` / `middleware.py` 最小实现
   - startup / API / service / provider / exception 边界日志最小接入
 - 本阶段仅预留：
@@ -165,7 +165,7 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 1. 先判断改动是否属于 observability 基础设施职责
 2. 不要把业务逻辑塞入 observability 层
 3. 统一沿用 Python 标准库 `logging`
-4. 日志结构必须遵守 JSON 约束
+4. 日志结构必须遵守“系统前缀在控制台 + 业务字段在 `message=<json>`”约束
 5. 保持 `.env` 开关控制策略明确且可审查
 6. 涉及边界变化时必须同步回写根文档与 skill 文档
 
@@ -184,7 +184,8 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 ### 日志规范
 
 - 是否使用标准库 `logging`
-- 是否遵守 JSON 结构化输出
+- 是否遵守 log4j 风格前缀 + `message=<json>` 输出
+- 是否包含 `<file>:<line>`，并能定位真实调用点
 - 是否区分 `info` 与 `error` 级别语义
 
 ### 关联与安全
@@ -204,7 +205,7 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 当前阶段至少覆盖：
 
 1. logging 初始化行为
-2. JSON 日志格式正确性
+2. 控制台前缀格式与 `message=<json>` 结构正确性
 3. `.env` 开关行为
 4. request context 字段注入与透传
 5. exception logging 行为

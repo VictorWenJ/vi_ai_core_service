@@ -7,7 +7,8 @@
 Observability 层负责：
 
 - 统一 logging 初始化
-- 统一 JSON 结构化日志输出规范
+- 统一控制台前缀格式：`<time> <level> [<thread>] <logger> <file>:<line> event=<event>`
+- 统一业务日志体格式：`message=<json>`
 - 统一 request context 字段贯穿规则
 - 统一 exception logging 规则
 - API / services / providers 关键边界日志支持
@@ -28,7 +29,7 @@ Observability 层不负责：
 ## 二、必须遵守的原则
 
 1. 使用 Python 标准库 `logging`。
-2. 日志格式统一为 JSON。
+2. 日志格式统一为“系统前缀 + `message=<json>`”。
 3. 日志行为由 `.env` true/false 开关控制。
 4. request context 字段必须可贯穿关键链路日志。
 5. exception logging 要保留定位信息并控制敏感信息输出。
@@ -79,6 +80,14 @@ Observability 层不负责：
 - 分层错误边界被破坏
 - 上层难以做正确状态码与策略映射
 
+### 反模式 6：系统信息与业务信息混写
+
+问题：
+
+- 业务 JSON 与系统字段边界不清
+- 检索与聚合成本高
+- 输出规范不稳定
+
 ---
 
 ## 四、验收标准
@@ -87,6 +96,9 @@ Observability 层不负责：
 
 - 目录落位正确
 - logging/JSON/.env 开关规则清晰
+- 日志前缀固定且包含 `<file>:<line>`
+- `message=<json>` 仅承载业务信息
+- `method/path` 等系统信息不进入业务 JSON
 - request context 贯穿规则清晰
 - startup/API/service/provider/exception 边界日志策略清晰
 - 敏感信息输出受控
@@ -97,4 +109,4 @@ Observability 层不负责：
 
 ## 五、一句话总结
 
-Observability 在本项目中是横切基础设施层，目标是以标准库 `logging` + JSON 结构化输出 + request context 贯穿为核心，提供可审查、可追踪、可控风险的最小可观测性能力，而不是在当前阶段构建重型观测平台。
+Observability 在本项目中是横切基础设施层，目标是以标准库 `logging` + 稳定前缀 + `message=<json>` + request context 贯穿为核心，提供可审查、可追踪、可控风险的最小可观测性能力，而不是在当前阶段构建重型观测平台。

@@ -14,10 +14,23 @@ from app.observability.context import (
     set_request_context,
     update_request_context,
 )
-from app.observability.events import build_startup_config_summary, log_startup_config_summary
+from app.observability.events import (
+    build_startup_config_summary,
+    log_api_request,
+    log_startup_config_summary,
+)
 from app.observability.exception_logging import log_exception
 from app.observability.logging_setup import configure_logging, get_logger
 from app.observability.middleware import request_logging_middleware
+
+
+def _parse_log_line(line: str) -> tuple[str, dict[str, object]]:
+    prefix, message_part = line.split(" message=", maxsplit=1)
+    return prefix, json.loads(message_part)
+
+
+def _extract_event(prefix: str) -> str:
+    return prefix.split(" event=", maxsplit=1)[1]
 
 
 class ObservabilityContextTests(unittest.TestCase):
@@ -44,7 +57,7 @@ class ObservabilityLoggingTests(unittest.TestCase):
         clear_request_context()
         self.stream = io.StringIO()
 
-    def test_json_log_formatter_outputs_required_fields(self) -> None:
+    def test_formatter_outputs_prefix_and_business_json(self) -> None:
         configure_logging(
             ObservabilityConfig(
                 log_enabled=True,
@@ -60,15 +73,16 @@ class ObservabilityLoggingTests(unittest.TestCase):
         logger = get_logger("tests.json")
         logger.info("hello observability", extra={"event": "test.event"})
 
-        payload = json.loads(self.stream.getvalue().strip().splitlines()[0])
-        self.assertEqual(payload["event"], "test.event")
-        self.assertEqual(payload["message"], "hello observability")
+        line = self.stream.getvalue().strip().splitlines()[0]
+        prefix, payload = _parse_log_line(line)
+        self.assertIn("INFO", prefix)
+        self.assertIn("[MainThread]", prefix)
+        self.assertIn("vi_ai_core_service.tests.json", prefix)
+        self.assertIn("test_observability.py", prefix)
+        self.assertEqual(_extract_event(prefix), "test.event")
         self.assertEqual(payload["request_id"], "req-123")
         self.assertEqual(payload["provider"], "openai")
         self.assertEqual(payload["model"], "gpt-test")
-        self.assertEqual(payload["level"], "info")
-        self.assertIn("timestamp", payload)
-        self.assertIn("logger", payload)
 
     def test_log_enabled_false_suppresses_info_but_keeps_error(self) -> None:
         configure_logging(
@@ -88,9 +102,9 @@ class ObservabilityLoggingTests(unittest.TestCase):
 
         lines = [line for line in self.stream.getvalue().splitlines() if line.strip()]
         self.assertEqual(len(lines), 1)
-        payload = json.loads(lines[0])
-        self.assertEqual(payload["event"], "test.error")
-        self.assertEqual(payload["level"], "error")
+        prefix, payload = _parse_log_line(lines[0])
+        self.assertEqual(_extract_event(prefix), "test.error")
+        self.assertEqual(payload, {})
 
     def test_exception_logging_keeps_traceback(self) -> None:
         configure_logging(
@@ -114,11 +128,28 @@ class ObservabilityLoggingTests(unittest.TestCase):
                 logger=get_logger("tests.exception"),
             )
 
-        payload = json.loads(self.stream.getvalue().strip().splitlines()[0])
-        self.assertEqual(payload["event"], "test.exception")
-        self.assertEqual(payload["level"], "error")
-        self.assertIn("exception", payload)
-        self.assertIn("RuntimeError", payload["exception"])
+        raw_text = self.stream.getvalue().strip()
+        first_line = raw_text.splitlines()[0]
+        prefix, payload = _parse_log_line(first_line)
+        self.assertEqual(_extract_event(prefix), "test.exception")
+        self.assertEqual(payload, {})
+        self.assertIn("RuntimeError", raw_text)
+
+    def test_event_helper_uses_caller_file_line(self) -> None:
+        configure_logging(ObservabilityConfig(), stream=self.stream)
+        set_request_context(request_id="req-caller")
+
+        log_api_request(route="/chat", stream=False)
+
+        line = self.stream.getvalue().strip().splitlines()[0]
+        prefix, payload = _parse_log_line(line)
+        self.assertIn("test_observability.py", prefix)
+        self.assertNotIn("events.py", prefix)
+        self.assertEqual(_extract_event(prefix), "api.request")
+        self.assertEqual(payload["route"], "/chat")
+        self.assertEqual(payload["request_id"], "req-caller")
+        self.assertNotIn("method", payload)
+        self.assertNotIn("path", payload)
 
 
 class ObservabilityMiddlewareTests(unittest.TestCase):
@@ -151,13 +182,13 @@ class ObservabilityMiddlewareTests(unittest.TestCase):
         self.assertIn("X-Request-ID", response.headers)
         self.assertEqual(get_request_context(), {})
 
-        events = [
-            json.loads(line)["event"]
-            for line in self.stream.getvalue().splitlines()
-            if line.strip()
-        ]
+        entries = [_parse_log_line(line) for line in self.stream.getvalue().splitlines() if line]
+        events = [_extract_event(prefix) for prefix, _ in entries]
         self.assertIn("api.http.request", events)
         self.assertIn("api.http.response", events)
+        for _, payload in entries:
+            self.assertNotIn("method", payload)
+            self.assertNotIn("path", payload)
 
 
 class StartupSummaryTests(unittest.TestCase):
@@ -205,5 +236,7 @@ class StartupSummaryTests(unittest.TestCase):
         )
         log_startup_config_summary(config)
 
-        payload = json.loads(stream.getvalue().strip().splitlines()[0])
-        self.assertEqual(payload["event"], "startup.config_summary")
+        line = stream.getvalue().strip().splitlines()[0]
+        prefix, payload = _parse_log_line(line)
+        self.assertEqual(_extract_event(prefix), "startup.config_summary")
+        self.assertIn("providers", payload)

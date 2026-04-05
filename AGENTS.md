@@ -190,7 +190,7 @@
 若新增的是横切基础设施模块（如 observability），必须额外满足：
 
 1. 明确技术选型（当前 observability 统一使用 Python 标准库 `logging`）
-2. 明确日志格式与开关策略（当前统一 JSON 输出，`.env` 布尔开关控制）
+2. 明确日志格式与开关策略（当前统一为“控制台前缀 + `message=<json>`”，`.env` 布尔开关控制）
 3. 明确模块边界（不承担业务编排、不替代 API/service/provider）
 4. 明确当前阶段只落最小基础设施，不做 tracing/metrics/alerting 平台化建设
 
@@ -270,11 +270,12 @@
 当前阶段只验收“基础设施 + 单轮非流式主链路”，明确为：
 
 - 当前已实现并要求稳定：
+  - 统一 HTTP 服务入口（`app/server.py`），仅支持通过 HTTP 调用
   - `/chat` 单轮会话主路径
   - 非流式输出（`stream=False`）
   - API -> services -> context/prompts/providers -> schemas 基础调用链
   - 覆盖主链路的最小测试门禁
-  - observability 最小基础设施实现（logging/JSON/request context/exception logging/middleware）与文档治理闭环
+  - observability 最小基础设施实现（logging/前缀+message JSON/request context/exception logging/middleware）与文档治理闭环
 - 当前仅预留，不作为本阶段已实现能力：
   - streaming
   - 多模态真实链路

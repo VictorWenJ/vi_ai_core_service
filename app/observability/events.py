@@ -40,13 +40,13 @@ def log_startup_config_summary(config: AppConfig) -> None:
             "event": "startup.config_summary",
             "metadata": build_startup_config_summary(config),
         },
+        stacklevel=2,
     )
 
 
 def log_api_request(
     *,
     route: str,
-    method: str,
     stream: bool | None = None,
     provider: str | None = None,
     model: str | None = None,
@@ -70,8 +70,6 @@ def log_api_request(
         "API request received.",
         extra={
             "event": "api.request",
-            "path": route,
-            "method": method,
             "stream": stream,
             "provider": provider,
             "model": model,
@@ -80,13 +78,13 @@ def log_api_request(
             "request_id": request_id,
             "metadata": details,
         },
+        stacklevel=2,
     )
 
 
 def log_api_response(
     *,
     route: str,
-    method: str,
     status_code: int,
     latency_ms: float,
     stream: bool | None = None,
@@ -105,8 +103,6 @@ def log_api_response(
         "API response sent.",
         extra={
             "event": "api.response",
-            "path": route,
-            "method": method,
             "status_code": status_code,
             "latency_ms": round(latency_ms, 2),
             "stream": stream,
@@ -115,6 +111,7 @@ def log_api_response(
             "success": status_code < 400,
             "metadata": details,
         },
+        stacklevel=2,
     )
 
 
@@ -124,7 +121,7 @@ def log_service_request(
     model: str | None,
     stream: bool,
     message_count: int,
-    used_context_history: bool,
+    used_context_history: Any,
 ) -> None:
     logger = get_logger("services")
     logger.info(
@@ -139,6 +136,7 @@ def log_service_request(
                 "used_context_history": used_context_history,
             },
         },
+        stacklevel=2,
     )
 
 
@@ -172,6 +170,7 @@ def log_service_response(
             "usage": usage_payload,
             "success": True,
         },
+        stacklevel=2,
     )
 
 
@@ -186,9 +185,12 @@ def log_provider_request(
     has_tools: bool,
     has_response_format: bool,
     timeout_seconds: float,
+    request_payload: dict[str, Any] | None = None,
     payload_preview: dict[str, Any] | None = None,
 ) -> None:
     metadata: dict[str, Any] = {}
+    if request_payload:
+        metadata["request_payload"] = request_payload
     if payload_preview:
         metadata["payload_preview"] = payload_preview
 
@@ -208,6 +210,7 @@ def log_provider_request(
             "timeout_seconds": timeout_seconds,
             "metadata": metadata or None,
         },
+        stacklevel=2,
     )
 
 
@@ -219,6 +222,7 @@ def log_provider_response(
     usage: Any,
     latency_ms: float,
     success: bool,
+    response_payload: dict[str, Any] | None = None,
 ) -> None:
     usage_payload = None
     if usage is not None:
@@ -229,6 +233,9 @@ def log_provider_response(
         }
 
     logger = get_logger("providers")
+    metadata: dict[str, Any] | None = None
+    if response_payload:
+        metadata = {"response_payload": response_payload}
     logger.info(
         "Provider response received.",
         extra={
@@ -239,7 +246,9 @@ def log_provider_response(
             "usage": usage_payload,
             "latency_ms": round(latency_ms, 2),
             "success": success,
+            "metadata": metadata,
         },
+        stacklevel=2,
     )
 
 

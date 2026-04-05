@@ -207,6 +207,8 @@ class LLMServiceTests(unittest.TestCase):
             user_prompt="new question",
             session_id="session-1",
             provider="openai",
+            temperature=0.2,
+            max_tokens=128,
         )
 
         self.assertEqual(response.provider, "openai")
@@ -217,3 +219,12 @@ class LLMServiceTests(unittest.TestCase):
         sent_messages = self.providers["openai"].last_request.messages
         sent_roles = [message.role for message in sent_messages]
         self.assertEqual(sent_roles, ["system", "assistant", "user"])
+        self.assertEqual(self.providers["openai"].last_request.temperature, 0.2)
+        self.assertEqual(self.providers["openai"].last_request.max_tokens, 128)
+        used_context_history = self.providers["openai"].last_request.metadata["used_context_history"]
+        self.assertTrue(used_context_history["enabled"])
+        self.assertEqual(used_context_history["message_count"], 1)
+        self.assertEqual(
+            used_context_history["messages"],
+            [{"role": "assistant", "content": "history"}],
+        )

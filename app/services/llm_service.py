@@ -8,8 +8,9 @@ from typing import Any
 
 from app.config import AppConfig, ConfigError
 from app.context.manager import ContextManager
+from app.context.models import ContextMessage
 from app.observability.context import update_request_context
-from app.observability.events import log_service_request, log_service_response
+from app.observability.events import log_service_request
 from app.observability.exception_logging import log_exception
 from app.observability.logging_setup import get_logger
 from app.providers.base import (
@@ -73,21 +74,11 @@ class LLMService:
                 model=normalized_request.model,
                 stream=normalized_request.stream,
                 message_count=len(normalized_request.messages),
-                used_context_history=bool(
-                    normalized_request.metadata.get("used_context_history")
-                ),
+                used_context_history=normalized_request.metadata.get("used_context_history"),
             )
 
             provider = self._registry.get_provider(normalized_request.provider or "")
             response = provider.chat(normalized_request)
-            log_service_response(
-                provider=response.provider,
-                model=response.model,
-                latency_ms=(perf_counter() - started_at) * 1000,
-                content=response.content,
-                finish_reason=response.finish_reason,
-                usage=response.usage,
-            )
             return response
         except ServiceError as exc:
             _log_service_exception(
@@ -143,6 +134,8 @@ class LLMService:
         user_prompt: str,
         provider: str | None = None,
         model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         system_prompt: str | None = None,
         stream: bool = False,
         session_id: str | None = None,
@@ -175,13 +168,19 @@ class LLMService:
             request_metadata["request_id"] = normalized_request_id
         if normalized_session_id:
             request_metadata["session_id"] = normalized_session_id
-        request_metadata["used_context_history"] = bool(history_messages)
+        request_metadata["used_context_history"] = {
+            "enabled": bool(history_messages),
+            "message_count": len(history_messages),
+            "messages": _serialize_context_messages(history_messages),
+        }
 
         response = self.chat(
             LLMRequest(
                 provider=provider,
                 model=model,
                 messages=assembled_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
                 stream=stream,
                 session_id=normalized_session_id,
                 conversation_id=normalized_conversation_id,
@@ -239,6 +238,16 @@ def _normalize_optional_text(value: str | None) -> str | None:
         return None
     stripped_value = value.strip()
     return stripped_value or None
+
+
+def _serialize_context_messages(messages: list[LLMMessage | ContextMessage]) -> list[dict[str, Any]]:
+    return [
+        {
+            "role": message.role,
+            "content": message.content,
+        }
+        for message in messages
+    ]
 
 
 def _log_service_exception(

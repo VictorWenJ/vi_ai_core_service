@@ -69,11 +69,12 @@
 当前阶段只要求“基础设施 + 主链路可运行可测试”，实现边界明确如下：
 
 - 已实现并要求稳定：
+  - HTTP 服务化调用方式（`app/server.py`）为唯一运行入口
   - LLM API 单轮会话
   - 非流式输出（`stream=False`）
   - API -> services -> prompts/context/providers 主链路
   - 最小必要测试回归
-  - observability 最小基础设施实现（logging/JSON/request context/startup&边界日志）
+  - observability 最小基础设施实现（logging/前缀+message JSON/request context/startup&边界日志）
 - 仅预留，不作为本阶段验收项：
   - streaming
   - 多模态真实落地
@@ -88,7 +89,8 @@
 当前阶段 observability 只做最小基础设施落地，不做平台化建设。范围限定为：
 
 - 统一 logging 基础设施实现（Python 标准库 `logging`）
-- JSON 结构化日志输出
+- 统一前缀日志输出（`<time> <level> [<thread>] <logger> <file>:<line> event=<event>`）
+- 统一业务日志体输出（`message=<json>`）
 - request context 字段贯穿（如 `request_id` / `session_id` / `conversation_id` / `provider` / `model`）
 - exception logging 与边界日志（startup/API/service/provider）
 - `.env` 开关控制（`LOG_ENABLED` / `LOG_LEVEL` / `LOG_FORMAT` / `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD`）

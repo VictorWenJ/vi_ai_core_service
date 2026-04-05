@@ -31,6 +31,17 @@ class ChatRequest(BaseModel):
     prompt: str = Field(min_length=1, description="Single-turn user prompt.")
     provider: str | None = Field(default=None, description="Optional provider override.")
     model: str | None = Field(default=None, description="Optional model override.")
+    temperature: float | None = Field(
+        default=None,
+        ge=0,
+        le=2,
+        description="Optional sampling temperature override.",
+    )
+    max_tokens: int | None = Field(
+        default=None,
+        gt=0,
+        description="Optional max tokens override.",
+    )
     system: str | None = Field(default=None, description="Optional system prompt.")
     stream: bool = Field(default=False, description="Streaming response toggle (reserved).")
     session_id: str | None = Field(default=None, description="Optional stateful session id.")
@@ -63,7 +74,6 @@ def chat(request: ChatRequest) -> dict[str, Any]:
     )
     log_api_request(
         route="/chat",
-        method="POST",
         stream=request.stream,
         provider=request.provider,
         model=request.model,
@@ -79,6 +89,8 @@ def chat(request: ChatRequest) -> dict[str, Any]:
             user_prompt=request.prompt,
             provider=request.provider,
             model=request.model,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
             system_prompt=request.system,
             stream=request.stream,
             session_id=request.session_id,
@@ -110,7 +122,6 @@ def chat(request: ChatRequest) -> dict[str, Any]:
 
     log_api_response(
         route="/chat",
-        method="POST",
         status_code=200,
         latency_ms=(perf_counter() - started_at) * 1000,
         stream=request.stream,
@@ -124,7 +135,6 @@ def chat(request: ChatRequest) -> dict[str, Any]:
 def _log_error_response(*, status_code: int, request: ChatRequest, started_at: float) -> None:
     log_api_response(
         route="/chat",
-        method="POST",
         status_code=status_code,
         latency_ms=(perf_counter() - started_at) * 1000,
         stream=request.stream,

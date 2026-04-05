@@ -84,7 +84,8 @@
 职责：
 
 - 提供统一 logging 初始化能力
-- 约束 JSON 结构化日志输出
+- 约束统一日志前缀输出（`<time> <level> [<thread>] <logger> <file>:<line> event=<event>`）
+- 约束业务日志体输出（`message=<json>`）
 - 提供 request context 字段贯穿规则
 - 提供 exception logging 基础能力
 - 为 API / services / providers 提供通用日志事件支持
@@ -123,6 +124,12 @@
 - `context/prompts/providers` 各自提供专项能力
 - `observability` 提供横切日志与上下文字段能力
 - `schemas` 被多个层复用，作为共享契约层
+
+### 运行入口约束（当前阶段）
+
+- 唯一运行入口是 `app/server.py`（FastAPI HTTP 服务）
+- 对外调用方式是 HTTP 路由（如 `/health`、`/chat`）
+- 当前阶段不保留 CLI 直接调用入口
 
 ---
 

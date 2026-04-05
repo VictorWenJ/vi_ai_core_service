@@ -14,6 +14,7 @@ def log_exception(
     event: str,
     message: str,
     logger: logging.Logger | None = None,
+    stacklevel: int = 2,
     **fields: Any,
 ) -> None:
     """Emit an error-level log entry with traceback and structured context."""
@@ -26,4 +27,5 @@ def log_exception(
             "event": event,
             **fields,
         },
+        stacklevel=stacklevel,
     )

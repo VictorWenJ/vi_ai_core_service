@@ -8,7 +8,7 @@ from typing import Any
 from app.config import ProviderConfig
 from app.observability.events import log_provider_request, log_provider_response
 from app.observability.exception_logging import log_exception
-from app.observability.logging_setup import get_logger, get_logging_settings
+from app.observability.logging_setup import get_logger
 from app.providers.base import (
     BaseLLMProvider,
     ProviderConfigurationError,
@@ -56,10 +56,6 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
         if request.max_tokens is not None:
             payload["max_tokens"] = request.max_tokens
 
-        payload_preview = None
-        if get_logging_settings().log_provider_payload:
-            payload_preview = self._build_payload_preview(request)
-
         log_provider_request(
             provider=self.provider_name,
             model=request.model,
@@ -70,7 +66,7 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
             has_tools=bool(request.tools),
             has_response_format=bool(request.response_format),
             timeout_seconds=self.provider_config.timeout_seconds,
-            payload_preview=payload_preview,
+            request_payload=payload,
         )
 
         started_at = perf_counter()
@@ -93,6 +89,23 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
             ) from exc
 
         response = self._to_response(vendor_response)
+        response_payload = {
+            "content": response.content,
+            "provider": response.provider,
+            "model": response.model,
+            "finish_reason": response.finish_reason,
+            "usage": (
+                {
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens,
+                }
+                if response.usage
+                else None
+            ),
+            "metadata": response.metadata,
+            "raw_response": response.raw_response,
+        }
         log_provider_response(
             provider=self.provider_name,
             model=response.model,
@@ -100,6 +113,7 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
             usage=response.usage,
             latency_ms=(perf_counter() - started_at) * 1000,
             success=True,
+            response_payload=response_payload,
         )
         return response
 
@@ -153,24 +167,3 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
             metadata={},
             raw_response=raw_response,
         )
-
-    def _build_payload_preview(self, request: LLMRequest) -> dict[str, Any]:
-        message_preview = [
-            {
-                "role": message.role,
-                "content_preview": _truncate(message.content, 160),
-            }
-            for message in request.messages[:3]
-        ]
-        return {
-            "message_preview": message_preview,
-            "temperature": request.temperature,
-            "max_tokens": request.max_tokens,
-            "message_count": len(request.messages),
-        }
-
-
-def _truncate(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return f"{text[:limit]}..."

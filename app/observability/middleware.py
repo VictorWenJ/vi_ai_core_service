@@ -32,7 +32,6 @@ async def request_logging_middleware(request: Request, call_next) -> Response:
     request.state.request_id = request_id
 
     path = request.url.path
-    method = request.method
     started_at = perf_counter()
     should_log_health = path != "/health"
 
@@ -41,8 +40,7 @@ async def request_logging_middleware(request: Request, call_next) -> Response:
             "HTTP request started.",
             extra={
                 "event": "api.http.request",
-                "path": path,
-                "method": method,
+                "route": path,
                 "request_id": request_id,
                 "session_id": session_id,
                 "conversation_id": conversation_id,
@@ -58,8 +56,7 @@ async def request_logging_middleware(request: Request, call_next) -> Response:
             event="api.middleware.error",
             message="Unhandled exception while processing HTTP request.",
             logger=_middleware_logger,
-            path=path,
-            method=method,
+            route=path,
             latency_ms=round(latency_ms, 2),
             request_id=request_id,
         )
@@ -73,8 +70,7 @@ async def request_logging_middleware(request: Request, call_next) -> Response:
             "HTTP request completed.",
             extra={
                 "event": "api.http.response",
-                "path": path,
-                "method": method,
+                "route": path,
                 "status_code": response.status_code,
                 "latency_ms": round(latency_ms, 2),
                 "success": response.status_code < 400,

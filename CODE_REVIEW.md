@@ -90,6 +90,7 @@
 
 - API 层是否只做接入、校验、转发、返回
 - 是否把业务逻辑塞进了路由层
+- 是否保持 HTTP-only 运行约束（未重新引入 CLI 直接调用入口）
 
 ### Service 层边界
 
@@ -309,8 +310,11 @@ Review 时，建议优先从以下几个维度给出结论：
 涉及 observability 相关改动时，必须额外检查：
 
 1. 是否使用 Python 标准库 `logging`，而非额外重型日志框架
-2. 日志是否采用 JSON 结构化输出约束
-3. 日志开关是否由 `.env` true/false 配置控制
-4. startup / API / services / providers / exception 关键边界是否有清晰日志策略
-5. 是否存在敏感字段脱敏或避免输出策略
-6. 当前阶段是否错误引入 tracing/metrics/alerting/APM 平台建设
+2. 日志是否采用 `<time> <level> [<thread>] <logger> <file>:<line> event=<event> message=<json>` 约束
+3. `message=<json>` 是否只承载业务信息（如 request/session/conversation/provider/model 等）
+4. `method/path` 等系统信息是否避免写入业务 JSON
+5. 是否可通过 `<file>:<line>` 快速定位日志调用点
+6. 日志开关是否由 `.env` true/false 配置控制
+7. startup / API / services / providers / exception 关键边界是否有清晰日志策略
+8. 是否存在敏感字段脱敏或避免输出策略
+9. 当前阶段是否错误引入 tracing/metrics/alerting/APM 平台建设

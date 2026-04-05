@@ -51,6 +51,8 @@ class APIRouteTests(unittest.TestCase):
                     "prompt": "hello",
                     "provider": "openai",
                     "model": "gpt-test",
+                    "temperature": 0.3,
+                    "max_tokens": 256,
                     "session_id": "session-1",
                     "conversation_id": "conv-1",
                     "request_id": "req-1",
@@ -75,6 +77,8 @@ class APIRouteTests(unittest.TestCase):
         self.assertEqual(fake_service.last_kwargs["user_prompt"], "hello")
         self.assertEqual(fake_service.last_kwargs["session_id"], "session-1")
         self.assertEqual(fake_service.last_kwargs["conversation_id"], "conv-1")
+        self.assertEqual(fake_service.last_kwargs["temperature"], 0.3)
+        self.assertEqual(fake_service.last_kwargs["max_tokens"], 256)
 
     def test_chat_rejects_invalid_input(self) -> None:
         response = self.client.post("/chat", json={"prompt": ""})
