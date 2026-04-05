@@ -1,4 +1,7 @@
-# app/api/AGENTS.md
+﻿# app/api/AGENTS.md
+
+> 更新日期：2026-04-06
+
 
 ## 1. 文档定位
 

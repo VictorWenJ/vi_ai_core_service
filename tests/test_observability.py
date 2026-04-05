@@ -17,6 +17,8 @@ from app.observability.context import (
 from app.observability.events import (
     build_startup_config_summary,
     log_api_request,
+    log_provider_request,
+    log_provider_response,
     log_startup_config_summary,
 )
 from app.observability.exception_logging import log_exception
@@ -150,6 +152,84 @@ class ObservabilityLoggingTests(unittest.TestCase):
         self.assertEqual(payload["request_id"], "req-caller")
         self.assertNotIn("method", payload)
         self.assertNotIn("path", payload)
+
+    def test_provider_payload_is_hidden_when_switch_disabled(self) -> None:
+        configure_logging(
+            ObservabilityConfig(
+                log_enabled=True,
+                log_level="INFO",
+                log_format="json",
+                log_api_payload=False,
+                log_provider_payload=False,
+            ),
+            stream=self.stream,
+        )
+
+        log_provider_request(
+            provider="openai",
+            model="gpt-test",
+            endpoint="https://api.openai.com",
+            stream=False,
+            message_count=1,
+            has_attachments=False,
+            has_tools=False,
+            has_response_format=False,
+            timeout_seconds=60.0,
+            request_payload={"messages": [{"role": "user", "content": "secret"}]},
+        )
+        log_provider_response(
+            provider="openai",
+            model="gpt-test",
+            finish_reason="stop",
+            usage=None,
+            latency_ms=12.3,
+            success=True,
+            response_payload={"content": "secret result"},
+        )
+
+        entries = [_parse_log_line(line) for line in self.stream.getvalue().splitlines() if line]
+        self.assertEqual(_extract_event(entries[0][0]), "provider.request")
+        self.assertEqual(_extract_event(entries[1][0]), "provider.response")
+        self.assertNotIn("request_payload", entries[0][1])
+        self.assertNotIn("response_payload", entries[1][1])
+
+    def test_provider_payload_is_included_when_switch_enabled(self) -> None:
+        configure_logging(
+            ObservabilityConfig(
+                log_enabled=True,
+                log_level="INFO",
+                log_format="json",
+                log_api_payload=False,
+                log_provider_payload=True,
+            ),
+            stream=self.stream,
+        )
+
+        log_provider_request(
+            provider="openai",
+            model="gpt-test",
+            endpoint="https://api.openai.com",
+            stream=False,
+            message_count=1,
+            has_attachments=False,
+            has_tools=False,
+            has_response_format=False,
+            timeout_seconds=60.0,
+            request_payload={"messages": [{"role": "user", "content": "visible"}]},
+        )
+        log_provider_response(
+            provider="openai",
+            model="gpt-test",
+            finish_reason="stop",
+            usage=None,
+            latency_ms=9.8,
+            success=True,
+            response_payload={"content": "visible result"},
+        )
+
+        entries = [_parse_log_line(line) for line in self.stream.getvalue().splitlines() if line]
+        self.assertIn("request_payload", entries[0][1])
+        self.assertIn("response_payload", entries[1][1])
 
 
 class ObservabilityMiddlewareTests(unittest.TestCase):

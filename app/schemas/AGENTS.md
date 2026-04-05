@@ -1,4 +1,7 @@
-# app/schemas/AGENTS.md
+﻿# app/schemas/AGENTS.md
+
+> 更新日期：2026-04-06
+
 
 ## 1. 文档定位
 

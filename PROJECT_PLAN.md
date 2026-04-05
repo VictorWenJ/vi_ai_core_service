@@ -1,4 +1,7 @@
-# PROJECT_PLAN.md
+﻿# PROJECT_PLAN.md
+
+> 更新日期：2026-04-06
+
 
 ## 1. 文档定位
 
@@ -94,6 +97,8 @@
 - request context 字段贯穿（如 `request_id` / `session_id` / `conversation_id` / `provider` / `model`）
 - exception logging 与边界日志（startup/API/service/provider）
 - `.env` 开关控制（`LOG_ENABLED` / `LOG_LEVEL` / `LOG_FORMAT` / `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD`）
+- 当前阶段业务 payload 默认可输出（调试优先），由 `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD` 控制
+- 凭据字段（如 API key、Authorization）必须禁止输出
 
 当前阶段明确不做：
 

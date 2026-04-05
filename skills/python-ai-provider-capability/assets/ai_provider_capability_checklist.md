@@ -1,4 +1,7 @@
-# AI Provider Capability Checklist
+﻿# AI Provider Capability Checklist
+
+> 更新日期：2026-04-06
+
 
 ## 当前阶段使用说明（vi_ai_core_service）
 

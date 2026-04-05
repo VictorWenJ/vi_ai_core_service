@@ -1,4 +1,7 @@
-# AGENTS.md
+﻿# AGENTS.md
+
+> 更新日期：2026-04-06
+
 
 ## 1. 文档定位
 
@@ -191,8 +194,9 @@
 
 1. 明确技术选型（当前 observability 统一使用 Python 标准库 `logging`）
 2. 明确日志格式与开关策略（当前统一为“控制台前缀 + `message=<json>`”，`.env` 布尔开关控制）
-3. 明确模块边界（不承担业务编排、不替代 API/service/provider）
-4. 明确当前阶段只落最小基础设施，不做 tracing/metrics/alerting 平台化建设
+3. 明确日志内容策略（当前阶段业务 payload 默认可输出并由开关控制；凭据字段如 API key/Authorization 必须禁止输出）
+4. 明确模块边界（不承担业务编排、不替代 API/service/provider）
+5. 明确当前阶段只落最小基础设施，不做 tracing/metrics/alerting 平台化建设
 
 ---
 

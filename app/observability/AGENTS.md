@@ -1,4 +1,7 @@
-# app/observability/AGENTS.md
+﻿# app/observability/AGENTS.md
+
+> 更新日期：2026-04-06
+
 
 ## 1. 文档定位
 
@@ -34,6 +37,7 @@
 - 使用 Python 标准库 `logging`
 - 日志输出格式统一为：`<time> <level> [<thread>] <logger> <file>:<line> event=<event> message=<json>`
 - 日志开关由 `.env` true/false 标识控制
+- 日志详情开关为：`LOG_ENABLED` / `LOG_LEVEL` / `LOG_FORMAT` / `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD`
 - `info` 级别用于普通结构化日志
 - `error` 级别用于异常日志
 
@@ -126,9 +130,9 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 
 日志应能通过 request context 字段关联主链路，避免不可追踪日志。
 
-### 7.4 安全优先
+### 7.4 输出策略优先（当前阶段）
 
-日志输出必须避免敏感信息泄露（如 API key、Authorization、完整隐私 payload）。
+当前阶段以排查效率优先：业务 payload 默认允许输出并可通过 `.env` 开关控制；凭据字段（如 API key、Authorization）必须禁止输出。
 
 ### 7.5 当前阶段最小化
 
@@ -188,11 +192,12 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 - 是否包含 `<file>:<line>`，并能定位真实调用点
 - 是否区分 `info` 与 `error` 级别语义
 
-### 关联与安全
+### 关联与输出策略
 
 - request context 字段是否可贯穿主链路
-- 是否避免敏感信息输出
-- 异常日志是否保留定位信息且不过度暴露细节
+- 业务 payload 输出是否符合 `.env` 开关策略
+- 凭据字段是否被禁止输出
+- 异常日志是否保留定位信息与 traceback
 
 ### 阶段约束
 
@@ -210,7 +215,7 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 4. request context 字段注入与透传
 5. exception logging 行为
 6. startup/API/service/provider 边界日志断言
-7. 敏感字段脱敏或限制输出行为
+7. 业务 payload 开关行为与凭据字段禁止输出行为
 
 ---
 
@@ -219,7 +224,7 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 以下做法必须避免：
 
 - 在业务代码中到处 `print` 代替统一日志基础设施
-- 默认输出完整敏感 payload
+- 输出 API key、Authorization 等凭据字段
 - 把 observability 做成“万能工具层”
 - 在当前阶段引入 tracing/metrics/alerting/APM 平台
 - 通过 observability 包装吞掉所有错误语义
@@ -249,5 +254,5 @@ Observability 类任务必须按以下顺序执行：
 
 - 未通过 `python-observability-capability` checklist，不视为完成
 - 发现 observability 越权承担业务职责，必须先整改
-- 发现敏感信息输出风险，必须先处理再交付
+- 发现凭据字段输出风险，必须先处理再交付
 - 当前阶段若引入 tracing/metrics/alerting/APM 平台化改动，直接判定越界

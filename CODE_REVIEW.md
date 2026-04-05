@@ -1,4 +1,7 @@
-# CODE_REVIEW.md
+﻿# CODE_REVIEW.md
+
+> 更新日期：2026-04-06
+
 
 ## 1. 文档定位
 
@@ -193,8 +196,9 @@
 同时，异常日志审查还应关注：
 
 1. 是否按级别区分 `info` 与 `error`
-2. 是否存在敏感信息泄露（如 API key、Authorization、完整用户敏感 payload）
-3. 是否在日志中保留必要 request context 字段（如 `request_id`、`session_id`、`conversation_id`）
+2. 是否输出了必须禁止的凭据字段（如 API key、Authorization）
+3. 当前阶段业务 payload 输出策略是否明确（默认可输出、由 `.env` 开关控制）
+4. 是否在日志中保留必要 request context 字段（如 `request_id`、`session_id`、`conversation_id`）
 
 ---
 
@@ -316,5 +320,7 @@ Review 时，建议优先从以下几个维度给出结论：
 5. 是否可通过 `<file>:<line>` 快速定位日志调用点
 6. 日志开关是否由 `.env` true/false 配置控制
 7. startup / API / services / providers / exception 关键边界是否有清晰日志策略
-8. 是否存在敏感字段脱敏或避免输出策略
+8. 是否遵守当前阶段日志内容策略（业务 payload 可开关明文；凭据字段必须禁止输出）
 9. 当前阶段是否错误引入 tracing/metrics/alerting/APM 平台建设
+
+

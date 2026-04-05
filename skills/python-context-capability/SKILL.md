@@ -1,6 +1,7 @@
----
+﻿---
 name: python-context-capability
 description: 用于为 vi_ai_core_service 搭建和标准化面向 C 端 AI 应用的上下文管理层骨架。重点关注 session 级短期记忆、conversation state、消息历史、多模态消息结构、store 抽象、in-memory 实现、manager 入口，以及为未来压缩/摘要/持久化策略预留扩展点。
+last_updated: 2026-04-06
 ---
 
 # Purpose
@@ -280,3 +281,4 @@ context skeleton 的实现应尽量可预测、可单测、可推断。
 1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
 2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist 联合自审。
 3. 若上下文模型、边界或测试事实变化，必须同步更新对应文档与测试。
+

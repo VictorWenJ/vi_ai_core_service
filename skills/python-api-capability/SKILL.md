@@ -1,6 +1,7 @@
----
+﻿---
 name: python-api-capability
 description: 用于为 vi_ai_core_service 搭建和标准化面向 C 端 AI 应用的 Python API 接入层骨架。重点关注薄路由、service 委托、会话标识、流式输出预留、多模态输入、稳定响应契约与 API 边界。
+last_updated: 2026-04-06
 ---
 
 # Purpose
@@ -253,3 +254,4 @@ API 层应允许未来同时支持：
 1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
 2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist 联合自审。
 3. 若接口契约、边界或测试事实变化，必须同步更新对应文档与测试。
+

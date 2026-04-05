@@ -1,4 +1,7 @@
-# AI Provider 层边界与验收标准
+﻿# AI Provider 层边界与验收标准
+
+> 更新日期：2026-04-06
+
 
 ## 当前阶段约束（vi_ai_core_service）
 

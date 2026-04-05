@@ -1,4 +1,7 @@
-# Observability Capability Checklist
+﻿# Observability Capability Checklist
+
+> 更新日期：2026-04-06
+
 
 ## 目录与落位
 
@@ -32,9 +35,9 @@
 
 ## 安全性
 
-- 不默认输出 API key / Authorization / 敏感凭据。
-- 不默认输出完整敏感 payload。
-- 错误日志保留定位信息但避免泄漏内部敏感细节。
+- API key / Authorization / 敏感凭据必须禁止输出。
+- 当前阶段业务 payload 默认可输出，并由 `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD` 控制。
+- 错误日志保留定位信息与 traceback，同时不输出凭据字段。
 
 ## 当前阶段约束
 

@@ -1,4 +1,7 @@
-# Observability 层边界与验收标准
+﻿# Observability 层边界与验收标准
+
+> 更新日期：2026-04-06
+
 
 ## 一、边界定义
 
@@ -32,7 +35,7 @@ Observability 层不负责：
 2. 日志格式统一为“系统前缀 + `message=<json>`”。
 3. 日志行为由 `.env` true/false 开关控制。
 4. request context 字段必须可贯穿关键链路日志。
-5. exception logging 要保留定位信息并控制敏感信息输出。
+5. exception logging 要保留定位信息与 traceback，并禁止输出凭据字段。
 6. observability 是横切基础设施，不得反向依赖业务实现。
 7. 当前阶段只做最小基础设施，不做 tracing/metrics/alerting 平台化建设。
 
@@ -48,13 +51,13 @@ Observability 层不负责：
 - 无统一格式与等级语义
 - 无法稳定做日志治理
 
-### 反模式 2：默认输出完整敏感 payload
+### 反模式 2：输出凭据字段（API key/Authorization）
 
 问题：
 
-- 安全风险高
-- 审计风险高
-- 易导致生产信息泄露
+- 直接造成高风险凭据泄露
+- 安全审计不可接受
+- 可能导致外部依赖被滥用
 
 ### 反模式 3：把 observability 做成万能工具层
 
@@ -101,7 +104,7 @@ Observability 层不负责：
 - `method/path` 等系统信息不进入业务 JSON
 - request context 贯穿规则清晰
 - startup/API/service/provider/exception 边界日志策略清晰
-- 敏感信息输出受控
+- 业务 payload 输出受 `.env` 开关控制，且凭据字段严格禁止输出
 - 未引入当前阶段不允许的平台化能力
 - 文档、模块规则、skill 规则一致
 

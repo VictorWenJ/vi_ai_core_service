@@ -188,11 +188,13 @@ def log_provider_request(
     request_payload: dict[str, Any] | None = None,
     payload_preview: dict[str, Any] | None = None,
 ) -> None:
+    settings = get_logging_settings()
     metadata: dict[str, Any] = {}
-    if request_payload:
-        metadata["request_payload"] = request_payload
-    if payload_preview:
-        metadata["payload_preview"] = payload_preview
+    if settings.log_provider_payload:
+        if request_payload:
+            metadata["request_payload"] = request_payload
+        if payload_preview:
+            metadata["payload_preview"] = payload_preview
 
     logger = get_logger("providers")
     logger.info(
@@ -233,8 +235,9 @@ def log_provider_response(
         }
 
     logger = get_logger("providers")
+    settings = get_logging_settings()
     metadata: dict[str, Any] | None = None
-    if response_payload:
+    if settings.log_provider_payload and response_payload:
         metadata = {"response_payload": response_payload}
     logger.info(
         "Provider response received.",

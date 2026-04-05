@@ -1,6 +1,7 @@
----
+﻿---
 name: python-llm-provider-capability
 description: 用于为 vi_ai_core_service 搭建和标准化面向主流 C 端 AI 应用的 LLM Provider 层。重点关注统一 provider 抽象、厂商协议适配、流式/非流式输出、多模态输入、工具调用、结构化输出、能力声明、响应归一化以及与 service 层的清晰解耦。
+last_updated: 2026-04-06
 ---
 
 # Purpose
@@ -391,3 +392,4 @@ Provider 负责“我如何调用这一家”，
 1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
 2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist/test matrix 联合自审。
 3. 若 request/response/stream contract、能力声明或测试事实变化，必须同步更新对应文档与测试。
+

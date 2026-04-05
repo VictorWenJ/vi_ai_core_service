@@ -1,6 +1,7 @@
----
+﻿---
 name: python-prompt-capability
 description: 用于为 vi_ai_core_service 搭建和标准化面向主流 C 端 AI 应用的 Prompt 资产层。重点关注模板资产管理、分层指令组合、registry/renderer、系统提示与场景提示分离、多模态输入预留、工具调用与结构化输出提示约束，以及与 service/provider/context 的清晰边界。
+last_updated: 2026-04-06
 ---
 
 # Purpose
@@ -295,3 +296,4 @@ Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，
 1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
 2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist 联合自审。
 3. 若 Prompt 资产结构、渲染行为或测试事实变化，必须同步更新对应文档与测试。
+

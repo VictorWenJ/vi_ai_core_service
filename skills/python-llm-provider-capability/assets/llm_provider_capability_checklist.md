@@ -1,4 +1,7 @@
-# LLM Provider Test Matrix
+﻿# LLM Provider Test Matrix
+
+> 更新日期：2026-04-06
+
 
 ## 一、注册与发现
 

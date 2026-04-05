@@ -1,4 +1,7 @@
-# Context Skeleton Checklist
+﻿# Context Skeleton Checklist
+
+> 更新日期：2026-04-06
+
 
 ## 目录与落位
 

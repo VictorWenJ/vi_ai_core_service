@@ -1,4 +1,7 @@
-# ARCHITECTURE.md
+﻿# ARCHITECTURE.md
+
+> 更新日期：2026-04-06
+
 
 ## 1. 文档定位
 
@@ -94,6 +97,8 @@
 
 - 本层是横切基础设施层，不承载业务流程
 - 当前阶段只做 logging/request context/exception logging 基础设施，不做 tracing/metrics/alerting 平台化建设
+- 当前阶段业务 payload 默认可输出（调试优先），由 `.env` 开关控制
+- 凭据字段（如 API key、Authorization）必须禁止输出
 
 ### 3.7 数据模型层
 对应目录：`app/schemas/`

@@ -1,6 +1,7 @@
----
+﻿---
 name: python-observability-capability
 description: 用于为 vi_ai_core_service 搭建和标准化可观测性基础设施层。重点关注 Python 标准库 logging、log4j 风格前缀 + message JSON、.env 开关控制、request context 贯穿、startup/API/service/provider/exception 边界日志，以及与业务层解耦的治理方式。
+last_updated: 2026-04-06
 ---
 
 # Purpose
@@ -83,7 +84,7 @@ Observability 层不负责：
 2. 需要覆盖的日志边界点（startup/API/service/provider/exception）
 3. 需要贯穿的 request context 字段集合
 4. `.env` 日志开关规则与默认策略
-5. 日志安全约束（敏感字段脱敏或禁止输出）
+5. 当前阶段日志内容策略（业务 payload 输出开关、凭据字段禁止输出）
 6. 当前阶段是否仅做最小基础设施，而非平台化建设
 
 ---
@@ -133,9 +134,9 @@ request context 字段要贯穿关键日志事件，避免不可追踪日志。
 
 observability 是横切基础设施，不承载业务流程。
 
-## 5. 安全可控
+## 5. 输出策略可控
 
-不得默认输出 API key、Authorization、完整敏感 payload。
+当前阶段默认允许业务 payload 明文输出（调试优先），并受 `.env` 开关控制；API key、Authorization 等凭据字段必须禁止输出。
 
 ## 6. 当前阶段不过度建设
 
@@ -152,7 +153,7 @@ observability 是横切基础设施，不承载业务流程。
 - `.env` 开关控制策略清晰
 - request context 字段可贯穿
 - startup/API/service/provider/exception 边界日志策略清晰
-- 敏感信息输出风险可控
+- 业务 payload 输出行为可控，且凭据字段严格禁止输出
 - 未引入平台化过度建设
 
 ---
@@ -195,3 +196,4 @@ observability 是横切基础设施，不承载业务流程。
 1. 未完成根目录文档和模块文档阅读，不进入实现。
 2. 改动后必须按根 `CODE_REVIEW.md` + 模块 `AGENTS.md` + 本 skill checklist 联合自审。
 3. 若 observability 规则、边界或测试事实变化，必须同步更新对应文档与测试。
+
