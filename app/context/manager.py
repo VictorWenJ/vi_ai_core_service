@@ -14,14 +14,28 @@ class ContextManager:
     def get_context(self, session_id: str) -> ContextWindow:
         return self._store.get_window(session_id)
 
-    def append_user_message(self, session_id: str, content: str) -> ContextWindow:
+    def append_message(self, session_id: str, role: str, content: str) -> ContextWindow:
         return self._store.append_message(
             session_id=session_id,
-            message=ContextMessage(role="user", content=content),
+            message=ContextMessage(role=role, content=content),
         )
 
+    def append_user_message(self, session_id: str, content: str) -> ContextWindow:
+        return self.append_message(session_id=session_id, role="user", content=content)
+
     def append_assistant_message(self, session_id: str, content: str) -> ContextWindow:
-        return self._store.append_message(
+        return self.append_message(
             session_id=session_id,
-            message=ContextMessage(role="assistant", content=content),
+            role="assistant",
+            content=content,
         )
+
+    def clear_context(self, session_id: str) -> ContextWindow:
+        return self._store.clear_window(session_id)
+
+    def replace_context_messages(
+        self,
+        session_id: str,
+        messages: list[ContextMessage],
+    ) -> ContextWindow:
+        return self._store.replace_messages(session_id=session_id, messages=messages)

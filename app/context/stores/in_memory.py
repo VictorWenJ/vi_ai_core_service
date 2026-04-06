@@ -44,12 +44,45 @@ class InMemoryContextStore(BaseContextStore):
         )
         return window
 
+    def clear_window(self, session_id: str) -> ContextWindow:
+        window = self._windows.setdefault(session_id, ContextWindow(session_id=session_id))
+        window.messages.clear()
+        _context_store_logger.info(
+            "Context window cleared.",
+            extra={
+                "event": "context.window.clear",
+                "session_id": session_id,
+                "message_count": 0,
+            },
+        )
+        return window
 
-def _serialize_messages(messages: list[ContextMessage]) -> list[dict[str, str]]:
+    def replace_messages(
+        self,
+        session_id: str,
+        messages: list[ContextMessage],
+    ) -> ContextWindow:
+        copied_messages = list(messages)
+        window = self._windows.setdefault(session_id, ContextWindow(session_id=session_id))
+        window.messages = copied_messages
+        _context_store_logger.info(
+            "Context window replaced.",
+            extra={
+                "event": "context.window.replace",
+                "session_id": session_id,
+                "message_count": len(window.messages),
+                "messages": _serialize_messages(window.messages),
+            },
+        )
+        return window
+
+
+def _serialize_messages(messages: list[ContextMessage]) -> list[dict[str, object]]:
     return [
         {
             "role": message.role,
             "content": message.content,
+            "metadata": message.metadata,
             "created_at": message.created_at,
         }
         for message in messages

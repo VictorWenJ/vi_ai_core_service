@@ -30,6 +30,12 @@
 
 - `manager.py`
 - `models.py`
+- `policies/base.py`
+- `policies/context_policy.py`
+- `policies/window_selection.py`
+- `policies/truncation.py`
+- `policies/serialization.py`
+- `policies/defaults.py`
 - `stores/base.py`
 - `stores/in_memory.py`
 - `__init__.py`

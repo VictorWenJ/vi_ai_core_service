@@ -158,7 +158,7 @@
 
 ## 5.1 Context Engineering Phase 1 调用链补充
 
-在当前阶段，服务端上下文治理采用以下调用链：
+Context Engineering Phase 1 完成后，服务端上下文治理采用以下调用链：
 
 `api -> services/chat_service.py -> services/request_assembler.py -> context/manager.py -> context/stores/* -> context/policies/* -> services/request_assembler.py -> providers/*`
 

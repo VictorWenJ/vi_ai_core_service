@@ -4,6 +4,7 @@ import io
 import json
 import unittest
 
+from app.context.models import ContextMessage
 from app.context.manager import ContextManager
 from app.config import ObservabilityConfig
 from app.observability.context import clear_request_context
@@ -65,6 +66,37 @@ class ContextManagerTests(unittest.TestCase):
         self.assertEqual(second_append_payload["appended_role"], "assistant")
         self.assertEqual(second_append_payload["appended_content"], "hi")
         self.assertEqual(second_append_payload["message_count"], 2)
+
+    def test_clear_context_resets_window_messages(self) -> None:
+        self.manager.append_user_message("session-1", "hello")
+        cleared_window = self.manager.clear_context("session-1")
+
+        self.assertEqual(cleared_window.session_id, "session-1")
+        self.assertEqual(cleared_window.messages, [])
+
+        entries = [
+            self._parse_log_line(line)
+            for line in self.stream.getvalue().splitlines()
+            if line.strip()
+        ]
+        last_prefix, last_payload = entries[-1]
+        self.assertEqual(self._extract_event(last_prefix), "context.window.clear")
+        self.assertEqual(last_payload["session_id"], "session-1")
+        self.assertEqual(last_payload["message_count"], 0)
+
+    def test_replace_context_messages_overwrites_existing_messages(self) -> None:
+        self.manager.append_user_message("session-1", "stale")
+        replaced = self.manager.replace_context_messages(
+            "session-1",
+            [
+                ContextMessage(role="user", content="new-user"),
+                ContextMessage(role="assistant", content="new-assistant"),
+            ],
+        )
+
+        self.assertEqual([message.content for message in replaced.messages], ["new-user", "new-assistant"])
+        window = self.manager.get_context("session-1")
+        self.assertEqual([message.content for message in window.messages], ["new-user", "new-assistant"])
 
     def _parse_first_log_line(self) -> tuple[str, dict[str, object]]:
         first_line = next(line for line in self.stream.getvalue().splitlines() if line.strip())

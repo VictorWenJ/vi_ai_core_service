@@ -223,8 +223,27 @@ class LLMServiceTests(unittest.TestCase):
         self.assertEqual(self.providers["openai"].last_request.max_tokens, 128)
         used_context_history = self.providers["openai"].last_request.metadata["used_context_history"]
         self.assertTrue(used_context_history["enabled"])
-        self.assertEqual(used_context_history["message_count"], 1)
-        self.assertEqual(
-            used_context_history["messages"],
-            [{"role": "assistant", "content": "history"}],
+        self.assertEqual(used_context_history["raw_message_count"], 1)
+        self.assertEqual(used_context_history["selected_message_count"], 1)
+        self.assertEqual(used_context_history["dropped_message_count"], 0)
+        self.assertEqual(used_context_history["serialized_message_count"], 1)
+        self.assertNotIn("messages", used_context_history)
+
+    def test_chat_from_user_prompt_without_session_does_not_access_context(self) -> None:
+        fake_context_manager = FakeContextManager()
+        service = LLMService(
+            config=self.config,
+            registry=self.registry,
+            prompt_service=PromptService(),
+            context_manager=fake_context_manager,
         )
+
+        response = service.chat_from_user_prompt(
+            user_prompt="stateless question",
+            provider="openai",
+        )
+
+        self.assertEqual(response.provider, "openai")
+        self.assertIsNone(fake_context_manager.last_get_session_id)
+        self.assertEqual(fake_context_manager.user_appends, [])
+        self.assertEqual(fake_context_manager.assistant_appends, [])

@@ -7,7 +7,12 @@ from typing import Any
 
 from app.config import AppConfig
 from app.context.manager import ContextManager
-from app.context.models import ContextMessage
+from app.context.models import ContextWindow
+from app.context.policies.context_policy import (
+    ContextPolicyExecutionResult,
+    ContextPolicyPipeline,
+)
+from app.context.policies.defaults import build_default_context_policy_pipeline
 from app.providers.registry import ProviderRegistry
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.services.errors import ServiceNotImplementedError, ServiceValidationError
@@ -21,9 +26,13 @@ class ChatRequestAssembler:
         self,
         config: AppConfig,
         prompt_service: PromptService,
+        context_policy_pipeline: ContextPolicyPipeline | None = None,
     ) -> None:
         self._config = config
         self._prompt_service = prompt_service
+        self._context_policy_pipeline = (
+            context_policy_pipeline or build_default_context_policy_pipeline()
+        )
 
     def assemble_from_user_prompt(
         self,
@@ -44,18 +53,28 @@ class ChatRequestAssembler:
         normalized_session_id = normalize_optional_text(session_id)
         normalized_conversation_id = normalize_optional_text(conversation_id)
         normalized_request_id = normalize_optional_text(request_id)
+        use_server_history = bool(normalized_session_id)
 
-        history_messages: list[LLMMessage] = []
-        if normalized_session_id:
-            context_window = context_manager.get_context(normalized_session_id)
-            history_messages = [
-                LLMMessage(role=message.role, content=message.content)
-                for message in context_window.messages
-            ]
+        context_window = ContextWindow(
+            session_id=normalized_session_id or "",
+            messages=[],
+        )
+        if use_server_history:
+            context_window = context_manager.get_context(normalized_session_id or "")
 
-        assembled_messages = self._prompt_service.build_chat_messages(
+        policy_result = self._context_policy_pipeline.run(context_window)
+        history_messages = [
+            LLMMessage(role=message["role"], content=message["content"])
+            for message in policy_result.serialized_messages
+        ]
+
+        resolved_system_prompt = system_prompt
+        if resolved_system_prompt is None:
+            resolved_system_prompt = self._prompt_service.get_default_system_prompt()
+
+        assembled_messages = self._prompt_service.build_messages(
+            system_prompt=resolved_system_prompt,
             user_prompt=user_prompt,
-            system_prompt=system_prompt,
             messages=history_messages,
         )
 
@@ -66,11 +85,13 @@ class ChatRequestAssembler:
             request_metadata["request_id"] = normalized_request_id
         if normalized_session_id:
             request_metadata["session_id"] = normalized_session_id
-        request_metadata["used_context_history"] = {
-            "enabled": bool(history_messages),
-            "message_count": len(history_messages),
-            "messages": serialize_context_messages(history_messages),
-        }
+        context_trace = build_context_assembly_trace(
+            use_server_history=use_server_history,
+            policy_result=policy_result,
+        )
+        request_metadata["context_assembly"] = context_trace
+        # Backward-compatible key consumed by current service logging.
+        request_metadata["used_context_history"] = context_trace
 
         return (
             LLMRequest(
@@ -135,14 +156,22 @@ def normalize_optional_text(value: str | None) -> str | None:
     return stripped_value or None
 
 
-def serialize_context_messages(
-    messages: list[LLMMessage | ContextMessage],
-) -> list[dict[str, Any]]:
-    return [
-        {
-            "role": message.role,
-            "content": message.content,
-        }
-        for message in messages
-    ]
-
+def build_context_assembly_trace(
+    *,
+    use_server_history: bool,
+    policy_result: ContextPolicyExecutionResult,
+) -> dict[str, Any]:
+    selection = policy_result.selection
+    truncation = policy_result.truncation
+    serialized_count = len(policy_result.serialized_messages)
+    return {
+        "enabled": use_server_history,
+        "raw_message_count": selection.source_message_count,
+        "selected_message_count": selection.selected_message_count,
+        "dropped_message_count": selection.dropped_message_count,
+        "truncated_message_count": truncation.truncated_message_count,
+        "serialized_message_count": serialized_count,
+        "selection_policy": selection.selection_policy,
+        "truncation_policy": truncation.truncation_policy,
+        "serialization_policy": policy_result.serialization_policy,
+    }
