@@ -50,6 +50,25 @@ last_updated: 2026-04-06
 - 不引入 long-term memory 平台、RAG 记忆耦合或分布式状态系统。
 - 重点是 manager/store/models 边界清晰、行为可测、与 service 层协作稳定。
 
+# Current Task Focus (Context Engineering Phase 1)
+
+当前轮次的重点不是继续泛化描述 context skeleton，而是把“服务端会话历史如何进入一次模型请求”正式工程化。
+
+本轮必须优先解决：
+
+1. `WindowSelectionPolicy`
+2. `TruncationPolicy`
+3. `HistorySerializationPolicy`
+4. `request_assembler.py` 与 context policy pipeline 的集成
+
+本轮默认不做：
+
+- Redis / DB store
+- summary memory
+- semantic recall
+- RAG context source
+- user profile memory
+
 ---
 
 # Use This Skill When
@@ -64,6 +83,7 @@ last_updated: 2026-04-06
 - 为未来 session memory / message history / context governance 做结构准备
 - 为多模态消息历史、会话压缩、摘要、持久化预留扩展点
 - 校正当前 context 层边界，使其更符合主流 C 端 AI 应用后端结构
+- 为 `request_assembler.py` 提供正式上下文治理输入
 
 ---
 
@@ -93,6 +113,7 @@ Context 层负责：
 - 通过 manager 向上层暴露统一访问入口
 - 为未来上下文压缩、摘要、裁剪、token budget、持久化预留扩展点
 - 保持 provider-agnostic
+- 提供 history selection / truncation / serialization 的策略抽象
 
 Context 层不负责：
 
@@ -103,6 +124,7 @@ Context 层不负责：
 - retrieval / rerank / grounding
 - 当前阶段复杂 persistence / distributed state
 - 当前阶段完整长期记忆系统
+- 最终 request message 顺序装配
 
 ---
 
@@ -128,21 +150,45 @@ Context 层不负责：
    - 两者兼容预留
 5. 是否存在附件、图片、文件、工具结果等消息元数据需求
 6. 当前阶段是否只需要最小可用骨架，而不是完整 memory platform
+7. 当前是否已明确 `request_assembler.py` 作为正式上下文装配入口
 
 ---
 
 # Expected Outputs
 
-使用本 skill 后，交付物应至少包括：
+使用本 skill 完成 Context Engineering Phase 1 后，交付物至少包括：
 
-1. `models.py` 中清晰的上下文模型
-2. `stores/base.py` 中显式、稳定的 store 抽象接口
-3. `stores/in_memory.py` 中最小可用的本地实现
-4. `manager.py` 中统一的 context manager 入口
-5. conversation/session/message 级最小行为约定
-6. 为 compaction / summary / persistence 预留扩展点
-7. 最小可验证说明
-8. 必要时补充对应测试
+1. `app/context/models.py`
+   - 升级后的 canonical context models
+   - 至少包含可承接 selection/truncation 的中间结果模型
+
+2. `app/context/stores/base.py`
+   - 明确、稳定的 store interface
+   - 支持未来 replace/clear/save 等扩展操作的接口约束
+
+3. `app/context/stores/in_memory.py`
+   - 最小可用实现
+   - 对新增 store contract 的完整承接
+
+4. `app/context/manager.py`
+   - 统一 façade
+   - 不越权承担 prompt/provider/service 编排
+
+5. `app/context/policies/*`
+   - `WindowSelectionPolicy`
+   - `TruncationPolicy`
+   - `HistorySerializationPolicy`
+   - 可选 `ContextPolicy`
+
+6. `app/services/request_assembler.py`
+   - 升级为正式上下文装配入口
+   - 不再直接原样拼接全量 history
+
+7. 必要测试
+   - selection
+   - truncation
+   - serialization
+   - assembly order
 
 ---
 
@@ -156,9 +202,11 @@ Context 层不负责：
 6. 在 `stores/in_memory.py` 中实现本地内存版 store。
 7. 在 `manager.py` 中提供统一 façade，面向上层暴露最小操作集。
 8. 为未来 token budget、裁剪、摘要、持久化预留 hook 或清晰扩展点，但当前不完整实现。
-9. 保持实现轻量、确定性、易理解。
-10. 对照 checklist 自检。
-11. 若改动影响上下文契约、边界或测试行为，需同步更新文档与测试。
+9. 在 `app/services/request_assembler.py` 中接入 context policy pipeline。
+10. 明确 system prompt、selected history、current user prompt 的最终装配顺序仍属于 services 层。
+11. 保持实现轻量、确定性、易理解。
+12. 对照 checklist 自检。
+13. 若改动影响上下文契约、边界或测试行为，需同步更新文档与测试。
 
 ---
 
@@ -225,6 +273,16 @@ message/turn 模型设计时，应允许未来承载：
 
 context skeleton 的实现应尽量可预测、可单测、可推断。
 
+## 9. Context Policy 先于复杂 Memory Platform
+
+当前阶段先把以下接口做对：
+
+- `WindowSelectionPolicy`
+- `TruncationPolicy`
+- `HistorySerializationPolicy`
+
+而不是直接跳到长期记忆、用户画像或 RAG memory。
+
 ---
 
 # Verification Standard
@@ -239,6 +297,10 @@ context skeleton 的实现应尽量可预测、可单测、可推断。
 - 对 stateful / stateless 会话模式有清晰思路或预留
 - 对 compaction / summary / token budget 有未来扩展意识
 - 无复杂 memory platform 混入
+- 默认 history 使用最近 N 轮窗口，而不是全量 messages
+- context policy 执行结果可被测试和观测
+- request assembler 中存在清晰的上下文装配 trace / metadata
+- context 层与 services 层边界未混淆
 
 ---
 
@@ -254,6 +316,8 @@ context skeleton 的实现应尽量可预测、可单测、可推断。
 6. 对主流 C 端 AI 对话产品的会话与消息结构有合理预留
 7. 已通过 checklist 自检
 8. 必要时已同步测试与文档
+9. `request_assembler.py` 已成为正式上下文装配入口
+10. 默认 history 不再以“全量原样拼接”方式进入主链路
 
 ---
 
@@ -275,9 +339,9 @@ context skeleton 的实现应尽量可预测、可单测、可推断。
 开始编码前，必须先输出：
 
 1. 任务理解与范围边界（仅基础骨架，不做持久化平台）
-2. manager/models/stores 的文件级改动计划
+2. manager/models/stores/policies 的文件级改动计划
 3. 风险与假设
-4. 验证计划（读写行为与边界行为）
+4. 验证计划（selection / truncation / serialization / assembly order）
 
 ---
 
@@ -311,4 +375,4 @@ context skeleton 的实现应尽量可预测、可单测、可推断。
 1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
 2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist 联合自审。
 3. 若上下文模型、边界或测试事实变化，必须同步更新对应文档与测试。
-
+4. 未明确 `request_assembler.py` 与 context policy pipeline 的协作边界，不进入主链路代码改造。

@@ -98,6 +98,7 @@
   - 协调 context/prompt/provider 主链路
 - `request_assembler.py`
   - 承载请求装配与规范化（参数、上下文历史、metadata）
+  - 是 Context Engineering Phase 1 的正式上下文装配入口
 - `llm_service.py`
   - 向后兼容导出 `LLMService`，避免上层导入路径漂移
 - `prompt_service.py`
@@ -148,6 +149,17 @@ service 的输入输出应尽量稳定、明确，便于：
 - 哪里处理上下文
 - 哪里处理 prompt
 
+### 7.5 request assembler 是上下文装配中枢
+
+在 Context Engineering Phase 1 中：
+
+- `request_assembler.py` 负责驱动 context history selection / truncation / serialization
+- `chat_service.py` 负责主流程协调与结果回写
+- `app/context/` 负责 history representation 与 policy execution
+- `prompt_service.py` 负责 system prompt 获取与消息组装辅助
+
+不允许把这几个职责混写。
+
 ---
 
 ## 8. 建议的调用思路
@@ -156,7 +168,7 @@ service 的输入输出应尽量稳定、明确，便于：
 
 1. API 层接收请求
 2. service 解析用例所需参数
-3. service 获取上下文
+3. service 通过 `request_assembler.py` 获取并治理上下文
 4. service 调用 prompt 能力生成最终输入
 5. service 调用 provider 能力完成模型请求
 6. service 整理结果并返回 API 层
@@ -169,12 +181,16 @@ service 的输入输出应尽量稳定、明确，便于：
   - 单轮非流式 LLM 主链路编排
   - Prompt/Context/Provider 的最小协作
   - service-facing error 向 API 层传播
+- 本阶段正在增强并要求边界正确：
+  - `request_assembler.py` 的上下文装配中枢职责
+  - history selection / truncation / serialization pipeline
+  - 对 stateful session history 的最近 N 轮治理
 - 本阶段仅预留，不要求落地：
   - streaming 编排
   - 多模态编排
   - tools/function calling 编排
   - structured output 编排
-  - 复杂 context 治理（持久化/摘要/压缩）
+  - persistence / summary / semantic recall / RAG 编排
 
 ---
 
@@ -186,6 +202,7 @@ service 的输入输出应尽量稳定、明确，便于：
 2. 控制 service 层复杂度
 3. 明确 `llm_service` 与 `prompt_service` 的分工
 4. 避免未来所有功能都堆进 `llm_service.py`
+5. 把 `request_assembler.py` 升级为正式上下文装配入口
 
 后续演进方向：
 
@@ -207,6 +224,8 @@ service 的输入输出应尽量稳定、明确，便于：
 4. 不要在 service 中直接嵌入存储层实现细节
 5. service 间依赖要克制，避免网状耦合
 6. 如果某个 service 超过单一职责，应拆分
+7. 不允许在 `chat_service.py` 中手写 history selection / truncation 细节
+8. 不允许在 `request_assembler.py` 中越权操作具体 store 私有状态
 
 ---
 
@@ -238,6 +257,13 @@ service 的输入输出应尽量稳定、明确，便于：
 - 是否方便 mock provider / prompt / context
 - 是否覆盖成功和失败场景
 
+### Context Assembly Review 重点
+
+- `request_assembler.py` 是否仍是正式上下文装配入口
+- 是否存在“全量 history 原样拼接”的路径
+- system prompt / selected history / current user prompt 的顺序是否清晰稳定
+- metadata 中是否保留上下文装配 trace
+
 ---
 
 ## 12. 测试要求
@@ -250,6 +276,9 @@ service 的输入输出应尽量稳定、明确，便于：
 4. 参数异常传播路径
 5. 上下文参与编排时的行为断言
 6. 不同 provider 下的编排一致性
+7. request assembly 中最近 N 轮 history 选择行为
+8. 截断占位与 metadata trace 行为
+9. response 后 context 回写行为
 
 ---
 
@@ -262,12 +291,16 @@ service 的输入输出应尽量稳定、明确，便于：
 - 把 service 写成 prompt 模板仓库
 - 把所有业务都塞进一个文件
 - 在 service 中出现大量硬编码厂商分支
+- 在 `chat_service.py` 中直接实现窗口治理
+- 在 `request_assembler.py` 中拼接 provider-specific payload
 
 ---
 
 ## 14. 一句话总结
 
 `app/services/` 是系统的业务主链路编排层，负责 **组织流程**，不负责替代底层能力模块本身。
+
+在 Context Engineering Phase 1 中，`request_assembler.py` 是上下文装配中枢，`chat_service.py` 继续只承担用例级主流程编排职责。
 
 ---
 
@@ -293,3 +326,4 @@ Services 类任务必须按以下顺序执行：
 - 发现 service 越权承载 API/provider/prompt/context 细节时必须先整改
 - 变更主链路时必须补充或更新 service 级测试
 - 未完成文档回写一致性检查，不视为完成
+- 未明确 `request_assembler.py` 的上下文装配中枢职责，不进入 Context Engineering Phase 1 主链路改造

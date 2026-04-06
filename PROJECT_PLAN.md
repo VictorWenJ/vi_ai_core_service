@@ -218,6 +218,57 @@
 - Context 结构不再混乱
 - 后续扩展不会推翻现有基础
 
+### 阶段四-A：Context Engineering Phase 1
+
+#### 目标
+
+将当前最小可用的上下文读写骨架，升级为可治理、可扩展、面向 C 端 AI 对话产品的上下文装配骨架。
+
+本阶段重点不是构建长期记忆平台，而是把一次模型请求中的上下文治理流程做正确，包括：
+
+- 上下文 source of truth 明确化
+- 上下文窗口选择接口化
+- 截断策略接口化
+- 历史序列化接口化
+- request assembly 中的上下文装配流程正式化
+
+#### In Scope
+
+本阶段纳入范围：
+
+1. `ContextPolicy` 组合策略占位
+2. `WindowSelectionPolicy` 接口与默认实现
+3. `TruncationPolicy` 接口与最小实现
+4. `HistorySerializationPolicy` 接口与默认实现
+5. `ContextSelectionResult` 等中间结果模型
+6. `ContextManager` 与 `ContextStore` 契约增强
+7. `app/services/request_assembler.py` 升级为正式上下文装配入口
+8. 最近 N 轮消息窗口治理
+9. 可观测的上下文装配 metadata / trace
+
+#### Out of Scope
+
+本阶段明确不做：
+
+- RAG 检索链路
+- 向量数据库
+- Redis / DB persistence
+- summary memory
+- semantic retrieval memory
+- user profile memory
+- token-aware 精准预算控制
+- distributed state / MQ / workflow engine
+
+#### 本阶段完成标准
+
+达到以下条件视为本阶段完成：
+
+1. 服务端 stateful session history 不再以“全量原样拼接”的方式参与请求
+2. 上下文 history 的选择、截断、序列化具备清晰接口
+3. request assembly 中上下文治理顺序清晰、稳定、可测试
+4. context 层与 services 层边界未被打穿
+5. 未来 token budget / summary / persistence / RAG 可以在不推翻当前结构的前提下继续演进
+
 ---
 
 ## 阶段五：系统扩展准备
@@ -253,12 +304,14 @@
 - 当前七层边界清晰（含 observability 横切层）
 - 基础主链路清晰
 - 基础测试可用
+- Context Engineering Phase 1 的文档边界与接口骨架明确
 
 ### P1：当前阶段重要但可稍后推进
 
 - Provider 体系进一步统一
 - Prompt 资产治理进一步增强
-- Context 抽象进一步增强
+- Context Policy Pipeline 落地
+- request assembly 的上下文治理增强
 
 ### P2：后续阶段能力
 
@@ -280,6 +333,7 @@
 3. 为没有需求的能力设计复杂框架
 4. 在没有文档约束前大规模重构
 5. 在模块边界不清晰时继续快速叠功能
+6. 把 Context Engineering Phase 1 直接做成 RAG / 长期记忆 / persistence 工程
 
 ---
 
@@ -292,6 +346,14 @@
 3. 再稳定主链路
 4. 再增强 provider / prompt / context
 5. 最后再考虑新增系统能力
+
+在 Context Engineering Phase 1 中，继续沿用这一节奏：
+
+1. 先升级根目录文档
+2. 再升级 `app/context/AGENTS.md` 与 `app/services/AGENTS.md`
+3. 再升级 `skills/python-context-capability/`
+4. 再落地 context policy pipeline 代码
+5. 最后补测试与文档回写
 
 这样做的目标是降低返工成本，提升后续协作效率。
 
@@ -326,6 +388,16 @@
 标志：
 
 - Prompt 资产与 Context 结构具备可持续演进基础
+- Context Engineering Phase 1 的接口与装配流程完成文档化
+
+### M4-A：Context Engineering Phase 1 完成
+
+标志：
+
+- `request_assembler.py` 具备正式上下文装配入口职责
+- 最近 N 轮 history selection 具备默认策略
+- truncation / serialization 具备正式接口
+- 主链路测试已覆盖上下文治理行为
 
 ### M5：扩展能力准备完成
 
@@ -338,6 +410,8 @@
 ## 10. 一句话总结
 
 本项目当前的核心计划不是“快速堆功能”，而是先完成 **文档治理、结构治理、主链路稳定化和核心 AI 能力基础设施固化**，为后续更复杂能力建设打基础。
+
+在 Context Engineering Phase 1 中，这一原则的具体体现是：先把“服务端历史如何进入一次模型请求”做成正式的上下文治理流程，而不是直接进入长期记忆、RAG 或持久化平台建设。
 
 ---
 
@@ -360,3 +434,9 @@
 - 没有完成文档链路定义，不进入代码改动
 - 没有完成模块-skill 映射，不进入大于单文件的重构
 - 没有完成回写检查，不允许视为任务完成
+
+### Context Engineering Phase 1 专项门禁
+
+- 未定义 `WindowSelectionPolicy` / `TruncationPolicy` / `HistorySerializationPolicy` 的职责边界，不进入上下文主链路重构
+- 未明确 `request_assembler.py` 是正式上下文装配入口，不进入 context policy pipeline 落地
+- 未明确 RAG 与 context history 的边界，不进入“记忆系统”类设计

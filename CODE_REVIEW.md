@@ -323,4 +323,50 @@ Review 时，建议优先从以下几个维度给出结论：
 8. 是否遵守当前阶段日志内容策略（业务 payload 可开关明文；凭据字段必须禁止输出）
 9. 当前阶段是否错误引入 tracing/metrics/alerting/APM 平台建设
 
+## 19. Context Engineering Phase 1 专项审查门禁
 
+涉及 `app/context/`、`app/services/request_assembler.py`、`app/services/chat_service.py` 的上下文工程改动时，必须额外检查以下事项：
+
+### 19.1 边界检查
+
+1. 是否把 history selection / truncation / serialization 直接写进了 `chat_service.py`
+2. 是否把最终 prompt assembly 顺序塞进了 `app/context/`
+3. 是否让 `request_assembler.py` 直接依赖某个具体 store
+4. 是否把 provider-specific 消息格式泄露到 context 层
+5. 是否在 API 层直接参与上下文治理
+
+### 19.2 策略抽象检查
+
+1. 是否至少定义并使用了以下策略接口之一：
+   - `WindowSelectionPolicy`
+   - `TruncationPolicy`
+   - `HistorySerializationPolicy`
+2. 是否仍然存在“全量 history 原样拼接”的默认路径
+3. 默认策略是否保持确定性、可测试、可推断
+
+### 19.3 契约检查
+
+1. `ContextMessage` / `ContextWindow` 是否仍然可作为 canonical history contract
+2. 是否新增了未来无法解释的隐式字段
+3. history selection 的中间结果是否可观测、可断言
+
+### 19.4 测试检查
+
+以下改动原则上必须补测试：
+
+- 最近 N 轮窗口选择
+- 截断占位策略
+- 序列化结果顺序
+- request assembly 后的 message 顺序
+- response 后 context 回写行为
+- 空 session / 多轮 session / 超限 session 场景
+
+### 19.5 直接拒绝条件
+
+以下实现应直接拒绝：
+
+- 在 `chat_service.py` 中手写 history 截断逻辑
+- 在 `app/context/` 中拼接 system prompt
+- 为了快，直接在 assembler 中操作 `_windows` 或其他 store 私有状态
+- 把当前阶段实现包装成“RAG memory”或“long-term memory”
+- 未更新文档与 skill 就直接进入上下文主链路重构

@@ -26,10 +26,24 @@
 
 它负责描述、组织、存取和管理模型调用所需的会话上下文与消息历史。
 
-当前目录下已有文件：
+当前目录下当前已存在：
 
 - `manager.py`
 - `models.py`
+- `stores/base.py`
+- `stores/in_memory.py`
+- `__init__.py`
+
+Context Engineering Phase 1 完成后，目标结构应收敛为：
+
+- `models.py`
+- `manager.py`
+- `policies/base.py`
+- `policies/context_policy.py`
+- `policies/window_selection.py`
+- `policies/truncation.py`
+- `policies/serialization.py`
+- `policies/defaults.py`
 - `stores/base.py`
 - `stores/in_memory.py`
 - `__init__.py`
@@ -49,6 +63,18 @@
 
 一句话：**context 层负责“对话历史怎么表示、怎么取、怎么存、怎么管理”。**
 
+## 3.1 Context Engineering Phase 1 新增职责
+
+在本阶段，`app/context/` 除了基础上下文读写外，还负责：
+
+1. 定义上下文窗口选择策略接口
+2. 定义上下文截断策略接口
+3. 定义历史消息序列化策略接口
+4. 返回经过策略处理的 history selection 结果
+5. 为 request assembly 提供 provider-agnostic 的历史消息表示
+
+本阶段的重点不是“长期记忆”，而是“短期会话上下文治理骨架”。
+
 ---
 
 ## 4. 本层不负责什么
@@ -61,6 +87,17 @@
 4. 不负责具体业务流程编排
 5. 不负责将模板文本与上下文拼装成最终 prompt
 6. 不负责把某种具体存储实现直接耦合到上层
+
+## 4.1 Context Engineering Phase 1 边界补充
+
+以下职责仍不属于 `app/context/`：
+
+1. 不负责 system prompt 的选择与插入
+2. 不负责最终 `LLMRequest.messages` 顺序装配
+3. 不负责 provider 请求 payload 结构
+4. 不负责 RAG 检索
+5. 不负责知识库召回
+6. 不负责长期记忆平台
 
 ---
 
@@ -98,6 +135,8 @@
   - 定义上下文相关模型
 - `manager.py`
   - 提供面向上层的上下文管理入口
+- `policies/*`
+  - 定义 selection / truncation / serialization 相关策略接口与默认实现
 - `stores/base.py`
   - 定义上下文存储抽象
 - `stores/in_memory.py`
@@ -148,6 +187,16 @@
 
 当前设计不得阻碍这些演进。
 
+### 7.5 Source of Truth 原则
+
+当前阶段，服务端本地 `app/context/` 是 conversation/session history 的主真相源。
+
+约束如下：
+
+1. provider 自带 stateful conversation 不是唯一真相源
+2. 即使未来接入第三方 stateful API，本地 context 层仍保留主导权
+3. 上层编排必须通过 `ContextManager` 获取服务端 history，而不是直接信任 provider conversation state
+
 ---
 
 ## 8. 当前阶段演进计划
@@ -165,10 +214,32 @@
   - manager/store 抽象
   - in-memory 最小上下文读写能力
   - 对单轮主链路的基础上下文承接
+- 本阶段正在增强并要求边界正确：
+  - 最近 N 轮消息窗口治理
+  - selection / truncation / serialization policy interface
+  - request assembly 的上下文装配承接
 - 本阶段仅预留，不要求落地：
   - context persistence（生产级持久化）
   - summary/compaction/token-aware 窗口治理
   - 复杂会话生命周期治理
+  - semantic retrieval memory
+  - RAG context source
+
+### 当前阶段默认策略目标
+
+本阶段默认策略应满足：
+
+1. 使用最近 N 轮消息窗口，而不是全量历史
+2. 当历史超限时，先通过最小截断策略占位
+3. 历史消息在进入 request assembly 前，应经过显式序列化步骤
+4. 所有策略默认实现必须保持确定性、轻量、可测试
+
+当前阶段建议默认具备以下策略类型：
+
+- `WindowSelectionPolicy`
+- `TruncationPolicy`
+- `HistorySerializationPolicy`
+- 可选的 `ContextPolicy` 组合入口
 
 后续演进方向：
 
@@ -191,6 +262,8 @@
 4. 不要在不同地方重复定义上下文数据结构
 5. 新增字段或模型时，要评估兼容性与迁移影响
 6. 如果引入新 store，必须先抽象接口再落实现
+7. 如果引入新 policy，必须保持 provider-agnostic
+8. 不允许把最终 prompt 装配职责下沉到 context 层
 
 ---
 
@@ -222,6 +295,13 @@
 - 是否支持未来增加裁剪/摘要逻辑
 - 是否避免后续重构成本过高
 
+### Context Policy Review 重点
+
+- policy 是否保持 provider-agnostic
+- manager 是否仍只是 façade，而非业务编排中心
+- truncation 是否只是当前阶段占位，而未偷偷演变成 summary / retrieval / persistence
+- selection result 是否有清晰的中间结果表示
+
 ---
 
 ## 11. 测试要求
@@ -234,6 +314,9 @@
 4. 空上下文场景
 5. 多条消息追加场景
 6. 异常或非法输入场景
+7. 最近 N 轮窗口选择场景
+8. 截断占位策略场景
+9. 序列化输出顺序场景
 
 ---
 
@@ -246,12 +329,16 @@
 - 在 context 层拼接 prompt
 - 在 context 层发起模型调用
 - 多个模块维护不一致的历史消息结构
+- 在 context 层直接生成 provider-specific message payload
+- 在 context 层偷偷实现 RAG / retrieval / long-term memory
 
 ---
 
 ## 13. 一句话总结
 
 `app/context/` 是系统的上下文能力模块，负责 **上下文的表示、管理、存储抽象与演进承接**，而不是业务流程中心。
+
+在 Context Engineering Phase 1 中，它进一步承担“短期会话 history governance”的骨架职责，但仍不负责最终 request assembly 顺序。
 
 ---
 
@@ -273,3 +360,4 @@ Context 类任务必须按以下顺序执行：
 - 发现 context 层承担 provider/API/service 主流程职责时必须先整改
 - 变更 manager/store/models 契约时必须补充或更新测试
 - 未通过 `python-context-capability` checklist，不视为完成
+- 未明确 `WindowSelectionPolicy` / `TruncationPolicy` / `HistorySerializationPolicy` 的边界，不进入上下文主链路重构
