@@ -38,6 +38,13 @@
 - `tongyi_provider.py`
 - `__init__.py`
 
+当前阶段 provider maturity 约定：
+
+- implemented：`openai`、`deepseek`
+- scaffolded：`gemini`、`doubao`、`tongyi`
+
+maturity/capability 信息由 `registry.py` 统一维护，用于避免“文档说已实现但代码仍是 scaffold”的漂移。
+
 ---
 
 ## 3. 本层职责
@@ -105,7 +112,7 @@
 - `openai_compatible_base.py`
   - 承载 OpenAI 兼容协议族的公共实现
 - `registry.py`
-  - 管理 provider 注册、发现与构建
+  - 管理 provider 注册、发现、构建与 maturity/capability 描述
 - `*_provider.py`
   - 具体厂商实现
 

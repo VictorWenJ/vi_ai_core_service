@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from typing import Any
+
 from app.config import AppConfig
 from app.providers.base import BaseLLMProvider, ProviderConfigurationError
 from app.providers.deepseek_provider import DeepSeekProvider
@@ -10,12 +13,54 @@ from app.providers.gemini_provider import GeminiProvider
 from app.providers.openai_provider import OpenAIProvider
 from app.providers.tongyi_provider import TongyiProvider
 
-PROVIDER_CLASS_MAP: dict[str, type[BaseLLMProvider]] = {
-    "openai": OpenAIProvider,
-    "deepseek": DeepSeekProvider,
-    "gemini": GeminiProvider,
-    "doubao": DoubaoProvider,
-    "tongyi": TongyiProvider,
+
+@dataclass(frozen=True)
+class ProviderDescriptor:
+    """Provider maturity and capability descriptor for governance-friendly lookup."""
+
+    provider_class: type[BaseLLMProvider]
+    maturity: str
+    capabilities: dict[str, Any] = field(default_factory=dict)
+
+
+PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
+    "openai": ProviderDescriptor(
+        provider_class=OpenAIProvider,
+        maturity="implemented",
+        capabilities={
+            "chat_non_streaming": True,
+            "streaming": False,
+            "multimodal": False,
+            "tools": False,
+            "structured_output": False,
+        },
+    ),
+    "deepseek": ProviderDescriptor(
+        provider_class=DeepSeekProvider,
+        maturity="implemented",
+        capabilities={
+            "chat_non_streaming": True,
+            "streaming": False,
+            "multimodal": False,
+            "tools": False,
+            "structured_output": False,
+        },
+    ),
+    "gemini": ProviderDescriptor(
+        provider_class=GeminiProvider,
+        maturity="scaffolded",
+        capabilities={"chat_non_streaming": False},
+    ),
+    "doubao": ProviderDescriptor(
+        provider_class=DoubaoProvider,
+        maturity="scaffolded",
+        capabilities={"chat_non_streaming": False},
+    ),
+    "tongyi": ProviderDescriptor(
+        provider_class=TongyiProvider,
+        maturity="scaffolded",
+        capabilities={"chat_non_streaming": False},
+    ),
 }
 
 
@@ -44,16 +89,26 @@ class ProviderRegistry:
             return self._providers[normalized_name]
 
         try:
-            provider_class = PROVIDER_CLASS_MAP[normalized_name]
+            descriptor = PROVIDER_CATALOG[normalized_name]
         except KeyError as exc:
             raise ProviderConfigurationError(
                 f"Unsupported provider '{provider_name}'. "
-                f"Supported providers: {', '.join(PROVIDER_CLASS_MAP.keys())}."
+                f"Supported providers: {', '.join(PROVIDER_CATALOG.keys())}."
             ) from exc
 
-        provider = provider_class(self._config.get_provider_config(normalized_name))
+        provider = descriptor.provider_class(self._config.get_provider_config(normalized_name))
         self._providers[normalized_name] = provider
         return provider
 
     def get_provider_config(self, provider_name: str):
         return self._config.get_provider_config(provider_name)
+
+    def get_provider_descriptor(self, provider_name: str) -> ProviderDescriptor:
+        normalized_name = provider_name.strip().lower()
+        try:
+            return PROVIDER_CATALOG[normalized_name]
+        except KeyError as exc:
+            raise ProviderConfigurationError(
+                f"Unsupported provider '{provider_name}'. "
+                f"Supported providers: {', '.join(PROVIDER_CATALOG.keys())}."
+            ) from exc

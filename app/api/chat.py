@@ -2,65 +2,23 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from time import perf_counter
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
 
-from app.config import AppConfig
+from app.api.deps import get_chat_service
+from app.api.error_mapping import build_chat_http_exception
+from app.api.schemas.chat import ChatRequest, ChatResponse
 from app.observability.context import update_request_context
 from app.observability.events import log_api_request, log_api_response
-from app.observability.exception_logging import log_exception
-from app.observability.logging_setup import get_logger
-from app.services.errors import (
-    ServiceConfigurationError,
-    ServiceDependencyError,
-    ServiceNotImplementedError,
-    ServiceValidationError,
-)
-from app.services.llm_service import LLMService
-from app.services.prompt_service import PromptService
 
 router = APIRouter(tags=["chat"])
-_api_logger = get_logger("api.chat")
+# Backward-compatible alias used by existing API tests.
+_get_chat_service = get_chat_service
 
 
-class ChatRequest(BaseModel):
-    prompt: str = Field(min_length=1, description="Single-turn user prompt.")
-    provider: str | None = Field(default=None, description="Optional provider override.")
-    model: str | None = Field(default=None, description="Optional model override.")
-    temperature: float | None = Field(
-        default=None,
-        ge=0,
-        le=2,
-        description="Optional sampling temperature override.",
-    )
-    max_tokens: int | None = Field(
-        default=None,
-        gt=0,
-        description="Optional max tokens override.",
-    )
-    system: str | None = Field(default=None, description="Optional system prompt.")
-    stream: bool = Field(default=False, description="Streaming response toggle (reserved).")
-    session_id: str | None = Field(default=None, description="Optional stateful session id.")
-    conversation_id: str | None = Field(
-        default=None,
-        description="Optional conversation id for cross-request continuity.",
-    )
-    request_id: str | None = Field(default=None, description="Optional external request id.")
-    metadata: dict[str, Any] | None = Field(default=None, description="Optional metadata.")
-
-
-@lru_cache(maxsize=1)
-def _get_chat_service() -> LLMService:
-    config = AppConfig.from_env()
-    prompt_service = PromptService()
-    return LLMService(config=config, prompt_service=prompt_service)
-
-
-@router.post("/chat")
+@router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> dict[str, Any]:
     started_at = perf_counter()
     llm_service = _get_chat_service()
@@ -98,27 +56,12 @@ def chat(request: ChatRequest) -> dict[str, Any]:
             request_id=request.request_id,
             metadata=request.metadata,
         )
-    except (ServiceValidationError, ValueError) as exc:
-        _log_error_response(status_code=400, request=request, started_at=started_at)
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ServiceConfigurationError as exc:
-        _log_error_response(status_code=400, request=request, started_at=started_at)
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ServiceNotImplementedError as exc:
-        _log_error_response(status_code=501, request=request, started_at=started_at)
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
-    except ServiceDependencyError as exc:
-        _log_error_response(status_code=502, request=request, started_at=started_at)
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - defensive fallback
-        _log_error_response(status_code=500, request=request, started_at=started_at)
-        log_exception(
+        raise build_chat_http_exception(
             exc,
-            event="api.chat.error",
-            message="Unhandled exception in /chat handler.",
-            logger=_api_logger,
-        )
-        raise HTTPException(status_code=500, detail="Internal server error.") from exc
+            request=request,
+            started_at=started_at,
+        ) from exc
 
     log_api_response(
         route="/chat",
@@ -130,14 +73,3 @@ def chat(request: ChatRequest) -> dict[str, Any]:
         response_content=response.content,
     )
     return response.to_dict()
-
-
-def _log_error_response(*, status_code: int, request: ChatRequest, started_at: float) -> None:
-    log_api_response(
-        route="/chat",
-        status_code=status_code,
-        latency_ms=(perf_counter() - started_at) * 1000,
-        stream=request.stream,
-        provider=request.provider,
-        model=request.model,
-    )

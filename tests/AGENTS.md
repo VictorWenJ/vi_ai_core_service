@@ -80,10 +80,7 @@
 - `tests/test_context_manager.py`
 - `tests/test_config.py`
 - `tests/test_observability.py`
-
-后续可按阶段增加：
-
-- `tests/integration/`（当前可先建 skeleton，不引入重型环境依赖）
+- `tests/integration/test_http_smoke.py`（integration skeleton）
 
 ---
 
@@ -125,4 +122,3 @@ Tests 类任务必须按以下顺序执行：
 - 主链路改动未补回归测试，不视为完成
 - 测试与当前阶段能力声明不一致，不视为完成
 - 只改代码不改测试（或只改测试不核对代码事实）不视为完成
-

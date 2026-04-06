@@ -28,7 +28,9 @@
 
 当前目录下已有文件：
 
-- `llm_service.py`
+- `chat_service.py`
+- `request_assembler.py`
+- `llm_service.py`（兼容别名入口）
 - `prompt_service.py`
 - `__init__.py`
 
@@ -91,20 +93,23 @@
 
 当前服务层建议理解为：
 
+- `chat_service.py`
+  - 主 LLM chat 编排入口
+  - 协调 context/prompt/provider 主链路
+- `request_assembler.py`
+  - 承载请求装配与规范化（参数、上下文历史、metadata）
 - `llm_service.py`
-  - 主 LLM 请求编排入口
-  - 负责把请求送入 provider 能力链路
+  - 向后兼容导出 `LLMService`，避免上层导入路径漂移
 - `prompt_service.py`
   - 对 prompt 获取、选择、渲染提供面向应用层的封装
 
 如果未来能力增多，应按“用例/编排职责”继续拆分，例如：
 
-- `chat_service.py`
 - `completion_service.py`
 - `provider_selection_service.py`
 - `conversation_service.py`
 
-不要把所有逻辑都留在 `llm_service.py` 里无限长大。
+不要把所有逻辑都留在单个 service 文件里无限长大。
 
 ---
 

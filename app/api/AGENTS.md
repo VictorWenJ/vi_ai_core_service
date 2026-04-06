@@ -28,8 +28,11 @@
 
 当前目录下已有文件：
 
-- `chat.py`：聊天相关接口
+- `chat.py`：聊天路由入口（薄路由）
 - `health.py`：健康检查相关接口
+- `schemas/chat.py`：chat 请求/响应 schema
+- `deps.py`：路由依赖装配
+- `error_mapping.py`：service 异常到 HTTP 语义映射
 - `__init__.py`
 
 ---
@@ -97,6 +100,12 @@ API 层不负责：
 
 - `chat.py`
   - 仅负责 chat 接口定义与请求转发
+- `schemas/`
+  - 承载路由请求/响应 schema
+- `deps.py`
+  - 承载 service 装配与依赖入口
+- `error_mapping.py`
+  - 承载异常映射与错误响应语义
 - `health.py`
   - 仅负责 liveness / readiness / basic health 能力
 - 若未来增加新接口，按资源或能力拆文件，而不是继续堆在 `chat.py`
