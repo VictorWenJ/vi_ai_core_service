@@ -27,6 +27,17 @@ last_updated: 2026-04-06
 
 ---
 
+# Current Phase Constraint (Must Follow)
+
+在 `vi_ai_core_service` 当前阶段，执行本 skill 时必须遵守：
+
+- 仅交付 logging/request context/exception logging/startup+边界日志的最小基础设施。
+- 仅服务于单轮非流式主链路，不扩展 streaming、多模态、tools、structured output 的真实能力。
+- 不引入 tracing/metrics/alerting/APM 平台建设。
+- 不引入与当前阶段无关的重型依赖与平台化抽象。
+
+---
+
 # Use This Skill When
 
 在以下场景中使用本 skill：
@@ -182,6 +193,36 @@ observability 是横切基础设施，不承载业务流程。
 - python-observability-exception-logging
 - python-observability-tracing-integration（后续阶段）
 - python-observability-metrics-alerting（后续阶段）
+
+---
+
+# 编码前输出要求
+
+开始编码前，必须先输出：
+
+1. 任务理解与阶段边界（仅基础设施，不做平台化）
+2. 文件级改动计划（logging/context/events/middleware）
+3. 日志字段与开关策略说明
+4. 风险与验证计划
+
+---
+
+# 编码后输出要求
+
+完成编码后，必须输出：
+
+1. 文件级变更清单与原因
+2. 日志行为变化说明（前缀、message JSON、开关）
+3. 测试与验证结果
+4. 文档回写说明
+
+---
+
+# 资产与验证索引
+
+1. Checklist：`assets/observability_capability_checklist.md`
+2. Test Matrix：`assets/observability_test_matrix.md`
+3. References：`references/observability_boundaries_and_acceptance.md`
 
 ---
 

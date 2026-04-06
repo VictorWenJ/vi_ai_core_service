@@ -270,6 +270,36 @@ context skeleton 的实现应尽量可预测、可单测、可推断。
 
 ---
 
+# 编码前输出要求
+
+开始编码前，必须先输出：
+
+1. 任务理解与范围边界（仅基础骨架，不做持久化平台）
+2. manager/models/stores 的文件级改动计划
+3. 风险与假设
+4. 验证计划（读写行为与边界行为）
+
+---
+
+# 编码后输出要求
+
+完成编码后，必须输出：
+
+1. 文件级变更清单与原因
+2. 上下文行为变化说明
+3. 测试与验证结果
+4. 文档回写说明
+
+---
+
+# 资产与验证索引
+
+1. Checklist：`assets/context_capability_checklist.md`
+2. Test Matrix：`assets/context_test_matrix.md`
+3. References：`references/context_boundaries_and_acceptance.md`
+
+---
+
 # Governance Linkage
 
 执行本 skill 时必须遵循统一闭环：

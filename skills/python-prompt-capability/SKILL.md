@@ -285,6 +285,36 @@ Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，
 
 ---
 
+# 编码前输出要求
+
+开始编码前，必须先输出：
+
+1. 任务理解与范围边界（仅基础资产层，不做 orchestration engine）
+2. 模板/registry/renderer 的文件级改动计划
+3. 风险与假设
+4. 验证计划（模板查找与渲染稳定性）
+
+---
+
+# 编码后输出要求
+
+完成编码后，必须输出：
+
+1. 文件级变更清单与原因
+2. Prompt 资产变化说明
+3. 测试与验证结果
+4. 文档回写说明
+
+---
+
+# 资产与验证索引
+
+1. Checklist：`assets/prompt_capability_checklist.md`
+2. Test Matrix：`assets/prompt_test_matrix.md`
+3. References：`references/prompt_boundaries_and_acceptance.md`
+
+---
+
 # Governance Linkage
 
 执行本 skill 时必须遵循统一闭环：

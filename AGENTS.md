@@ -169,6 +169,26 @@
 
 ---
 
+## 6.1 根目录四文档职责矩阵（防漂移）
+
+为避免根目录四文档重复与漂移，执行时以如下矩阵为准：
+
+1. `AGENTS.md`
+- 定义长期协作规则、分层边界、文档治理、变更控制与模块-skill 映射
+2. `PROJECT_PLAN.md`
+- 定义阶段目标、当前范围、优先级与路线图，不承载模块内部设计
+3. `ARCHITECTURE.md`
+- 定义系统分层、依赖方向、调用关系与结构演进约束
+4. `CODE_REVIEW.md`
+- 定义审查标准、风险点、验收方式与拒绝条件
+
+出现冲突时的处理顺序：
+- 先校正事实（代码/测试）与 `ARCHITECTURE.md` 的边界一致性
+- 再按 `PROJECT_PLAN.md` 判断是否属于当前阶段
+- 最后由 `AGENTS.md` 与 `CODE_REVIEW.md` 收敛执行与审查动作
+
+---
+
 ## 7. 新增目录或新增能力的规则
 
 未来向 `app/` 下新增新目录时，必须满足以下条件：
@@ -327,6 +347,7 @@
 - Services 类任务：根目录四文档 -> `app/services/AGENTS.md`，并按任务内容匹配 API/Context/Prompt/Provider 对应 skill
 - Schemas 类任务：根目录四文档 -> `app/schemas/AGENTS.md`，并按契约关联能力选择对应 skill
 - Observability 类任务：根目录四文档 -> `app/observability/AGENTS.md` -> `skills/python-observability-capability/`
+- Tests 类任务：根目录四文档 -> `tests/AGENTS.md`，并按被测模块匹配对应 skill
 
 ---
 

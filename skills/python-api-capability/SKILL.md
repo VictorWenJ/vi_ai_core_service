@@ -243,6 +243,36 @@ API 层应允许未来同时支持：
 
 ---
 
+# 编码前输出要求
+
+开始编码前，必须先输出：
+
+1. 任务理解与范围边界（明确当前阶段只做单轮非流式）
+2. 文件级改动计划（包含新增/修改/不改）
+3. 风险与假设
+4. 验证计划（至少包含路由与错误映射验证）
+
+---
+
+# 编码后输出要求
+
+完成编码后，必须输出：
+
+1. 文件级变更清单与原因
+2. 行为变化说明（保持或调整了什么）
+3. 测试与验证结果
+4. 文档回写说明
+
+---
+
+# 资产与验证索引
+
+1. Checklist：`assets/api_capability_checklist.md`
+2. Test Matrix：`assets/api_test_matrix.md`
+3. References：`references/api_boundaries_and_antipatterns.md`
+
+---
+
 # Governance Linkage
 
 执行本 skill 时必须遵循统一闭环：

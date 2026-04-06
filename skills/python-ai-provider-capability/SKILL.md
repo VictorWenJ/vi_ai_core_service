@@ -122,6 +122,12 @@ last_updated: 2026-04-06
 - 验证方式
 - 下一步最小增量建议
 
+# 资产与验证索引
+
+1. Checklist：`assets/ai_provider_capability_checklist.md`
+2. Test Matrix：`assets/ai_provider_test_matrix.md`
+3. References：`references/ai_provider_capability_boundary_and_acceptance.md`
+
 # 治理链路
 
 在 `vi_ai_core_service` 中执行本 Skill 时，必须遵循以下闭环：

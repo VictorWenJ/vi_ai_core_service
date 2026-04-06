@@ -381,6 +381,36 @@ Provider 负责“我如何调用这一家”，
 
 ---
 
+# 编码前输出要求
+
+开始编码前，必须先输出：
+
+1. 任务理解与当前阶段边界
+2. Provider 文件级改动计划
+3. request/response 归一化策略说明
+4. 风险与验证计划
+
+---
+
+# 编码后输出要求
+
+完成编码后，必须输出：
+
+1. 文件级变更清单与原因
+2. 能力声明变化说明
+3. 测试矩阵覆盖情况
+4. 文档回写说明
+
+---
+
+# 资产与验证索引
+
+1. Checklist：`assets/llm_provider_capability_checklist.md`
+2. Test Matrix：`assets/llm_provider_test_matrix.md`
+3. References：`references/llm_provider_boundaries_and_compatibility.md`
+
+---
+
 # Governance Linkage
 
 执行本 skill 时必须遵循统一闭环：
