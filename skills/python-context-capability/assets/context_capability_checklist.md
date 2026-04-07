@@ -52,3 +52,15 @@
 - 接口易于扩展。
 - 至少具备最小可验证路径。
 - 若改动影响上下文主行为，已补充或更新测试。
+
+## Phase 2 增强检查
+
+在 Context Engineering Phase 2 中，需要额外检查以下事项：
+
+- 是否新增 `token_aware_window_selection.py` 和 `token_aware_truncation.py` 策略文件；
+- 是否新增 `summary.py` 策略文件；
+- `ContextPolicyPipeline` 是否按顺序组合 token‑aware window selection → token‑aware truncation → summary/compaction → serialization；
+- 是否在 `ContextManager`/`manager.py` 中新增 `reset_session`/`clear_session` 方法，并由上层正确调用；
+- 是否为 token 预算、窗口大小、摘要开关提供配置，并通过 `AppConfig.context.*` 管理；
+- 是否新增测试覆盖 token‑aware 选择、token‑aware 截断、summary 生成和重置行为；
+- 是否更新相关文档、skill、checklist、test matrix 与 code review。

@@ -174,15 +174,16 @@
 为避免根目录四文档重复与漂移，执行时以如下矩阵为准：
 
 1. `AGENTS.md`
-- 定义长期协作规则、分层边界、文档治理、变更控制与模块-skill 映射
+   - 定义长期协作规则、分层边界、文档治理、变更控制与模块-skill 映射
 2. `PROJECT_PLAN.md`
-- 定义阶段目标、当前范围、优先级与路线图，不承载模块内部设计
+   - 定义阶段目标、当前范围、优先级与路线图，不承载模块内部设计
 3. `ARCHITECTURE.md`
-- 定义系统分层、依赖方向、调用关系与结构演进约束
+   - 定义系统分层、依赖方向、调用关系与结构演进约束
 4. `CODE_REVIEW.md`
-- 定义审查标准、风险点、验收方式与拒绝条件
+   - 定义审查标准、风险点、验收方式与拒绝条件
 
 出现冲突时的处理顺序：
+
 - 先校正事实（代码/测试）与 `ARCHITECTURE.md` 的边界一致性
 - 再按 `PROJECT_PLAN.md` 判断是否属于当前阶段
 - 最后由 `AGENTS.md` 与 `CODE_REVIEW.md` 收敛执行与审查动作
@@ -308,6 +309,18 @@
   - context persistence/summary/compaction
   - 新 provider 的完整落地
 
+#### 当前阶段能力增强（Context Engineering Phase 2）
+
+随着项目进入 Context Engineering Phase 2，本阶段在前述基础能力之上增加以下能力并明确约束：
+
+1. **Token‑aware 上下文策略**：context 层引入 `TokenAwareWindowSelectionPolicy` 与 `TokenAwareTruncationPolicy`，根据会话历史的 token 数量动态选择并截断历史，避免全量拼接；默认以可配置的最大 token 预算为界，替换 Phase 1 的“最近 N 条”策略。
+2. **Summary/Compaction 策略**：定义 `SummaryPolicy` 接口，并提供默认简单实现（例如截断提示或取每条消息首句），用于在超过 token 预算时压缩历史。该策略仅提供 hook，不调用外部 LLM；真实摘要将在后续阶段实现。
+3. **会话重置能力**：`ContextManager` 增加 `reset_conversation` 等方法；服务层与 API 层提供会话重置接口，允许用户主动清除当前 session/conversation 历史。重置操作仅影响短期会话，不能跨用户或跨会话误删数据。
+4. **ContextPolicyPipeline 升级**：升级默认的 context policy pipeline，执行顺序为 token‑aware 选择 → token‑aware 截断 → summary/compaction → serialization，并将执行 trace 写入 metadata。`request_assembler.py` 必须通过该管道获取历史。
+5. **配置与默认值更新**：在配置中新增最大 token 预算、截断预算、summary 开关等参数，确保可以灵活调整策略行为；`defaults.py` 应提供实例化这些策略的工厂函数。
+
+这些增强能力仍仅针对短期会话窗口控制和重置；不代表我们已经实现了复杂的 long‑term memory 平台、RAG 记忆耦合或多模态链路。任何持久化存储、检索、流式输出等高级能力仍属于未来阶段，不能在当前阶段提前实现或穿透边界。
+
 ---
 
 ## 13. 一句话总结
@@ -346,8 +359,8 @@
 - LLM Provider 任务：根目录四文档 -> `app/providers/AGENTS.md` -> `skills/python-llm-provider-capability/`
 - Services 类任务：根目录四文档 -> `app/services/AGENTS.md`，并按任务内容匹配 API/Context/Prompt/Provider 对应 skill
 - Schemas 类任务：根目录四文档 -> `app/schemas/AGENTS.md`，并按契约关联能力选择对应 skill
-- Observability 类任务：根目录四文档 -> `app/observability/AGENTS.md` -> `skills/python-observability-capability/`
-- Tests 类任务：根目录四文档 -> `tests/AGENTS.md`，并按被测模块匹配对应 skill
+- Observability 类任务：根目录四文文档 -> `app/observability/AGENTS.md` -> `skills/python-observability-capability/`
+- Tests 类任务：根目录四文文档 -> `tests/AGENTS.md`，并按被测模块匹配对应 skill
 
 ---
 
@@ -382,4 +395,3 @@
 3. 再更新对应 skill 与 checklist/test matrix
 4. 最后进行代码实现与测试
 5. 合并前完成文档回写一致性检查
-

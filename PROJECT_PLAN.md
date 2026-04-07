@@ -234,8 +234,6 @@
 
 #### In Scope
 
-本阶段纳入范围：
-
 1. `ContextPolicy` 组合策略占位
 2. `WindowSelectionPolicy` 接口与默认实现
 3. `TruncationPolicy` 接口与最小实现
@@ -248,8 +246,6 @@
 
 #### Out of Scope
 
-本阶段明确不做：
-
 - RAG 检索链路
 - 向量数据库
 - Redis / DB persistence
@@ -261,13 +257,49 @@
 
 #### 本阶段完成标准
 
-达到以下条件视为本阶段完成：
-
 1. 服务端 stateful session history 不再以“全量原样拼接”的方式参与请求
 2. 上下文 history 的选择、截断、序列化具备清晰接口
 3. request assembly 中上下文治理顺序清晰、稳定、可测试
 4. context 层与 services 层边界未被打穿
 5. 未来 token budget / summary / persistence / RAG 可以在不推翻当前结构的前提下继续演进
+
+### 阶段四-B：Context Engineering Phase 2
+
+#### 目标
+
+将 Context skeleton 升级为 **token-aware**，具备预算感知的窗口选择、截断和摘要/压缩能力，并提供会话重置能力。保证在不破坏现有主链路基础上，引入能够精确控制历史消息长度和成本的策略，为未来长期记忆/RAG/多模态扩展打下基础。
+
+#### 重点
+
+1. **Token-aware context policy**：增加 `TokenAwareWindowSelectionPolicy` 和 `TokenAwareTruncationPolicy`，根据最大 token 预算而不是固定消息数量选择与截断历史。
+2. **Summary/Compaction Policy**：定义 `SummaryPolicy` 或 `CompactionPolicy` 接口，引入最小摘要策略以浓缩超出预算的历史消息，并保留关键信息。
+3. **Context Reset API**：在 API 层实现会话重置/清空接口，允许用户主动清理服务端会话上下文。
+4. **request assembler 升级**：在 `app/services/request_assembler.py` 中集成新的 token-aware pipeline 和摘要/裁剪机制，并暴露 context assembly trace。
+5. **文档与测试治理**：同步更新模块文档与 skill，补充 token-aware 选择、截断、摘要以及 reset 行为的测试覆盖。
+
+#### In Scope
+
+- Context policy 抽象和默认实现的增加。
+- 新的 `ContextPolicyPipeline` 组合策略流程。
+- 概念验证级别的摘要策略或占位。
+- API 层新增 reset/clear 路由。
+- request assembly 的 token-aware 裁剪流程。
+- 文档治理、code review checklist 和基础测试。
+
+#### Out of Scope
+
+- 持久化存储、Redis/DB store 或分布式状态系统。
+- 完整语义摘要或大模型 summarization 服务。
+- 工具调用、多模态生成或工具链 orchestration。
+- 长期记忆平台、RAG memory 或向量检索。
+
+#### 本阶段完成标准
+
+1. `WindowSelectionPolicy`、`TruncationPolicy` 增加 token-aware 默认实现，能基于 token 预算确定历史窗口。
+2. 提供 `SummaryPolicy` 或 `CompactionPolicy` 接口，并实现最小摘要策略或示例。
+3. request assembler 能根据 token 预算选择/截断/摘要历史，并输出 context assembly trace。
+4. API 层新增 reset/clear 会话路由，正确清空服务端会话历史。
+5. 基础测试覆盖 token-aware 选择、截断、摘要和 reset 行为。
 
 ---
 
@@ -312,6 +344,7 @@
 - Prompt 资产治理进一步增强
 - Context Policy Pipeline 落地
 - request assembly 的上下文治理增强
+- **Context Engineering Phase 2 的 token-aware 与摘要能力**
 
 ### P2：后续阶段能力
 
@@ -399,6 +432,16 @@
 - truncation / serialization 具备正式接口
 - 主链路测试已覆盖上下文治理行为
 
+### M4-B：Context Engineering Phase 2 完成
+
+标志：
+
+- `TokenAwareWindowSelectionPolicy`、`TokenAwareTruncationPolicy` 提供默认实现
+- `SummaryPolicy` / `CompactionPolicy` 定义并提供最小实现
+- request assembly 支持 token-aware pipeline 并输出 trace
+- reset/clear API 正确落地
+- 相关文档和测试更新完备
+
 ### M5：扩展能力准备完成
 
 标志：
@@ -411,7 +454,7 @@
 
 本项目当前的核心计划不是“快速堆功能”，而是先完成 **文档治理、结构治理、主链路稳定化和核心 AI 能力基础设施固化**，为后续更复杂能力建设打基础。
 
-在 Context Engineering Phase 1 中，这一原则的具体体现是：先把“服务端历史如何进入一次模型请求”做成正式的上下文治理流程，而不是直接进入长期记忆、RAG 或持久化平台建设。
+在 Context Engineering Phase 1 中，这一原则的具体体现是：先把“服务端历史如何进入一次模型请求”做成正式的上下文治理流程；在 Context Engineering Phase 2 中，则进一步引入 token-aware 窗口选择、截断和摘要能力以及会话重置能力，仍然不进入长期记忆或 RAG 平台建设。
 
 ---
 
@@ -441,3 +484,10 @@
 - 未明确 `request_assembler.py` 是正式上下文装配入口，不进入 context policy pipeline 落地
 - 未明确 RAG 与 context history 的边界，不进入“记忆系统”类设计
 
+### Context Engineering Phase 2 专项门禁（新增）
+
+- 未明确 token-aware 选择、截断、摘要策略的接口和职责，不进入 Phase 2 架构实现
+- 未明确 reset/clear API 的边界和触发方式，不进入会话重置能力开发
+- 未更新相关文档与 skill，不上线 token-aware 或摘要特性
+
+---

@@ -2,7 +2,6 @@
 
 > 更新日期：2026-04-07
 
-
 ## 1. 文档定位
 
 本文件定义 `vi_ai_core_service` 的项目级 Code Review 标准。
@@ -371,3 +370,49 @@ Review 时，建议优先从以下几个维度给出结论：
 - 把当前阶段实现包装成“RAG memory”或“long-term memory”
 - 未更新文档与 skill 就直接进入上下文主链路重构
 
+---
+
+## 20. Context Engineering Phase 2 专项审查门禁（新增）
+
+在推进 Context Engineering Phase 2（token-aware 策略与摘要/压缩能力）时，必须额外检查：
+
+### 20.1 边界检查
+
+1. 是否把 token-aware 选择或截断逻辑写进 `chat_service.py` 或 API 层；正确做法是通过新的策略接口在 context 层实现。
+2. 是否把摘要/压缩逻辑放在 prompt 层或 provider 层；应该通过 `SummaryPolicy` / `CompactionPolicy` 在 context 策略中实现，并在 `request_assembler.py` 中装配。
+3. 是否在 context store 中实现了 reset/clear 行为；reset 应由 manager 暴露，再由服务层调用。
+4. 是否让 token-aware 策略强绑某个 provider 的 token 计算方式；应保留 provider-agnostic。
+
+### 20.2 策略抽象检查
+
+1. 是否定义并使用了 `TokenAwareWindowSelectionPolicy` 和 `TokenAwareTruncationPolicy`。
+2. 是否定义并使用了 `SummaryPolicy` 或 `CompactionPolicy` 接口。
+3. 默认策略是否可以配置 token budget，且行为确定、可测试。
+4. 是否通过 context policy pipeline 组合策略，而不是在 assembler 中手写循环判断。
+
+### 20.3 契约检查
+
+1. 摘要/压缩后的历史是否符合 canonical `ContextMessage` / `ContextWindow` 契约。
+2. token-aware 裁剪后的上下文结果是否通过 trace/metadata 暴露以便调试。
+3. reset/clear API 是否影响共享契约的字段（session id / conversation id）。
+
+### 20.4 测试检查
+
+以下改动必须补测试：
+
+- token-aware 窗口选择在不同 token 预算下的行为。
+- token-aware 截断策略是否正确裁剪过长消息或内容。
+- 摘要策略是否在预算不足时产生概要并被正确插入。
+- reset/clear 会话接口是否正确清空历史并返回预期响应。
+- request assembly 中 token-aware pipeline 的顺序和结果。
+
+### 20.5 直接拒绝条件
+
+以下实现应直接拒绝：
+
+- 在任何上层代码手写 token budget 逻辑或摘要文本拼接。
+- 摘要策略中直接调用 LLM summarization API（本阶段只允许最小策略或占位）。
+- 把 reset 动作内嵌在 context policy 逻辑中，而不是作为独立 API 调用。
+- 未更新文档与 skill，就直接上线 token-aware 或摘要特性。
+
+---

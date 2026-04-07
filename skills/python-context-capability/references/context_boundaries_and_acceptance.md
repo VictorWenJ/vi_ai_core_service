@@ -15,6 +15,7 @@ Context 层负责：
 - 提供本地基础实现
 - 通过 manager 向上层暴露统一访问入口
 - 为上下文裁剪、摘要、压缩、token budget、持久化预留扩展点
+ - 实现 token‑aware 窗口选择与截断策略、摘要策略的接口和默认实现（短期历史治理）
 
 ### Context 层不负责什么
 
@@ -38,6 +39,7 @@ Context 层不负责：
 4. 当前只做 skeleton 与扩展预留，不做过度系统化建设。
 5. 与 API / service 的集成在当前阶段应保持最小、低耦合。
 6. 应允许未来兼容 stateless 与 stateful 两种会话模式。
+7. token‑aware 窗口治理和摘要逻辑必须放在 context policy 层，并通过 provider 抽象调用模型生成摘要，不得在 service 层或 prompt 层实现。
 
 ---
 
@@ -80,10 +82,17 @@ Context 层不负责：
 
 ### 反模式 6：让 context 层承担业务编排职责
 
-错误原因：
+ 错误原因：
 - 模块边界失真
 - service 层职责被侵蚀
 - 调用链难以维护
+
+### 反模式 7：在 chat/service 层手写 token‑aware / summary 逻辑
+
+错误原因：
+- 打乱上下文治理的策略层次
+- 使重用性下降
+- 减少测试覆盖范围
 
 ---
 
@@ -100,6 +109,8 @@ Context 层不负责：
 - 面向 conversation/session 短期记忆场景
 - 对多模态与上下文治理具备扩展意识
 - 未引入无关架构扩张
+ - 支持 token‑aware window selection、token‑aware truncation 和 summary/compaction 策略，并可通过配置调整 token 预算
+ - 提供会话重置能力并经过测试验证
 
 ---
 
