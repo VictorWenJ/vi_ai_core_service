@@ -63,7 +63,7 @@ last_updated: 2026-04-07
 1. **TokenAwareWindowSelectionPolicy**：根据会话历史中每条消息的 token 数量以及最大 token budget，动态选择最近一段历史。应使用如 `tiktoken` 的分词器来计算 token 长度，支持配置最大 token 数。不得再使用简单的“最近 N 条”策略作为默认。
 2. **TokenAwareTruncationPolicy**：在窗口选择之后，对超过 token budget 的历史进行截断，确保总 token 数符合要求。截断逻辑应截断最旧的消息或部分消息内容，不得破坏最近用户问题与系统 prompt 的完整性。
 3. **SummaryPolicy (optional)**：定义并实现一个摘要/压缩策略接口，用于当窗口仍超出 token budget 时生成摘要消息替代部分原始历史。默认可提供一个占位实现，仅将截断部分用固定字符串或第一句总结作为 summary。避免在此阶段调用外部 LLM 进行真实摘要。
-4. **Context reset 支持**：在 `ContextManager` 中添加 `reset_conversation`（或 `clear_session`）方法，能够清除会话历史；在 `app/services` 与 API 层引入对应调用入口（例如 `POST /conversation/{conversation_id}/reset`）。重置操作必须经过合理鉴权与参数校验，不得误删其他用户数据。
+4. **Context reset 支持**：在 `ContextManager` 中添加 `reset_conversation`（或 `clear_session`）方法，能够清除会话历史；在 `app/services` 与 API 层引入对应调用入口（例如 `POST /chat/reset`）。重置操作必须经过合理鉴权与参数校验，不得误删其他用户数据。
 5. **ContextPolicyPipeline 扩展**：升级 pipeline，依次执行 `TokenAwareWindowSelectionPolicy → TokenAwareTruncationPolicy → SummaryPolicy → HistorySerializationPolicy`。确保 pipeline 可以根据配置插拔策略，并将执行 trace 写入 metadata。
 6. **配置与默认值**：在配置中新增 token budget、默认截断预算、summary 开关等参数；`defaults.py` 应提供合理的默认实例。
 7. **request_assembler 接入升级策略**：在 `app/services/request_assembler.py` 中通过新的 pipeline 获取历史，并在 metadata 中附带 summary/compaction trace。
@@ -207,7 +207,7 @@ Context 层不负责：
    - 不再直接原样拼接全量 history
 
 7. **`app/api` 与 `app/services` 中的会话重置接口**
-   - 例如新增 `/conversation/{conversation_id}/reset` endpoint
+   - 例如新增 `/chat/reset` endpoint
    - 在 Service 层实现 reset 调度，并调用 `ContextManager.reset_conversation`
 
 8. 必要测试

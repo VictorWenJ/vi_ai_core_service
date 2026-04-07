@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.context.models import ContextMessage, ContextWindow
 from app.context.stores.base import BaseContextStore
 from app.context.stores.in_memory import InMemoryContextStore
@@ -14,24 +16,66 @@ class ContextManager:
     def get_context(self, session_id: str) -> ContextWindow:
         return self._store.get_window(session_id)
 
-    def append_message(self, session_id: str, role: str, content: str) -> ContextWindow:
+    def append_message(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> ContextWindow:
         return self._store.append_message(
             session_id=session_id,
-            message=ContextMessage(role=role, content=content),
+            message=ContextMessage(
+                role=role,
+                content=content,
+                metadata=dict(metadata or {}),
+            ),
         )
 
-    def append_user_message(self, session_id: str, content: str) -> ContextWindow:
-        return self.append_message(session_id=session_id, role="user", content=content)
+    def append_user_message(
+        self,
+        session_id: str,
+        content: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> ContextWindow:
+        return self.append_message(
+            session_id=session_id,
+            role="user",
+            content=content,
+            metadata=metadata,
+        )
 
-    def append_assistant_message(self, session_id: str, content: str) -> ContextWindow:
+    def append_assistant_message(
+        self,
+        session_id: str,
+        content: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> ContextWindow:
         return self.append_message(
             session_id=session_id,
             role="assistant",
             content=content,
+            metadata=metadata,
         )
 
     def clear_context(self, session_id: str) -> ContextWindow:
         return self._store.clear_window(session_id)
+
+    def clear_session(self, session_id: str) -> ContextWindow:
+        return self._store.clear_window(session_id)
+
+    def reset_session(self, session_id: str) -> ContextWindow:
+        return self._store.clear_window(session_id)
+
+    def reset_conversation(
+        self,
+        session_id: str,
+        conversation_id: str | None = None,
+    ) -> ContextWindow:
+        return self._store.reset_conversation(
+            session_id=session_id,
+            conversation_id=conversation_id,
+        )
 
     def replace_context_messages(
         self,

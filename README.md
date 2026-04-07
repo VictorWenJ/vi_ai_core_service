@@ -12,12 +12,13 @@ Current focus: LLM full flow first, structure first.
 
 已实现：
 - HTTP 服务入口（`app/server.py`）
-- `/health`、`/chat` 路由
+- `/health`、`/chat`、`/chat/reset` 路由
 - API -> services -> context/prompts/providers -> schemas 主链路
+- Context Phase 2：token-aware selection/truncation + deterministic summary + reset
 - observability 最小能力（标准库 `logging`、`log_until.py`、前缀+`message=<json>`）
 
 未来预留（未实现）：
-- streaming、多模态、tools/function calling、structured output、复杂 context 治理
+- streaming、多模态、tools/function calling、structured output、长期记忆/RAG/持久化 context 治理
 
 ## 运行方式（仅 HTTP）
 
@@ -46,6 +47,17 @@ curl -X POST "http://127.0.0.1:8000/chat" \\
   }'
 ```
 
+4. 重置会话上下文：
+
+```bash
+curl -X POST "http://127.0.0.1:8000/chat/reset" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "session_id": "S_001",
+    "conversation_id": "C_001"
+  }'
+```
+
 ## 日志与错误规范（当前阶段）
 
 - 日志输出统一格式：
@@ -66,4 +78,9 @@ curl -X POST "http://127.0.0.1:8000/chat" \\
 | `LOG_FORMAT` | 日志格式配置（当前仅配置入 `AppConfig`，尚未接入运行时） | `json` |
 | `LOG_API_PAYLOAD` | API payload 日志开关配置（当前仅配置入 `AppConfig`） | `true` |
 | `LOG_PROVIDER_PAYLOAD` | Provider payload 日志开关配置（当前仅配置入 `AppConfig`） | `true` |
+| `CONTEXT_MAX_TOKEN_BUDGET` | Context 选窗 token 预算 | `1200` |
+| `CONTEXT_TRUNCATION_TOKEN_BUDGET` | Context 截断 token 预算（<= max） | `900` |
+| `CONTEXT_SUMMARY_ENABLED` | 是否启用 deterministic summary | `true` |
+| `CONTEXT_SUMMARY_MAX_CHARS` | summary 文本最大字符数 | `320` |
+| `CONTEXT_FALLBACK_BEHAVIOR` | summary 超预算回退策略 | `summary_then_drop_oldest` |
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from app.api.schemas import ChatRequest
 from app.config import AppConfig, ProviderConfig
 from app.context.models import ContextMessage, ContextWindow
 from app.providers.base import BaseLLMProvider, ProviderNotImplementedError
@@ -60,12 +61,37 @@ class FakeContextManager:
         self.last_get_session_id = session_id
         return self._window
 
-    def append_user_message(self, session_id: str, content: str) -> ContextWindow:
+    def append_user_message(
+        self,
+        session_id: str,
+        content: str,
+        metadata: dict | None = None,
+    ) -> ContextWindow:
+        del metadata
         self.user_appends.append((session_id, content))
         return self._window
 
-    def append_assistant_message(self, session_id: str, content: str) -> ContextWindow:
+    def append_assistant_message(
+        self,
+        session_id: str,
+        content: str,
+        metadata: dict | None = None,
+    ) -> ContextWindow:
+        del metadata
         self.assistant_appends.append((session_id, content))
+        return self._window
+
+    def reset_session(self, session_id: str) -> ContextWindow:
+        self._window = ContextWindow(session_id=session_id, messages=[])
+        return self._window
+
+    def reset_conversation(
+        self,
+        session_id: str,
+        conversation_id: str | None = None,
+    ) -> ContextWindow:
+        del conversation_id
+        self._window = ContextWindow(session_id=session_id, messages=[])
         return self._window
 
 
@@ -204,11 +230,14 @@ class LLMServiceTests(unittest.TestCase):
         )
 
         response = service.chat_from_user_prompt(
-            user_prompt="new question",
-            session_id="session-1",
-            provider="openai",
-            temperature=0.2,
-            max_tokens=128,
+            ChatRequest(
+                user_prompt="new question",
+                session_id="session-1",
+                provider="openai",
+                temperature=0.2,
+                max_tokens=128,
+                stream=False,
+            )
         )
 
         self.assertEqual(response.provider, "openai")
@@ -239,11 +268,29 @@ class LLMServiceTests(unittest.TestCase):
         )
 
         response = service.chat_from_user_prompt(
-            user_prompt="stateless question",
-            provider="openai",
+            ChatRequest(
+                user_prompt="stateless question",
+                provider="openai",
+                stream=False,
+            )
         )
 
         self.assertEqual(response.provider, "openai")
         self.assertIsNone(fake_context_manager.last_get_session_id)
         self.assertEqual(fake_context_manager.user_appends, [])
         self.assertEqual(fake_context_manager.assistant_appends, [])
+
+    def test_reset_context_clears_session_window(self) -> None:
+        fake_context_manager = FakeContextManager()
+        service = LLMService(
+            config=self.config,
+            registry=self.registry,
+            prompt_service=PromptService(),
+            context_manager=fake_context_manager,
+        )
+
+        result = service.reset_context(session_id="session-1")
+
+        self.assertEqual(result["session_id"], "session-1")
+        self.assertEqual(result["scope"], "session")
+        self.assertEqual(result["remaining_message_count"], 0)

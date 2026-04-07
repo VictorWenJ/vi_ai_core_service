@@ -16,6 +16,11 @@ class ConfigTests(unittest.TestCase):
             "OPENAI_API_KEY": "openai-key",
             "DEEPSEEK_API_KEY": "deepseek-key",
             "DEEPSEEK_DEFAULT_MODEL": "deepseek-chat",
+            "CONTEXT_MAX_TOKEN_BUDGET": "1500",
+            "CONTEXT_TRUNCATION_TOKEN_BUDGET": "1200",
+            "CONTEXT_SUMMARY_ENABLED": "true",
+            "CONTEXT_SUMMARY_MAX_CHARS": "280",
+            "CONTEXT_FALLBACK_BEHAVIOR": "summary_then_drop_oldest",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -32,6 +37,10 @@ class ConfigTests(unittest.TestCase):
             config.get_provider_config("deepseek").default_model,
             "deepseek-chat",
         )
+        self.assertEqual(config.context.max_token_budget, 1500)
+        self.assertEqual(config.context.truncation_token_budget, 1200)
+        self.assertTrue(config.context.summary_enabled)
+        self.assertEqual(config.context.summary_max_chars, 280)
 
     def test_invalid_default_provider_raises(self) -> None:
         with patch.dict(os.environ, {"LLM_DEFAULT_PROVIDER": "unknown"}, clear=True):
@@ -40,6 +49,15 @@ class ConfigTests(unittest.TestCase):
 
     def test_invalid_timeout_raises(self) -> None:
         with patch.dict(os.environ, {"LLM_TIMEOUT_SECONDS": "abc"}, clear=True):
+            with self.assertRaises(ConfigError):
+                AppConfig.from_env(load_dotenv_file=False)
+
+    def test_invalid_context_budgets_raise(self) -> None:
+        env = {
+            "CONTEXT_MAX_TOKEN_BUDGET": "100",
+            "CONTEXT_TRUNCATION_TOKEN_BUDGET": "200",
+        }
+        with patch.dict(os.environ, env, clear=True):
             with self.assertRaises(ConfigError):
                 AppConfig.from_env(load_dotenv_file=False)
 

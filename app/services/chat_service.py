@@ -134,12 +134,51 @@ class ChatService:
 
     def append_message(self, llm_request:LLMRequest, chat_request:ChatRequest, llm_response:LLMResponse):
         if llm_request.session_id:
-            self._context_manager.append_user_message(llm_request.session_id, chat_request.user_prompt)
+            context_metadata = {
+                "conversation_id": llm_request.conversation_id,
+                "request_id": llm_request.request_id,
+                "provider": llm_response.provider,
+                "model": llm_response.model,
+            }
+            self._context_manager.append_user_message(
+                llm_request.session_id,
+                chat_request.user_prompt,
+                metadata=context_metadata,
+            )
             self._context_manager.append_assistant_message(
                 llm_request.session_id,
                 llm_response.content,
+                metadata=context_metadata,
             )
         log_report("ChatService.append_message.context_manager", self._context_manager)
+
+    def reset_context(
+            self,
+            *,
+            session_id: str,
+            conversation_id: str | None = None,
+    ) -> dict[str, Any]:
+        normalized_session_id = (session_id or "").strip()
+        if not normalized_session_id:
+            raise ServiceValidationError("session_id is required for reset.")
+
+        normalized_conversation_id = (conversation_id or "").strip() or None
+        if normalized_conversation_id is None:
+            window = self._context_manager.reset_session(normalized_session_id)
+        else:
+            window = self._context_manager.reset_conversation(
+                session_id=normalized_session_id,
+                conversation_id=normalized_conversation_id,
+            )
+
+        result = {
+            "session_id": normalized_session_id,
+            "conversation_id": normalized_conversation_id,
+            "remaining_message_count": window.message_count,
+            "scope": "conversation" if normalized_conversation_id else "session",
+        }
+        log_report("ChatService.reset_context", result)
+        return result
 
 
 def _log_service_exception(

@@ -1,6 +1,6 @@
 ﻿# app/api/AGENTS.md
 
-> 更新日期：2026-04-06
+> 更新日期：2026-04-07
 
 
 ## 1. 文档定位
@@ -29,6 +29,7 @@
 当前目录下已有文件：
 
 - `chat.py`：聊天路由入口（薄路由）
+  - 当前包含 `/chat` 与 `/chat/reset`
 - `health.py`：健康检查相关接口
 - `schemas/chat.py`：chat 请求/响应 schema
 - `deps.py`：路由依赖装配
@@ -188,6 +189,7 @@ API 层应保持简单，以便：
   - HTTP API 是唯一调用入口（不含 CLI 直调）
   - `/health` 基础健康检查
   - `/chat` 单轮非流式调用
+  - `/chat/reset` 会话重置入口（通过 service->context manager 执行）
   - 基础输入校验与状态码映射
 - 本阶段仅预留，不要求落地：
   - streaming 接口真实实现

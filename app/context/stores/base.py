@@ -21,6 +21,14 @@ class BaseContextStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def reset_conversation(
+        self,
+        session_id: str,
+        conversation_id: str | None = None,
+    ) -> ContextWindow:
+        raise NotImplementedError
+
+    @abstractmethod
     def replace_messages(
         self,
         session_id: str,

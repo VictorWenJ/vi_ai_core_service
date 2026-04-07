@@ -25,6 +25,23 @@ class InMemoryContextStore(BaseContextStore):
         window.messages.clear()
         return window
 
+    def reset_conversation(
+        self,
+        session_id: str,
+        conversation_id: str | None = None,
+    ) -> ContextWindow:
+        window = self._windows.setdefault(session_id, ContextWindow(session_id=session_id))
+        if conversation_id is None:
+            window.messages.clear()
+            return window
+
+        window.messages = [
+            message
+            for message in window.messages
+            if message.metadata.get("conversation_id") != conversation_id
+        ]
+        return window
+
     def replace_messages(
         self,
         session_id: str,

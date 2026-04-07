@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.context.models import ContextTruncationResult
+from app.context.models import ContextSummaryResult
 from app.context.policies.base import HistorySerializationPolicy
 
 
@@ -11,11 +11,11 @@ class DefaultHistorySerializationPolicy(HistorySerializationPolicy):
 
     name = "serialization.default_history"
 
-    def serialize(self, truncation_result: ContextTruncationResult) -> list[dict[str, str]]:
+    def serialize(self, summary_result: ContextSummaryResult) -> list[dict[str, str]]:
         return [
             {
                 "role": message.role,
                 "content": message.content,
             }
-            for message in truncation_result.messages
+            for message in summary_result.messages
         ]

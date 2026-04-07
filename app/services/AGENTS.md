@@ -98,7 +98,7 @@
   - 协调 context/prompt/provider 主链路
 - `request_assembler.py`
   - 承载请求装配与规范化（参数、上下文历史、metadata）
-  - 是 Context Engineering Phase 1 的正式上下文装配入口
+  - 是 Context Engineering Phase 2 的正式上下文装配入口（token-aware selection/truncation/summary pipeline）
 - `llm_service.py`
   - 向后兼容导出 `LLMService`，避免上层导入路径漂移
 - `prompt_service.py`
@@ -183,14 +183,14 @@ service 的输入输出应尽量稳定、明确，便于：
   - service-facing error 向 API 层传播
 - 本阶段正在增强并要求边界正确：
   - `request_assembler.py` 的上下文装配中枢职责
-  - history selection / truncation / serialization pipeline
-  - 对 stateful session history 的最近 N 条消息治理
+  - token-aware history selection / truncation / summary / serialization pipeline
+  - stateful session history 的 budget-aware 治理与 reset 流程
 - 本阶段仅预留，不要求落地：
   - streaming 编排
   - 多模态编排
   - tools/function calling 编排
   - structured output 编排
-  - persistence / summary / semantic recall / RAG 编排
+  - persistence / advanced summary memory / semantic recall / RAG 编排
 
 ---
 
@@ -276,9 +276,10 @@ service 的输入输出应尽量稳定、明确，便于：
 4. 参数异常传播路径
 5. 上下文参与编排时的行为断言
 6. 不同 provider 下的编排一致性
-7. request assembly 中最近 N 条消息 history 选择行为
-8. 截断占位与 metadata trace 行为
+7. request assembly 中 token-aware history 选择行为
+8. token-aware 截断与 summary 行为、metadata trace 行为
 9. response 后 context 回写行为
+10. reset session/conversation 编排行为
 
 ---
 
@@ -300,7 +301,7 @@ service 的输入输出应尽量稳定、明确，便于：
 
 `app/services/` 是系统的业务主链路编排层，负责 **组织流程**，不负责替代底层能力模块本身。
 
-在 Context Engineering Phase 1 中，`request_assembler.py` 是上下文装配中枢，`chat_service.py` 继续只承担用例级主流程编排职责。
+在 Context Engineering Phase 2 中，`request_assembler.py` 是上下文装配中枢，`chat_service.py` 继续只承担用例级主流程编排与 reset 调度职责。
 
 ---
 

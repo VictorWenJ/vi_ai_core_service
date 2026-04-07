@@ -83,7 +83,7 @@
   - 多模态真实落地
   - tools/function calling 真正实现
   - structured output 真正实现
-  - context persistence / summary / compaction
+  - context persistence / advanced summary memory / long-term compaction
   - prompt orchestration engine
   - 新 provider 的完整接入
 

@@ -306,7 +306,7 @@
   - 多模态真实链路
   - tools/function calling 真正执行链路
   - structured output 真正能力
-  - context persistence/summary/compaction
+  - context persistence / advanced summary memory / long-term compaction
   - 新 provider 的完整落地
 
 #### 当前阶段能力增强（Context Engineering Phase 2）

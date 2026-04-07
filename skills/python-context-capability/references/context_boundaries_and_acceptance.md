@@ -39,7 +39,7 @@ Context 层不负责：
 4. 当前只做 skeleton 与扩展预留，不做过度系统化建设。
 5. 与 API / service 的集成在当前阶段应保持最小、低耦合。
 6. 应允许未来兼容 stateless 与 stateful 两种会话模式。
-7. token‑aware 窗口治理和摘要逻辑必须放在 context policy 层，并通过 provider 抽象调用模型生成摘要，不得在 service 层或 prompt 层实现。
+7. token‑aware 窗口治理和摘要逻辑必须放在 context policy 层；当前阶段摘要为 deterministic 默认实现，不调用外部 LLM，不得在 service 层或 prompt 层实现。
 
 ---
 

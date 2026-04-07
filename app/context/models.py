@@ -33,7 +33,11 @@ class ContextSelectionResult:
 
     session_id: str
     source_message_count: int
+    source_token_count: int
+    token_budget: int
     selected_messages: list[ContextMessage] = field(default_factory=list)
+    dropped_messages: list[ContextMessage] = field(default_factory=list)
+    selected_token_count: int = 0
     selection_policy: str = "unknown"
 
     @property
@@ -51,8 +55,13 @@ class ContextTruncationResult:
 
     session_id: str
     source_message_count: int
+    source_token_count: int
     input_message_count: int
+    input_token_count: int
+    token_budget: int
     messages: list[ContextMessage] = field(default_factory=list)
+    dropped_messages: list[ContextMessage] = field(default_factory=list)
+    final_token_count: int = 0
     truncation_policy: str = "unknown"
 
     @property
@@ -62,3 +71,28 @@ class ContextTruncationResult:
     @property
     def truncated_message_count(self) -> int:
         return max(self.input_message_count - self.final_message_count, 0)
+
+    @property
+    def truncation_applied(self) -> bool:
+        return self.truncated_message_count > 0 or self.input_token_count > self.token_budget
+
+
+@dataclass
+class ContextSummaryResult:
+    """Output of summary/compaction policy before serialization."""
+
+    session_id: str
+    source_message_count: int
+    source_token_count: int
+    input_message_count: int
+    input_token_count: int
+    token_budget: int
+    messages: list[ContextMessage] = field(default_factory=list)
+    summary_policy: str = "summary.noop"
+    summary_applied: bool = False
+    summary_text: str | None = None
+    final_token_count: int = 0
+
+    @property
+    def final_message_count(self) -> int:
+        return len(self.messages)

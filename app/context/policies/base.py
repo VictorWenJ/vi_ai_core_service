@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 from app.context.models import (
     ContextSelectionResult,
+    ContextSummaryResult,
     ContextTruncationResult,
     ContextWindow,
 )
@@ -31,11 +32,27 @@ class TruncationPolicy(ABC):
         raise NotImplementedError
 
 
+class SummaryPolicy(ABC):
+    """Optionally compacts dropped history into a deterministic summary."""
+
+    name: str = "summary.base"
+
+    @abstractmethod
+    def summarize(
+        self,
+        *,
+        window: ContextWindow,
+        selection_result: ContextSelectionResult,
+        truncation_result: ContextTruncationResult,
+    ) -> ContextSummaryResult:
+        raise NotImplementedError
+
+
 class HistorySerializationPolicy(ABC):
     """Serializes provider-agnostic history messages for request assembly."""
 
     name: str = "serialization.base"
 
     @abstractmethod
-    def serialize(self, truncation_result: ContextTruncationResult) -> list[dict[str, str]]:
+    def serialize(self, summary_result: ContextSummaryResult) -> list[dict[str, str]]:
         raise NotImplementedError

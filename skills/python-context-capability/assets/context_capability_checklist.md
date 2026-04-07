@@ -57,7 +57,8 @@
 
 在 Context Engineering Phase 2 中，需要额外检查以下事项：
 
-- 是否新增 `token_aware_window_selection.py` 和 `token_aware_truncation.py` 策略文件；
+- 是否在 `window_selection.py` 中实现 `TokenAwareWindowSelectionPolicy`；
+- 是否在 `truncation.py` 中实现 `TokenAwareTruncationPolicy`；
 - 是否新增 `summary.py` 策略文件；
 - `ContextPolicyPipeline` 是否按顺序组合 token‑aware window selection → token‑aware truncation → summary/compaction → serialization；
 - 是否在 `ContextManager`/`manager.py` 中新增 `reset_session`/`clear_session` 方法，并由上层正确调用；

@@ -1,6 +1,17 @@
 """API schema exports."""
 
-from app.api.schemas.chat import ChatRequest, ChatResponse, ChatUsage
+from app.api.schemas.chat import (
+    ChatRequest,
+    ChatResetRequest,
+    ChatResetResponse,
+    ChatResponse,
+    ChatUsage,
+)
 
-__all__ = ["ChatRequest", "ChatResponse", "ChatUsage"]
-
+__all__ = [
+    "ChatRequest",
+    "ChatResponse",
+    "ChatUsage",
+    "ChatResetRequest",
+    "ChatResetResponse",
+]

@@ -33,7 +33,8 @@ class ChatRequestAssembler:
         self._config = config
         self._prompt_service = prompt_service
         self._context_policy_pipeline = (
-                context_policy_pipeline or build_default_context_policy_pipeline()
+                context_policy_pipeline
+                or build_default_context_policy_pipeline(config.context)
         )
 
     def assemble_from_user_prompt(self, request: ChatRequest, context_manager: ContextManager) -> LLMRequest:
@@ -48,10 +49,7 @@ class ChatRequestAssembler:
                         normalized_request_id=normalized_request_id,
                         use_server_history=use_server_history))
 
-        context_window = ContextWindow(
-            session_id=normalized_session_id or "",
-            messages=[],
-        )
+        context_window = ContextWindow(session_id=normalized_session_id or "", messages=[])
         if use_server_history:
             context_window = context_manager.get_context(normalized_session_id or "")
         log_report("ChatRequestAssembler.assemble_from_user_prompt.context_window", context_window)
@@ -83,6 +81,7 @@ class ChatRequestAssembler:
             request_metadata["session_id"] = normalized_session_id
         context_trace = build_context_assembly_trace(
             use_server_history=use_server_history,
+            session_id=normalized_session_id,
             policy_result=policy_result,
         )
         request_metadata["context_assembly"] = context_trace
@@ -153,19 +152,35 @@ def normalize_optional_text(value: str | None) -> str | None:
 def build_context_assembly_trace(
         *,
         use_server_history: bool,
+        session_id: str | None,
         policy_result: ContextPolicyExecutionResult,
 ) -> dict[str, Any]:
     selection = policy_result.selection
     truncation = policy_result.truncation
+    summary = policy_result.summary
     serialized_count = len(policy_result.serialized_messages)
+    dropped_message_count = (
+        selection.dropped_message_count + truncation.truncated_message_count
+    )
     return {
         "enabled": use_server_history,
+        "session_id": session_id,
+        "total_messages_before_selection": selection.source_message_count,
         "raw_message_count": selection.source_message_count,
         "selected_message_count": selection.selected_message_count,
-        "dropped_message_count": selection.dropped_message_count,
+        "dropped_message_count": dropped_message_count,
+        "selection_dropped_message_count": selection.dropped_message_count,
         "truncated_message_count": truncation.truncated_message_count,
-        "serialized_message_count": serialized_count,
+        "token_budget": selection.token_budget,
+        "selected_token_count": selection.selected_token_count,
+        "truncation_token_budget": truncation.token_budget,
+        "final_token_count_after_truncation": truncation.final_token_count,
+        "final_token_count_after_summary": summary.final_token_count,
+        "truncation_applied": truncation.truncation_applied,
+        "summary_applied": summary.summary_applied,
         "selection_policy": selection.selection_policy,
         "truncation_policy": truncation.truncation_policy,
+        "summary_policy": summary.summary_policy,
         "serialization_policy": policy_result.serialization_policy,
+        "serialized_message_count": serialized_count,
     }

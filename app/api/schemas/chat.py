@@ -48,3 +48,18 @@ class ChatResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     raw_response: dict[str, Any] | None = None
 
+
+class ChatResetRequest(BaseModel):
+    session_id: str = Field(min_length=1, description="Target session id to reset.")
+    conversation_id: str | None = Field(
+        default=None,
+        description="Optional conversation id; when absent reset whole session window.",
+    )
+
+
+class ChatResetResponse(BaseModel):
+    reset: bool = True
+    session_id: str
+    conversation_id: str | None = None
+    remaining_message_count: int
+    scope: str
