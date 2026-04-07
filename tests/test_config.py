@@ -16,11 +16,6 @@ class ConfigTests(unittest.TestCase):
             "OPENAI_API_KEY": "openai-key",
             "DEEPSEEK_API_KEY": "deepseek-key",
             "DEEPSEEK_DEFAULT_MODEL": "deepseek-chat",
-            "LOG_ENABLED": "true",
-            "LOG_LEVEL": "INFO",
-            "LOG_FORMAT": "json",
-            "LOG_API_PAYLOAD": "false",
-            "LOG_PROVIDER_PAYLOAD": "true",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -37,11 +32,6 @@ class ConfigTests(unittest.TestCase):
             config.get_provider_config("deepseek").default_model,
             "deepseek-chat",
         )
-        self.assertTrue(config.observability.log_enabled)
-        self.assertEqual(config.observability.log_level, "INFO")
-        self.assertEqual(config.observability.log_format, "json")
-        self.assertFalse(config.observability.log_api_payload)
-        self.assertTrue(config.observability.log_provider_payload)
 
     def test_invalid_default_provider_raises(self) -> None:
         with patch.dict(os.environ, {"LLM_DEFAULT_PROVIDER": "unknown"}, clear=True):
@@ -50,16 +40,6 @@ class ConfigTests(unittest.TestCase):
 
     def test_invalid_timeout_raises(self) -> None:
         with patch.dict(os.environ, {"LLM_TIMEOUT_SECONDS": "abc"}, clear=True):
-            with self.assertRaises(ConfigError):
-                AppConfig.from_env(load_dotenv_file=False)
-
-    def test_invalid_log_format_raises(self) -> None:
-        with patch.dict(os.environ, {"LOG_FORMAT": "text"}, clear=True):
-            with self.assertRaises(ConfigError):
-                AppConfig.from_env(load_dotenv_file=False)
-
-    def test_invalid_log_enabled_value_raises(self) -> None:
-        with patch.dict(os.environ, {"LOG_ENABLED": "maybe"}, clear=True):
             with self.assertRaises(ConfigError):
                 AppConfig.from_env(load_dotenv_file=False)
 

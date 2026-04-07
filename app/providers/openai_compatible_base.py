@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from time import perf_counter
+import traceback
 from typing import Any
 
 from app.config import ProviderConfig
-from app.observability.events import log_provider_request, log_provider_response
-from app.observability.exception_logging import log_exception
-from app.observability.logging_setup import get_logger
+from app.observability.log_until import log_report
 from app.providers.base import (
     BaseLLMProvider,
     ProviderConfigurationError,
@@ -21,8 +20,6 @@ try:
     from openai import OpenAI
 except ImportError:  # pragma: no cover - handled at runtime if dependency is missing
     OpenAI = None
-
-_provider_logger = get_logger("providers.openai_compatible")
 
 
 class OpenAICompatibleBaseProvider(BaseLLMProvider):
@@ -38,83 +35,52 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
         super().__init__(provider_config)
         self._client = client or self._build_client()
 
-    def chat(self, request: LLMRequest) -> LLMResponse:
-        self.ensure_non_streaming(request)
+    def chat(self, llm_request: LLMRequest) -> LLMResponse:
+        self.ensure_non_streaming(llm_request)
 
-        if not request.model:
+        if not llm_request.model:
             raise ProviderConfigurationError(
                 f"Provider '{self.provider_name}' requires a model."
             )
 
-        payload = {
-            "model": request.model,
-            "messages": self._to_vendor_messages(request),
+        llm_payload = {
+            "model": llm_request.model,
+            "messages": self._to_vendor_messages(llm_request),
             "stream": False,
+            "temperature": 0.6,
+            "max_tokens": 1000,
         }
-        if request.temperature is not None:
-            payload["temperature"] = request.temperature
-        if request.max_tokens is not None:
-            payload["max_tokens"] = request.max_tokens
+        if llm_request.temperature is not None:
+            llm_payload["temperature"] = llm_request.temperature
+        if llm_request.max_tokens is not None:
+            llm_payload["max_tokens"] = llm_request.max_tokens
 
-        log_provider_request(
-            provider=self.provider_name,
-            model=request.model,
-            endpoint=self.provider_config.base_url,
-            stream=False,
-            message_count=len(request.messages),
-            has_attachments=bool(request.attachments),
-            has_tools=bool(request.tools),
-            has_response_format=bool(request.response_format),
-            timeout_seconds=self.provider_config.timeout_seconds,
-            request_payload=payload,
-        )
+        log_report("OpenAICompatibleBaseProvider.chat.llm_payload", llm_payload)
 
         started_at = perf_counter()
         try:
-            vendor_response = self._client.chat.completions.create(**payload)
+            llm_vendor_response = self._client.chat.completions.create(**llm_payload)
+            log_report("OpenAICompatibleBaseProvider.chat.llm_vendor_response", llm_vendor_response)
         except Exception as exc:  # pragma: no cover - depends on vendor runtime
-            log_exception(
-                exc,
-                event="provider.request.error",
-                message=f"Provider '{self.provider_name}' request failed.",
-                logger=_provider_logger,
-                provider=self.provider_name,
-                model=request.model,
-                endpoint=self.provider_config.base_url,
-                latency_ms=round((perf_counter() - started_at) * 1000, 2),
-                error_type=type(exc).__name__,
+            log_report(
+                "provider.request.error",
+                {
+                    "provider": self.provider_name,
+                    "model": llm_request.model,
+                    "endpoint": self.provider_config.base_url,
+                    "latency_ms": round((perf_counter() - started_at) * 1000, 2),
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                    "traceback": "".join(
+                        traceback.format_exception(type(exc), exc, exc.__traceback__)
+                    ),
+                },
             )
             raise ProviderInvocationError(
                 f"Provider '{self.provider_name}' request failed: {exc}"
             ) from exc
 
-        response = self._to_response(vendor_response)
-        response_payload = {
-            "content": response.content,
-            "provider": response.provider,
-            "model": response.model,
-            "finish_reason": response.finish_reason,
-            "usage": (
-                {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens,
-                }
-                if response.usage
-                else None
-            ),
-            "metadata": response.metadata,
-            "raw_response": response.raw_response,
-        }
-        log_provider_response(
-            provider=self.provider_name,
-            model=response.model,
-            finish_reason=response.finish_reason,
-            usage=response.usage,
-            latency_ms=(perf_counter() - started_at) * 1000,
-            success=True,
-            response_payload=response_payload,
-        )
+        response = self._to_response(llm_vendor_response)
         return response
 
     def _build_client(self):

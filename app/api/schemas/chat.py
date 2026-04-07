@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):
-    prompt: str = Field(min_length=1, description="Single-turn user prompt.")
+    user_prompt: str = Field(min_length=1, description="Single-turn user prompt.")
     provider: str | None = Field(default=None, description="Optional provider override.")
     model: str | None = Field(default=None, description="Optional model override.")
     temperature: float | None = Field(
@@ -22,7 +22,7 @@ class ChatRequest(BaseModel):
         gt=0,
         description="Optional max tokens override.",
     )
-    system: str | None = Field(default=None, description="Optional system prompt.")
+    system_prompt: str | None = Field(default=None, description="Optional system prompt.")
     stream: bool = Field(default=False, description="Streaming response toggle (reserved).")
     session_id: str | None = Field(default=None, description="Optional stateful session id.")
     conversation_id: str | None = Field(

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+from app.api.schemas import ChatRequest
 from app.config import AppConfig
 from app.context.manager import ContextManager
 from app.context.models import ContextWindow
@@ -13,6 +14,7 @@ from app.context.policies.context_policy import (
     ContextPolicyPipeline,
 )
 from app.context.policies.defaults import build_default_context_policy_pipeline
+from app.observability.log_until import log_report
 from app.providers.registry import ProviderRegistry
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.services.errors import ServiceNotImplementedError, ServiceValidationError
@@ -23,37 +25,28 @@ class ChatRequestAssembler:
     """Assemble chat requests from API inputs and normalize canonical requests."""
 
     def __init__(
-        self,
-        config: AppConfig,
-        prompt_service: PromptService,
-        context_policy_pipeline: ContextPolicyPipeline | None = None,
+            self,
+            config: AppConfig,
+            prompt_service: PromptService,
+            context_policy_pipeline: ContextPolicyPipeline | None = None,
     ) -> None:
         self._config = config
         self._prompt_service = prompt_service
         self._context_policy_pipeline = (
-            context_policy_pipeline or build_default_context_policy_pipeline()
+                context_policy_pipeline or build_default_context_policy_pipeline()
         )
 
-    def assemble_from_user_prompt(
-        self,
-        *,
-        user_prompt: str,
-        provider: str | None,
-        model: str | None,
-        temperature: float | None,
-        max_tokens: int | None,
-        system_prompt: str | None,
-        stream: bool,
-        session_id: str | None,
-        conversation_id: str | None,
-        request_id: str | None,
-        metadata: dict[str, Any] | None,
-        context_manager: ContextManager,
-    ) -> tuple[LLMRequest, str | None]:
-        normalized_session_id = normalize_optional_text(session_id)
-        normalized_conversation_id = normalize_optional_text(conversation_id)
-        normalized_request_id = normalize_optional_text(request_id)
+    def assemble_from_user_prompt(self, request: ChatRequest, context_manager: ContextManager) -> LLMRequest:
+        normalized_session_id = normalize_optional_text(request.session_id)
+        normalized_conversation_id = normalize_optional_text(request.conversation_id)
+        normalized_request_id = normalize_optional_text(request.request_id)
         use_server_history = bool(normalized_session_id)
+
+        log_report("ChatRequestAssembler.assemble_from_user_prompt.normalized_data",
+                   dict(normalized_session_id=normalized_session_id,
+                        normalized_conversation_id=normalized_conversation_id,
+                        normalized_request_id=normalized_request_id,
+                        use_server_history=use_server_history))
 
         context_window = ContextWindow(
             session_id=normalized_session_id or "",
@@ -61,24 +54,27 @@ class ChatRequestAssembler:
         )
         if use_server_history:
             context_window = context_manager.get_context(normalized_session_id or "")
+        log_report("ChatRequestAssembler.assemble_from_user_prompt.context_window", context_window)
 
         policy_result = self._context_policy_pipeline.run(context_window)
+        log_report("ChatRequestAssembler.assemble_from_user_prompt.policy_result", policy_result)
+
         history_messages = [
             LLMMessage(role=message["role"], content=message["content"])
             for message in policy_result.serialized_messages
         ]
 
-        resolved_system_prompt = system_prompt
+        resolved_system_prompt = request.system_prompt
         if resolved_system_prompt is None:
             resolved_system_prompt = self._prompt_service.get_default_system_prompt()
 
         assembled_messages = self._prompt_service.build_messages(
             system_prompt=resolved_system_prompt,
-            user_prompt=user_prompt,
+            user_prompt=request.user_prompt,
             messages=history_messages,
         )
 
-        request_metadata = dict(metadata or {})
+        request_metadata = dict(request.metadata or {})
         if normalized_conversation_id:
             request_metadata["conversation_id"] = normalized_conversation_id
         if normalized_request_id:
@@ -90,34 +86,32 @@ class ChatRequestAssembler:
             policy_result=policy_result,
         )
         request_metadata["context_assembly"] = context_trace
-        # Backward-compatible key consumed by current service logging.
         request_metadata["used_context_history"] = context_trace
 
-        return (
-            LLMRequest(
-                provider=provider,
-                model=model,
-                messages=assembled_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=stream,
-                session_id=normalized_session_id,
-                conversation_id=normalized_conversation_id,
-                request_id=normalized_request_id,
-                metadata=request_metadata,
-            ),
-            normalized_session_id,
+        return LLMRequest(
+            provider=request.provider,
+            model=request.model,
+            messages=assembled_messages,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            stream=request.stream,
+            session_id=normalized_session_id,
+            conversation_id=normalized_conversation_id,
+            request_id=normalized_request_id,
+            metadata=request_metadata,
         )
 
     def normalize_request(
-        self,
-        request: LLMRequest,
-        *,
-        registry: ProviderRegistry,
+            self,
+            llm_request: LLMRequest,
+            *,
+            provider_registry: ProviderRegistry,
     ) -> LLMRequest:
-        provider_name = request.provider or self._config.default_provider
-        provider_config = registry.get_provider_config(provider_name)
-        model_name = request.model or provider_config.default_model
+
+
+        provider_name = llm_request.provider or self._config.default_provider
+        provider_config = provider_registry.get_provider_config(provider_name)
+        model_name = llm_request.model or provider_config.default_model
 
         if not model_name:
             env_var_name = f"{provider_name.upper()}_DEFAULT_MODEL"
@@ -126,15 +120,15 @@ class ChatRequestAssembler:
                 f"Provide it in the request or configure {env_var_name}."
             )
 
-        if request.stream:
+        if llm_request.stream:
             raise ServiceNotImplementedError(
                 "Streaming is intentionally out of scope for this Phase 1 implementation."
             )
 
-        normalized_messages = list(request.messages)
-        if request.system_prompt:
+        normalized_messages = list(llm_request.messages)
+        if llm_request.system_prompt:
             normalized_messages = self._prompt_service.build_messages(
-                system_prompt=request.system_prompt,
+                system_prompt=llm_request.system_prompt,
                 messages=normalized_messages,
             )
 
@@ -142,7 +136,7 @@ class ChatRequestAssembler:
             raise ServiceValidationError("At least one message is required.")
 
         return replace(
-            request,
+            llm_request,
             provider=provider_name,
             model=model_name,
             messages=normalized_messages,
@@ -157,9 +151,9 @@ def normalize_optional_text(value: str | None) -> str | None:
 
 
 def build_context_assembly_trace(
-    *,
-    use_server_history: bool,
-    policy_result: ContextPolicyExecutionResult,
+        *,
+        use_server_history: bool,
+        policy_result: ContextPolicyExecutionResult,
 ) -> dict[str, Any]:
     selection = policy_result.selection
     truncation = policy_result.truncation

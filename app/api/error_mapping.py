@@ -3,21 +3,18 @@
 from __future__ import annotations
 
 from time import perf_counter
+import traceback
 
 from fastapi import HTTPException
 
 from app.api.schemas.chat import ChatRequest
-from app.observability.events import log_api_response
-from app.observability.exception_logging import log_exception
-from app.observability.logging_setup import get_logger
+from app.observability.log_until import log_report
 from app.services.errors import (
     ServiceConfigurationError,
     ServiceDependencyError,
     ServiceNotImplementedError,
     ServiceValidationError,
 )
-
-_api_logger = get_logger("api.chat")
 
 
 def build_chat_http_exception(
@@ -27,21 +24,34 @@ def build_chat_http_exception(
     started_at: float,
 ) -> HTTPException:
     status_code = _resolve_status_code(exc)
-    log_api_response(
-        route="/chat",
-        status_code=status_code,
-        latency_ms=(perf_counter() - started_at) * 1000,
-        stream=request.stream,
-        provider=request.provider,
-        model=request.model,
+    latency_ms = round((perf_counter() - started_at) * 1000, 2)
+    log_report(
+        "api.chat.error_response",
+        {
+            "status_code": status_code,
+            "latency_ms": latency_ms,
+            "stream": request.stream,
+            "provider": request.provider,
+            "model": request.model,
+            "error_type": type(exc).__name__,
+        },
     )
 
     if status_code == 500:
-        log_exception(
-            exc,
-            event="api.chat.error",
-            message="Unhandled exception in /chat handler.",
-            logger=_api_logger,
+        log_report(
+            "api.chat.error",
+            {
+                "status_code": 500,
+                "latency_ms": latency_ms,
+                "stream": request.stream,
+                "provider": request.provider,
+                "model": request.model,
+                "error_type": type(exc).__name__,
+                "error_message": str(exc),
+                "traceback": "".join(
+                    traceback.format_exception(type(exc), exc, exc.__traceback__)
+                ),
+            },
         )
         return HTTPException(status_code=500, detail="Internal server error.")
 
@@ -56,4 +66,3 @@ def _resolve_status_code(exc: Exception) -> int:
     if isinstance(exc, ServiceDependencyError):
         return 502
     return 500
-
