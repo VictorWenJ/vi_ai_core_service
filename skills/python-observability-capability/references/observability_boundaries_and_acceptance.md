@@ -1,115 +1,71 @@
-﻿# Observability 层边界与验收标准
+# Observability 边界与验收标准
 
-> 更新日期：2026-04-06
+> 更新日期：2026-04-07
 
+## 一、当前代码事实
 
-## 一、边界定义
+当前仓库 observability 最小实现为：
 
-### Observability 层负责什么
+- `app/observability/log_until.py`
+- `app/observability/__init__.py`（仅导出 `log_report`）
 
-Observability 层负责：
+核心能力：
 
-- 统一 logging 初始化
-- 统一控制台前缀格式：`<time> <level> [<thread>] <logger> <file>:<line> event=<event>`
-- 统一业务日志体格式：`message=<json>`
-- 统一 request context 字段贯穿规则
-- 统一 exception logging 规则
-- API / services / providers 关键边界日志支持
-
-### Observability 层不负责什么
-
-Observability 层不负责：
-
-- 业务流程编排
-- provider 接入实现
-- prompt 管理
-- context 存储
-- tracing/metrics/alerting/APM 平台建设（当前阶段）
-- 万能工具层职责承接
+1. 统一日志上报函数 `log_report(event, message)`
+2. 统一输出格式（前缀 + `message=<json>`）
+3. 通用对象 JSON 化
 
 ---
 
-## 二、必须遵守的原则
+## 二、边界定义
 
-1. 使用 Python 标准库 `logging`。
-2. 日志格式统一为“系统前缀 + `message=<json>`”。
-3. 日志行为由 `.env` true/false 开关控制。
-4. request context 字段必须可贯穿关键链路日志。
-5. exception logging 要保留定位信息与 traceback，并禁止输出凭据字段。
-6. observability 是横切基础设施，不得反向依赖业务实现。
-7. 当前阶段只做最小基础设施，不做 tracing/metrics/alerting 平台化建设。
+### 当前负责
 
----
+1. 日志输出格式统一
+2. 日志调用入口统一
+3. 日志可定位性（文件与行号）
 
-## 三、典型反模式
+### 当前不负责
 
-### 反模式 1：到处 `print`
-
-问题：
-
-- 结构化与可检索性差
-- 无统一格式与等级语义
-- 无法稳定做日志治理
-
-### 反模式 2：输出凭据字段（API key/Authorization）
-
-问题：
-
-- 直接造成高风险凭据泄露
-- 安全审计不可接受
-- 可能导致外部依赖被滥用
-
-### 反模式 3：把 observability 做成万能工具层
-
-问题：
-
-- 边界失真
-- 杂项逻辑堆积
-- 长期维护成本高
-
-### 反模式 4：当前阶段提前引入 tracing/metrics/alerting 平台
-
-问题：
-
-- 与阶段目标不匹配
-- 架构复杂度提前膨胀
-- 交付收益与成本失衡
-
-### 反模式 5：全局万能错误包吞并所有错误语义
-
-问题：
-
-- 错误定位语义丢失
-- 分层错误边界被破坏
-- 上层难以做正确状态码与策略映射
-
-### 反模式 6：系统信息与业务信息混写
-
-问题：
-
-- 业务 JSON 与系统字段边界不清
-- 检索与聚合成本高
-- 输出规范不稳定
+1. request context 贯穿
+2. middleware 自动日志
+3. `.env` 运行时日志开关接入
+4. tracing/metrics/alerting/APM 平台
 
 ---
 
-## 四、验收标准
+## 三、必须遵守的原则
 
-一个合格的 observability 基础设施改动，应满足：
-
-- 目录落位正确
-- logging/JSON/.env 开关规则清晰
-- 日志前缀固定且包含 `<file>:<line>`
-- `message=<json>` 仅承载业务信息
-- `method/path` 等系统信息不进入业务 JSON
-- request context 贯穿规则清晰
-- startup/API/service/provider/exception 边界日志策略清晰
-- 业务 payload 输出受 `.env` 开关控制，且凭据字段严格禁止输出
-- 未引入当前阶段不允许的平台化能力
-- 文档、模块规则、skill 规则一致
+1. 使用标准库 `logging`。
+2. 前缀字段与业务 JSON 分离。
+3. 系统信息在前缀，不写入业务 JSON。
+4. 禁止输出凭据字段。
+5. 不将 observability 做成万能工具层。
 
 ---
 
-## 五、一句话总结
+## 四、典型反模式
 
-Observability 在本项目中是横切基础设施层，目标是以标准库 `logging` + 稳定前缀 + `message=<json>` + request context 贯穿为核心，提供可审查、可追踪、可控风险的最小可观测性能力，而不是在当前阶段构建重型观测平台。
+1. 到处 `print`，不走统一 `log_report`
+2. 业务 JSON 里混入系统字段（method/path/thread 等）
+3. 输出 API key/Authorization
+4. 文档宣称开关已生效，但代码未接入
+5. 当前阶段提前引入 tracing/metrics/alerting 平台
+
+---
+
+## 五、验收标准
+
+一个合格改动至少满足：
+
+1. 目录与职责落位正确
+2. 日志格式保持稳定
+3. `message=<json>` 可解析且业务字段清晰
+4. `<file>:<line>` 可定位
+5. 文档与代码事实一致
+
+---
+
+## 六、一句话总结
+
+当前 observability 的核心是“统一日志上报与输出格式”，不是“构建观测平台”。

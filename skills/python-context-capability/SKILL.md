@@ -1,7 +1,7 @@
 ﻿---
 name: python-context-capability
 description: 用于为 vi_ai_core_service 搭建和标准化面向 C 端 AI 应用的上下文管理层骨架。重点关注 session 级短期记忆、conversation state、消息历史、多模态消息结构、store 抽象、in-memory 实现、manager 入口，以及为未来压缩/摘要/持久化策略预留扩展点。
-last_updated: 2026-04-06
+last_updated: 2026-04-07
 ---
 
 # Purpose
@@ -297,7 +297,7 @@ context skeleton 的实现应尽量可预测、可单测、可推断。
 - 对 stateful / stateless 会话模式有清晰思路或预留
 - 对 compaction / summary / token budget 有未来扩展意识
 - 无复杂 memory platform 混入
-- 默认 history 使用最近 N 轮窗口，而不是全量 messages
+- 默认 history 使用最近 N 条消息窗口，而不是全量 messages
 - context policy 执行结果可被测试和观测
 - request assembler 中存在清晰的上下文装配 trace / metadata
 - context 层与 services 层边界未混淆
@@ -376,3 +376,4 @@ context skeleton 的实现应尽量可预测、可单测、可推断。
 2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist 联合自审。
 3. 若上下文模型、边界或测试事实变化，必须同步更新对应文档与测试。
 4. 未明确 `request_assembler.py` 与 context policy pipeline 的协作边界，不进入主链路代码改造。
+

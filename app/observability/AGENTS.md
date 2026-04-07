@@ -1,72 +1,49 @@
-﻿# app/observability/AGENTS.md
+# app/observability/AGENTS.md
 
-> 更新日期：2026-04-06
-
+> 更新日期：2026-04-07
 
 ## 1. 文档定位
 
-本文件定义 `app/observability/` 目录的职责、边界、结构约束、演进方向与代码审查标准。
-
-当前阶段，本文件临时同时承担该模块的：
-
-- AGENTS.md
-- PROJECT_PLAN.md
-- ARCHITECTURE.md
-- CODE_REVIEW.md
-
-功能。
-
-本文件只约束可观测性基础设施层，不替代项目根目录文档。
+本文件定义 `app/observability/` 的模块职责、边界、审查标准与交付门禁。  
+本文件只约束 observability 模块本身，不替代根目录治理文档。
 
 ---
 
 ## 2. 模块定位
 
-`app/observability/` 是系统的**可观测性基础设施层**。
+`app/observability/` 是当前阶段的横切日志基础设施层。  
+当前代码现实是最小实现：统一日志上报函数 `log_report()`。
 
-它是横切基础设施模块，负责为系统提供统一的：
+当前目录核心文件：
 
-- logging 初始化
-- log4j 风格控制台前缀 + `message=<json>` 输出
-- request context 管理
-- exception logging
-- API / services / providers 的通用日志事件支持
-
-技术选型约束（当前阶段强制）：
-
-- 使用 Python 标准库 `logging`
-- 日志输出格式统一为：`<time> <level> [<thread>] <logger> <file>:<line> event=<event> message=<json>`
-- 日志开关由 `.env` true/false 标识控制
-- 日志详情开关为：`LOG_ENABLED` / `LOG_LEVEL` / `LOG_FORMAT` / `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD`
-- `info` 级别用于普通结构化日志
-- `error` 级别用于异常日志
+- `log_until.py`：统一日志上报与标准化输出
+- `__init__.py`：导出 `log_report`
 
 ---
 
 ## 3. 本层职责
 
-可观测性基础设施层负责：
+当前阶段本层负责：
 
-1. 提供统一日志基础设施入口
-2. 提供“系统前缀 + 业务 JSON”字段约束
-3. 定义 request context 字段贯穿规则（如 `request_id` / `session_id` / `conversation_id` / `provider` / `model`）
-4. 定义 startup / API / service / provider / exception 的边界日志规范
-5. 为后续 observability 代码实现提供稳定文档治理基础
-
-一句话：**observability 层负责“怎么统一记录、关联和审查日志”，不负责业务流程。**
+1. 提供统一日志上报入口（`log_report(event, message)`）
+2. 固化日志输出格式：
+`<time> <level> [<thread>] <logger> <file>:<line> event=<event> message=<json>`
+3. 统一把业务信息放在 `message=<json>` 中
+4. 将 dataclass/pydantic/dict/list 等对象尽量归一化为 JSON 可序列化结构
+5. 为 API / services / providers 提供统一日志调用方式
 
 ---
 
 ## 4. 本层不负责什么
 
-本层不负责：
+当前阶段本层不负责：
 
-1. 不负责业务逻辑编排
-2. 不负责 provider 接入逻辑
-3. 不负责 prompt 资产管理
-4. 不负责 context 存储
-5. 不负责 tracing/metrics/alerting/APM 平台建设（当前阶段）
-6. 不负责演化为万能 `utils/common` 杂项层
+1. request context 管理与透传
+2. middleware 级请求日志
+3. 统一异常日志封装中间层
+4. tracing / metrics / alerting / APM 平台
+5. 业务流程编排与 provider 接入逻辑
+6. 退化为万能 `utils/common` 杂项层
 
 ---
 
@@ -74,91 +51,51 @@
 
 ### 允许依赖
 
-`app/observability/` 可以依赖：
-
-- Python 标准库（重点是 `logging`）
-- 极少量配置读取（仅 observability 需要）
-- `app/schemas/`（仅在字段契约需要时）
+- Python 标准库（`logging/json/sys/dataclasses`）
 
 ### 禁止依赖
 
-`app/observability/` 不应依赖：
-
-- `app/api/` 的业务路由逻辑
-- `app/services/` 的业务编排逻辑
-- `app/providers/` 的厂商适配逻辑
-- `app/prompts/` 的模板管理逻辑
-- `app/context/` 的存储实现逻辑
+- `app/api`、`app/services`、`app/providers` 的业务流程实现
+- `app/prompts`、`app/context` 的业务逻辑
 
 说明：
 
-- 其他模块可以依赖 observability。
-- observability 不能反向依赖业务层实现细节。
+- 业务层可以调用 observability。
+- observability 不反向依赖业务层。
 
 ---
 
-## 6. 当前建议结构
+## 6. 当前实现事实（必须与代码一致）
 
-当前阶段（本轮）：
-
-- `logging_setup.py`：logging 初始化
-- `json_formatter.py`：JSON 日志格式化
-- `context.py`：request context 管理
-- `events.py`：边界日志事件封装
-- `exception_logging.py`：异常日志封装
-- `middleware.py`：FastAPI request logging middleware
-- `__init__.py`：统一导出入口
-
-当前阶段状态：
-
-- 上述基础设施文件已落地，并已接入启动、API、service、provider 主链路的最小日志能力。
-- 仍保持 Phase 1 最小范围：非流式单轮主链路可观测，不引入平台化能力。
+1. 当前仅保留 `log_until.py` 一套实现。
+2. 运行时日志级别当前固定为 `INFO`（由 `log_until.py` 内部设置）。
+3. `AppConfig` 中 `LOG_*` 配置项目前仅完成配置读取，尚未接入 `log_until.py` 运行时行为。
+4. 当前未实现 request context 注入与清理流程。
+5. 当前未实现独立 middleware/request_id 自动透传。
 
 ---
 
 ## 7. 设计原则
 
-### 7.1 基础设施独立
-
-observability 必须是独立基础设施模块，不与业务流程混写。
-
-### 7.2 结构化优先
-
-日志必须默认采用“可检索前缀 + `message=<json>`”，禁止长期依赖不可解析字符串拼接日志。
-
-### 7.3 关联优先
-
-日志应能通过 request context 字段关联主链路，避免不可追踪日志。
-
-### 7.4 输出策略优先（当前阶段）
-
-当前阶段以排查效率优先：业务 payload 默认允许输出并可通过 `.env` 开关控制；凭据字段（如 API key、Authorization）必须禁止输出。
-
-### 7.5 当前阶段最小化
-
-当前阶段仅建设 logging/request context/exception logging 的基础设施规则，不进行平台化建设。
+1. 统一入口：日志必须优先走 `log_report`。
+2. 输出可定位：必须保留 `<file>:<line>`，便于排查。
+3. 结构化优先：业务信息放 `message=<json>`，避免不可解析拼接字符串。
+4. 安全优先：禁止输出 API key、Authorization 等凭据字段。
+5. 小步演进：后续若恢复 context/middleware/开关接入，必须先文档后代码。
 
 ---
 
-## 8. 当前阶段演进计划
+## 8. 当前阶段能力声明
 
-本层当前阶段目标：
-
-1. 建立 observability 模块级治理文档
-2. 建立 observability skill 执行规范与 checklist/reference
-3. 落地最小可用 observability 代码骨架并接入主链路
-4. 明确技术选型与边界约束
-
-### 当前阶段能力声明（强约束）
-
-- 本阶段已完成：
-  - 目录与文档治理补齐
-  - logging/前缀+message JSON/request context/exception logging 规则定义
-  - `logging_setup.py` / `json_formatter.py` / `context.py` / `events.py` / `exception_logging.py` / `middleware.py` 最小实现
-  - startup / API / service / provider / exception 边界日志最小接入
-- 本阶段仅预留：
-  - tracing/metrics/alerting/APM 能力
-  - 高级日志采集与平台化能力
+- 已实现：
+  - `log_report` 统一上报
+  - 前缀 + `message=<json>` 输出
+  - API/service/provider 主链路可调用日志
+- 未实现（仅预留）：
+  - request context 贯穿
+  - middleware 自动注入 request_id
+  - `.env` 运行时日志开关接入
+  - tracing/metrics/alerting/APM
 
 ---
 
@@ -166,74 +103,53 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 
 修改 `app/observability/` 时必须遵守：
 
-1. 先判断改动是否属于 observability 基础设施职责
-2. 不要把业务逻辑塞入 observability 层
-3. 统一沿用 Python 标准库 `logging`
-4. 日志结构必须遵守“系统前缀在控制台 + 业务字段在 `message=<json>`”约束
-5. 保持 `.env` 开关控制策略明确且可审查
-6. 涉及边界变化时必须同步回写根文档与 skill 文档
+1. 先确认改动确属 observability 基础设施职责。
+2. 不把业务编排逻辑放进 observability。
+3. 不绕开统一输出格式约束。
+4. 若新增功能（如 context/middleware），必须同步更新：
+   - 根目录文档
+   - 本模块 AGENTS
+   - `skills/python-observability-capability/` 文档
 
 ---
 
 ## 10. Code Review 清单
 
-评审 `app/observability/` 时，重点检查：
+评审 `app/observability/` 相关改动时，至少检查：
 
-### 边界
-
-- 是否仍是横切基础设施层
-- 是否出现业务流程侵入
-- 是否反向依赖业务实现细节
-
-### 日志规范
-
-- 是否使用标准库 `logging`
-- 是否遵守 log4j 风格前缀 + `message=<json>` 输出
-- 是否包含 `<file>:<line>`，并能定位真实调用点
-- 是否区分 `info` 与 `error` 级别语义
-
-### 关联与输出策略
-
-- request context 字段是否可贯穿主链路
-- 业务 payload 输出是否符合 `.env` 开关策略
-- 凭据字段是否被禁止输出
-- 异常日志是否保留定位信息与 traceback
-
-### 阶段约束
-
-- 是否误引入 tracing/metrics/alerting/APM 平台化实现
+1. 是否仍使用标准库 `logging`。
+2. 是否仍满足前缀 + `message=<json>` 输出格式。
+3. 是否能通过 `<file>:<line>` 快速定位日志来源。
+4. 是否把系统信息与业务 JSON 混写。
+5. 是否输出了敏感凭据字段。
+6. 是否引入了当前阶段无关的平台化能力。
 
 ---
 
-## 11. 测试要求（当前阶段最小门禁）
+## 11. 测试要求（当前阶段最小）
 
-当前阶段至少覆盖：
+当前阶段建议至少覆盖：
 
-1. logging 初始化行为
-2. 控制台前缀格式与 `message=<json>` 结构正确性
-3. `.env` 开关行为
-4. request context 字段注入与透传
-5. exception logging 行为
-6. startup/API/service/provider 边界日志断言
-7. 业务 payload 开关行为与凭据字段禁止输出行为
+1. `log_report` 输出格式可解析
+2. 常见对象（dict/dataclass/pydantic）可被序列化
+3. 非 dict 值会被包装为 `{"value": ...}`
+
+注：当前仓库尚无独立 observability 测试文件，后续恢复时应补齐。
 
 ---
 
 ## 12. 禁止事项
 
-以下做法必须避免：
-
-- 在业务代码中到处 `print` 代替统一日志基础设施
-- 输出 API key、Authorization 等凭据字段
-- 把 observability 做成“万能工具层”
-- 在当前阶段引入 tracing/metrics/alerting/APM 平台
-- 通过 observability 包装吞掉所有错误语义
+1. 到处 `print` 替代统一日志入口
+2. 在业务代码中大量手写不同日志格式
+3. 输出 API key / Authorization 明文
+4. 在当前阶段引入 tracing/metrics/alerting/APM 重型平台
 
 ---
 
 ## 13. 一句话总结
 
-`app/observability/` 是系统的横切可观测性基础设施层，负责**统一 logging 规则、上下文字段关联与异常日志治理**，不承担业务流程实现。
+当前 `app/observability/` 是最小日志基础设施层，核心就是统一 `log_report` 与统一输出格式约束。
 
 ---
 
@@ -241,18 +157,20 @@ observability 必须是独立基础设施模块，不与业务流程混写。
 
 Observability 类任务必须按以下顺序执行：
 
-1. 先读根目录四文档（`AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`）
-2. 再读本文件
-3. 再执行 `skills/python-observability-capability/SKILL.md` 与其 checklist/reference
-4. 再改 `app/observability/` 代码
-5. 再按根 `CODE_REVIEW.md` + 本文件 + skill checklist 自审
-6. 若 observability 规则或边界事实变化，回写对应文档
+1. 根目录四文档
+2. 本文件
+3. `skills/python-observability-capability/` 文档
+4. 代码改动
+5. 自审与文档回写
+
+标准闭环：
+
+`根目录文档 -> app/observability/AGENTS.md -> skill -> 代码实现 -> review -> 文档回写`
 
 ---
 
-## 15. 本模块交付门禁（新增）
+## 15. 本模块交付门禁
 
-- 未通过 `python-observability-capability` checklist，不视为完成
-- 发现 observability 越权承担业务职责，必须先整改
-- 发现凭据字段输出风险，必须先处理再交付
-- 当前阶段若引入 tracing/metrics/alerting/APM 平台化改动，直接判定越界
+1. 与当前代码事实不一致的文档描述必须先修正。
+2. 涉及日志格式变更必须给出样例并完成回归验证。
+3. 若宣称 `LOG_*` 开关生效，必须在代码中有真实接入实现。

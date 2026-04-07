@@ -1,6 +1,6 @@
 ﻿# AGENTS.md
 
-> 更新日期：2026-04-06
+> 更新日期：2026-04-07
 
 
 ## 1. 文档定位
@@ -51,7 +51,7 @@
 6. 可观测性基础设施层（`app/observability/`）
 7. 数据模型层（`app/schemas/`）
 
-其中 `app/observability/` 为横切基础设施模块，负责统一 logging / request context / exception logging 的工程规则与实现承接，不承担业务流程编排。
+其中 `app/observability/` 为横切基础设施模块，当前负责统一日志上报入口（`log_until.py`）与日志输出格式约束，不承担业务流程编排。
 
 未来如果需要新增新层，例如 `app/rag/`、`app/agents/` 等，必须在项目级文档中明确纳入，并同步定义边界。
 
@@ -126,7 +126,7 @@
 - `api` 负责接收请求并转发
 - `services` 负责用例级编排
 - `context/prompts/providers` 负责提供专项能力
-- `observability` 负责提供横切可观测性基础设施（logging/request context/exception logging）
+- `observability` 负责提供横切可观测性基础设施（统一日志上报与格式约束）
 - `schemas` 负责提供共享数据契约
 
 ### 全局规则
@@ -213,8 +213,8 @@
 若新增的是横切基础设施模块（如 observability），必须额外满足：
 
 1. 明确技术选型（当前 observability 统一使用 Python 标准库 `logging`）
-2. 明确日志格式与开关策略（当前统一为“控制台前缀 + `message=<json>`”，`.env` 布尔开关控制）
-3. 明确日志内容策略（当前阶段业务 payload 默认可输出并由开关控制；凭据字段如 API key/Authorization 必须禁止输出）
+2. 明确日志格式（当前统一为“控制台前缀 + `message=<json>`”）
+3. 明确日志内容策略（当前阶段业务 payload 默认可输出；凭据字段如 API key/Authorization 必须禁止输出）
 4. 明确模块边界（不承担业务编排、不替代 API/service/provider）
 5. 明确当前阶段只落最小基础设施，不做 tracing/metrics/alerting 平台化建设
 
@@ -256,7 +256,7 @@
 - Prompt 查找与渲染行为
 - Provider 归一化行为
 - Context 基础行为
-- Observability 基础行为（日志开关、结构化输出、异常日志语义）
+- Observability 基础行为（结构化输出与错误日志语义）
 - 核心数据契约稳定性
 
 测试体系可以逐步演进，但核心路径必须始终可验证。
@@ -299,7 +299,7 @@
   - 非流式输出（`stream=False`）
   - API -> services -> context/prompts/providers -> schemas 基础调用链
   - 覆盖主链路的最小测试门禁
-  - observability 最小基础设施实现（logging/前缀+message JSON/request context/exception logging/middleware）与文档治理闭环
+  - observability 最小基础设施实现（`log_until.py` 统一日志入口 + 前缀/JSON 输出约束）与文档治理闭环
 - 当前仅预留，不作为本阶段已实现能力：
   - streaming
   - 多模态真实链路
@@ -382,3 +382,4 @@
 3. 再更新对应 skill 与 checklist/test matrix
 4. 最后进行代码实现与测试
 5. 合并前完成文档回写一致性检查
+

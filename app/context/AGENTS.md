@@ -1,6 +1,6 @@
 ﻿# app/context/AGENTS.md
 
-> 更新日期：2026-04-06
+> 更新日期：2026-04-07
 
 
 ## 1. 文档定位
@@ -221,7 +221,7 @@ Context Engineering Phase 1 完成后，目标结构应收敛为：
   - in-memory 最小上下文读写能力
   - 对单轮主链路的基础上下文承接
 - 本阶段正在增强并要求边界正确：
-  - 最近 N 轮消息窗口治理
+  - 最近 N 条消息窗口治理
   - selection / truncation / serialization policy interface
   - request assembly 的上下文装配承接
 - 本阶段仅预留，不要求落地：
@@ -235,7 +235,7 @@ Context Engineering Phase 1 完成后，目标结构应收敛为：
 
 本阶段默认策略应满足：
 
-1. 使用最近 N 轮消息窗口，而不是全量历史
+1. 使用最近 N 条消息窗口，而不是全量历史
 2. 当历史超限时，先通过最小截断策略占位
 3. 历史消息在进入 request assembly 前，应经过显式序列化步骤
 4. 所有策略默认实现必须保持确定性、轻量、可测试
@@ -320,7 +320,7 @@ Context Engineering Phase 1 完成后，目标结构应收敛为：
 4. 空上下文场景
 5. 多条消息追加场景
 6. 异常或非法输入场景
-7. 最近 N 轮窗口选择场景
+7. 最近 N 条消息窗口选择场景
 8. 截断占位策略场景
 9. 序列化输出顺序场景
 
@@ -367,3 +367,4 @@ Context 类任务必须按以下顺序执行：
 - 变更 manager/store/models 契约时必须补充或更新测试
 - 未通过 `python-context-capability` checklist，不视为完成
 - 未明确 `WindowSelectionPolicy` / `TruncationPolicy` / `HistorySerializationPolicy` 的边界，不进入上下文主链路重构
+

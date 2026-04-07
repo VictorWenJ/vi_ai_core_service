@@ -1,54 +1,40 @@
-﻿---
+---
 name: python-observability-capability
-description: 用于为 vi_ai_core_service 搭建和标准化可观测性基础设施层。重点关注 Python 标准库 logging、log4j 风格前缀 + message JSON、.env 开关控制、request context 贯穿、startup/API/service/provider/exception 边界日志，以及与业务层解耦的治理方式。
-last_updated: 2026-04-06
+description: 用于 vi_ai_core_service 当前阶段 observability 模块改造。聚焦 log_until.py 统一日志上报、前缀+message JSON 输出、日志边界治理与文档回写。
+last_updated: 2026-04-07
 ---
 
 # Purpose
 
-本 skill 用于指导 `vi_ai_core_service` 中 observability 基础设施的新增、整理与标准化工作。
+本 skill 用于指导 `vi_ai_core_service` 的 observability 相关改动，确保与当前代码事实一致。
 
-它面向当前阶段“最小可用可观测性基础设施”，目标是：
+当前阶段核心不是平台化观测，而是最小统一日志能力：
 
-- 统一 logging 基础设施入口
-- 统一日志前缀结构与 `message=<json>` 结构
-- 统一 request context 字段贯穿
-- 统一 exception logging 语义
-- 统一 API / services / providers 边界日志策略
-- 保持 observability 与业务层清晰解耦
-
-本 skill 是任务执行规范，不替代模块治理文档。使用前应先阅读：
-
-1. 根目录 `AGENTS.md`
-2. 根目录 `PROJECT_PLAN.md`
-3. 根目录 `ARCHITECTURE.md`
-4. 根目录 `CODE_REVIEW.md`
-5. `app/observability/AGENTS.md`
+- 统一入口：`app/observability/log_until.py`
+- 统一格式：`<time> <level> [<thread>] <logger> <file>:<line> event=<event> message=<json>`
+- 统一调用：API / services / providers 都通过 `log_report()` 上报
 
 ---
 
 # Current Phase Constraint (Must Follow)
 
-在 `vi_ai_core_service` 当前阶段，执行本 skill 时必须遵守：
+当前阶段必须遵守：
 
-- 仅交付 logging/request context/exception logging/startup+边界日志的最小基础设施。
-- 仅服务于单轮非流式主链路，不扩展 streaming、多模态、tools、structured output 的真实能力。
-- 不引入 tracing/metrics/alerting/APM 平台建设。
-- 不引入与当前阶段无关的重型依赖与平台化抽象。
+1. 仅维护最小日志基础设施，不引入 tracing/metrics/alerting/APM。
+2. 不新增 request context/middleware 平台能力（除非需求明确升级阶段）。
+3. 不引入重型日志依赖（保持标准库 `logging`）。
+4. 优先保证日志格式稳定、调用位置可定位、业务 JSON 可解析。
 
 ---
 
 # Use This Skill When
 
-在以下场景中使用本 skill：
+在以下场景使用本 skill：
 
-- 新增或重构 `app/observability/` 代码
-- 建立 logging 初始化流程
-- 建立 JSON 结构化日志格式
-- 建立 request context 字段注入与透传
-- 建立 startup/API/service/provider/exception 边界日志
-- 收敛散落的 `print` 或不规范日志输出
-- 补齐 observability 相关文档、checklist、review 门禁
+- 修改 `app/observability/log_until.py`
+- 调整日志输出格式或日志字段约束
+- 统一业务层日志调用方式
+- 修复 observability 文档与代码不一致
 
 ---
 
@@ -56,165 +42,93 @@ last_updated: 2026-04-06
 
 以下场景不应使用本 skill：
 
-- tracing 平台建设
-- metrics 平台建设
-- alerting/APM 平台接入
 - 业务流程编排改造
-- provider 接入逻辑改造
+- provider 功能接入
 - prompt/context 业务逻辑改造
-- 数据库、队列、工作流引擎建设
+- tracing/metrics/alerting/APM 平台建设
 
 ---
 
 # Layer Responsibility
 
-Observability 层负责：
+Observability 层当前负责：
 
-- 基于 Python 标准库 `logging` 的统一日志基础设施
-- 统一控制台前缀：`<time> <level> [<thread>] <logger> <file>:<line> event=<event>`
-- 统一业务日志体：`message=<json>`
-- `.env` true/false 开关控制日志行为
-- request context 字段贯穿（如 `request_id` / `session_id` / `conversation_id` / `provider` / `model`）
-- startup/API/services/providers/exception 关键边界日志规范
+1. 统一 `log_report(event, message)` 入口
+2. 统一日志前缀与 `message=<json>` 输出
+3. 通用对象 JSON 化（dict/list/dataclass/pydantic）
+4. 保障日志可定位（`<file>:<line>`）
 
-Observability 层不负责：
+Observability 层当前不负责：
 
-- 业务逻辑编排
-- provider 接入实现
-- prompt 资产管理
-- context 存储实现
-- tracing/metrics/alerting/APM 平台建设（当前阶段）
+1. request context 贯穿
+2. middleware 自动 request_id 注入
+3. `.env` 运行时开关实际生效控制
+4. 异常治理平台化封装
 
 ---
 
 # Required Inputs
 
-使用本 skill 前，应明确：
+使用本 skill 前，至少明确：
 
-1. 本次改动是否属于 observability 基础设施职责
-2. 需要覆盖的日志边界点（startup/API/service/provider/exception）
-3. 需要贯穿的 request context 字段集合
-4. `.env` 日志开关规则与默认策略
-5. 当前阶段日志内容策略（业务 payload 输出开关、凭据字段禁止输出）
-6. 当前阶段是否仅做最小基础设施，而非平台化建设
+1. 改动是否属于 observability 层职责
+2. 目标日志格式是否保持兼容
+3. 是否涉及敏感字段输出风险
+4. 是否影响根文档/模块文档/测试文档事实
 
 ---
 
 # Expected Outputs
 
-使用本 skill 后，交付物应至少包括：
+交付物至少包括：
 
-1. 位于 `app/observability/` 的基础设施文件
-2. 统一 logging 初始化入口
-3. JSON 日志格式化约束
-4. request context 贯穿方案
-5. exception logging 规则
-6. 边界日志策略说明
-7. 对应文档与 checklist 更新
+1. observability 相关代码改动（若有）
+2. 文档回写（根文档、模块 AGENTS、skill 文档）
+3. 日志样例说明
+4. 验证结果（最小导入或测试）
 
 ---
 
 # Required Workflow
 
-1. 先确认需求归属 observability 层。
-2. 先阅读根目录四文档与 `app/observability/AGENTS.md`。
-3. 明确本次只做最小 observability 基础设施，不引入重型平台。
-4. 设计“前缀字段（系统信息）”与“message JSON（业务信息）”的边界。
-5. 在 `app/observability/` 内部落地实现。
-6. 对照 checklist 做边界、安全、阶段约束自检。
-7. 按 `CODE_REVIEW.md` 做专项 review。
-8. 若规则或事实变化，回写根文档、模块文档与 skill 文档。
+1. 阅读根目录四文档与 `app/observability/AGENTS.md`
+2. 核对当前代码事实（重点 `log_until.py`）
+3. 识别文档失真点
+4. 先回写文档，再做必要代码修订
+5. 自审并输出变更说明
 
 ---
 
 # Design Rules
 
-## 1. 标准库优先
-
-统一使用 Python 标准库 `logging`，避免当前阶段引入重型依赖。
-
-## 2. 结构化优先
-
-日志输出默认为“log4j 风格前缀 + `message=<json>`”，确保可检索、可关联、可审查。
-
-## 3. 上下文贯穿
-
-request context 字段要贯穿关键日志事件，避免不可追踪日志。
-
-## 4. 边界清晰
-
-observability 是横切基础设施，不承载业务流程。
-
-## 5. 输出策略可控
-
-当前阶段默认允许业务 payload 明文输出（调试优先），并受 `.env` 开关控制；API key、Authorization 等凭据字段必须禁止输出。
-
-## 6. 当前阶段不过度建设
-
-当前阶段不构建 tracing/metrics/alerting/APM 平台，不做“万能观测平台”。
+1. 标准库优先：仅使用 `logging`。
+2. 格式稳定：前缀 + `message=<json>` 不可随意漂移。
+3. 业务 JSON 仅承载业务信息，系统信息留在前缀。
+4. 默认避免输出凭据字段（API key、Authorization）。
+5. 不把 observability 退化成 `utils/common` 杂项层。
 
 ---
 
 # Verification Standard
 
-一个合格的 observability 基础设施改动，至少应满足：
+合格改动至少满足：
 
-- 使用 `logging` 标准库
-- 前缀格式与 `message=<json>` 约束清晰
-- `.env` 开关控制策略清晰
-- request context 字段可贯穿
-- startup/API/service/provider/exception 边界日志策略清晰
-- 业务 payload 输出行为可控，且凭据字段严格禁止输出
-- 未引入平台化过度建设
+1. `log_report()` 可正常输出
+2. 输出格式满足前缀 + `message=<json>`
+3. `message` 可被 JSON 解析
+4. `<file>:<line>` 能定位日志调用点
+5. 文档描述与代码行为一致
 
 ---
 
 # Done Criteria
 
-本 skill 任务完成，至少表示：
+任务完成至少表示：
 
-1. observability 改动落在正确目录
-2. logging/JSON/context/exception 基础规则明确
-3. 边界日志策略明确
-4. 阶段约束未被破坏
-5. 已通过 checklist 自审
-6. 相关文档已同步回写
-
----
-
-# Notes
-
-本 skill 聚焦“当前阶段最小 observability 基础设施能力”。
-
-后续若阶段升级，可拆分为：
-
-- python-observability-logging-foundation
-- python-observability-request-context
-- python-observability-exception-logging
-- python-observability-tracing-integration（后续阶段）
-- python-observability-metrics-alerting（后续阶段）
-
----
-
-# 编码前输出要求
-
-开始编码前，必须先输出：
-
-1. 任务理解与阶段边界（仅基础设施，不做平台化）
-2. 文件级改动计划（logging/context/events/middleware）
-3. 日志字段与开关策略说明
-4. 风险与验证计划
-
----
-
-# 编码后输出要求
-
-完成编码后，必须输出：
-
-1. 文件级变更清单与原因
-2. 日志行为变化说明（前缀、message JSON、开关）
-3. 测试与验证结果
-4. 文档回写说明
+1. observability 文档与代码不再冲突
+2. 日志格式约束清晰可执行
+3. 关键风险（敏感字段、越界建设）有明确限制
+4. 已按治理链路完成回写
 
 ---
 
@@ -228,13 +142,6 @@ observability 是横切基础设施，不承载业务流程。
 
 # Governance Linkage
 
-执行本 skill 时必须遵循统一闭环：
+执行本 skill 时必须遵循：
 
 `根目录文档 -> app/observability/AGENTS.md -> 本 skill -> 代码实现 -> review -> 文档回写`
-
-强制要求：
-
-1. 未完成根目录文档和模块文档阅读，不进入实现。
-2. 改动后必须按根 `CODE_REVIEW.md` + 模块 `AGENTS.md` + 本 skill checklist 联合自审。
-3. 若 observability 规则、边界或测试事实变化，必须同步更新对应文档与测试。
-

@@ -1,6 +1,6 @@
 ﻿# CODE_REVIEW.md
 
-> 更新日期：2026-04-06
+> 更新日期：2026-04-07
 
 
 ## 1. 文档定位
@@ -107,7 +107,7 @@
 
 ### Observability 层边界（新增）
 
-- logging / request context / exception logging 是否收敛在 `app/observability/`
+- 统一日志上报能力是否收敛在 `app/observability/`（当前实现为 `log_until.py`）
 - 是否存在到处 `print`、到处手写日志格式的散落实现
 - observability 是否被错误写成 `utils/common` 杂项层
 - observability 是否越权承担业务流程、provider 接入或 prompt/context 管理
@@ -197,8 +197,8 @@
 
 1. 是否按级别区分 `info` 与 `error`
 2. 是否输出了必须禁止的凭据字段（如 API key、Authorization）
-3. 当前阶段业务 payload 输出策略是否明确（默认可输出、由 `.env` 开关控制）
-4. 是否在日志中保留必要 request context 字段（如 `request_id`、`session_id`、`conversation_id`）
+3. 当前阶段业务 payload 输出策略是否明确（默认可输出）
+4. 若存在 request/session/conversation 标识，是否以结构化字段输出在 `message=<json>` 中
 
 ---
 
@@ -315,12 +315,12 @@ Review 时，建议优先从以下几个维度给出结论：
 
 1. 是否使用 Python 标准库 `logging`，而非额外重型日志框架
 2. 日志是否采用 `<time> <level> [<thread>] <logger> <file>:<line> event=<event> message=<json>` 约束
-3. `message=<json>` 是否只承载业务信息（如 request/session/conversation/provider/model 等）
+3. `message=<json>` 是否只承载业务信息
 4. `method/path` 等系统信息是否避免写入业务 JSON
 5. 是否可通过 `<file>:<line>` 快速定位日志调用点
-6. 日志开关是否由 `.env` true/false 配置控制
-7. startup / API / services / providers / exception 关键边界是否有清晰日志策略
-8. 是否遵守当前阶段日志内容策略（业务 payload 可开关明文；凭据字段必须禁止输出）
+6. startup / API / services / providers / exception 关键边界是否有清晰日志策略
+7. `LOG_*` 配置若声明生效，是否已经真正接入运行时实现（避免“文档已生效、代码未接入”）
+8. 是否遵守当前阶段日志内容策略（业务 payload 默认可输出；凭据字段必须禁止输出）
 9. 当前阶段是否错误引入 tracing/metrics/alerting/APM 平台建设
 
 ## 19. Context Engineering Phase 1 专项审查门禁
@@ -354,7 +354,7 @@ Review 时，建议优先从以下几个维度给出结论：
 
 以下改动原则上必须补测试：
 
-- 最近 N 轮窗口选择
+- 最近 N 条消息窗口选择
 - 截断占位策略
 - 序列化结果顺序
 - request assembly 后的 message 顺序
@@ -370,3 +370,4 @@ Review 时，建议优先从以下几个维度给出结论：
 - 为了快，直接在 assembler 中操作 `_windows` 或其他 store 私有状态
 - 把当前阶段实现包装成“RAG memory”或“long-term memory”
 - 未更新文档与 skill 就直接进入上下文主链路重构
+

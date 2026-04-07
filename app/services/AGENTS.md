@@ -1,6 +1,6 @@
 ﻿# app/services/AGENTS.md
 
-> 更新日期：2026-04-06
+> 更新日期：2026-04-07
 
 
 ## 1. 文档定位
@@ -184,7 +184,7 @@ service 的输入输出应尽量稳定、明确，便于：
 - 本阶段正在增强并要求边界正确：
   - `request_assembler.py` 的上下文装配中枢职责
   - history selection / truncation / serialization pipeline
-  - 对 stateful session history 的最近 N 轮治理
+  - 对 stateful session history 的最近 N 条消息治理
 - 本阶段仅预留，不要求落地：
   - streaming 编排
   - 多模态编排
@@ -276,7 +276,7 @@ service 的输入输出应尽量稳定、明确，便于：
 4. 参数异常传播路径
 5. 上下文参与编排时的行为断言
 6. 不同 provider 下的编排一致性
-7. request assembly 中最近 N 轮 history 选择行为
+7. request assembly 中最近 N 条消息 history 选择行为
 8. 截断占位与 metadata trace 行为
 9. response 后 context 回写行为
 
@@ -327,3 +327,4 @@ Services 类任务必须按以下顺序执行：
 - 变更主链路时必须补充或更新 service 级测试
 - 未完成文档回写一致性检查，不视为完成
 - 未明确 `request_assembler.py` 的上下文装配中枢职责，不进入 Context Engineering Phase 1 主链路改造
+

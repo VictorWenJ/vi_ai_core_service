@@ -1,18 +1,18 @@
 # Observability Test Matrix
 
-> 更新日期：2026-04-06
+> 更新日期：2026-04-07
 
-## 当前阶段必测项
+## 当前阶段建议必测项
 
-1. logging 初始化与格式输出
-2. `message=<json>` 结构可解析
-3. `.env` 开关行为（`LOG_ENABLED` / `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD`）
-4. request context 设置/更新/清理
-5. middleware 请求起止日志与 request_id 回传
-6. exception logging 保留 traceback
+1. `log_report()` 基础可调用性
+2. 输出前缀包含 `<file>:<line>`
+3. `message=<json>` 可解析
+4. dataclass/pydantic/dict/list 输入可正确序列化
+5. 非 dict 输入被包装为 `{"value": ...}`
 
-## 当前阶段不测项（仅预留）
+## 当前阶段暂不纳入必测项
 
-1. tracing/metrics/alerting/APM 平台集成
-2. 分布式追踪上下文传播
-
+1. request context 注入与清理
+2. middleware 请求起止日志
+3. `.env` 运行时日志开关行为
+4. tracing/metrics/alerting/APM 平台能力

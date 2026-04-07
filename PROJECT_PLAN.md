@@ -1,6 +1,6 @@
 ﻿# PROJECT_PLAN.md
 
-> 更新日期：2026-04-06
+> 更新日期：2026-04-07
 
 
 ## 1. 文档定位
@@ -77,7 +77,7 @@
   - 非流式输出（`stream=False`）
   - API -> services -> prompts/context/providers 主链路
   - 最小必要测试回归
-  - observability 最小基础设施实现（logging/前缀+message JSON/request context/startup&边界日志）
+  - observability 最小基础设施实现（`log_until.py` 统一日志上报 + 前缀/`message=<json>` 输出）
 - 仅预留，不作为本阶段验收项：
   - streaming
   - 多模态真实落地
@@ -94,10 +94,10 @@
 - 统一 logging 基础设施实现（Python 标准库 `logging`）
 - 统一前缀日志输出（`<time> <level> [<thread>] <logger> <file>:<line> event=<event>`）
 - 统一业务日志体输出（`message=<json>`）
-- request context 字段贯穿（如 `request_id` / `session_id` / `conversation_id` / `provider` / `model`）
-- exception logging 与边界日志（startup/API/service/provider）
-- `.env` 开关控制（`LOG_ENABLED` / `LOG_LEVEL` / `LOG_FORMAT` / `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD`）
-- 当前阶段业务 payload 默认可输出（调试优先），由 `LOG_API_PAYLOAD` / `LOG_PROVIDER_PAYLOAD` 控制
+- 统一日志上报函数（`app/observability/log_until.py`）
+- startup/API/service/provider 的主链路摘要日志
+- 当前阶段业务 payload 默认可输出（调试优先）
+- `LOG_*` 配置项保留在 `AppConfig`，但当前尚未接入日志运行时开关
 - 凭据字段（如 API key、Authorization）必须禁止输出
 
 当前阶段明确不做：
@@ -166,7 +166,7 @@
 - 稳定 Prompt 读取与渲染行为
 - 稳定 Provider 注册与归一化能力
 - 稳定 Context 的基础管理能力
-- 固化 observability 的 logging/request context/exception logging 基础规范
+- 固化 observability 的统一日志上报规范（`log_until.py` + 前缀/`message=<json>`）
 - 维持 Schema 层的共享契约清晰性
 
 ### 本阶段完成标准
@@ -243,7 +243,7 @@
 5. `ContextSelectionResult` 等中间结果模型
 6. `ContextManager` 与 `ContextStore` 契约增强
 7. `app/services/request_assembler.py` 升级为正式上下文装配入口
-8. 最近 N 轮消息窗口治理
+8. 最近 N 条消息窗口治理
 9. 可观测的上下文装配 metadata / trace
 
 #### Out of Scope
@@ -395,7 +395,7 @@
 标志：
 
 - `request_assembler.py` 具备正式上下文装配入口职责
-- 最近 N 轮 history selection 具备默认策略
+- 最近 N 条消息 history selection 具备默认策略
 - truncation / serialization 具备正式接口
 - 主链路测试已覆盖上下文治理行为
 
@@ -440,3 +440,4 @@
 - 未定义 `WindowSelectionPolicy` / `TruncationPolicy` / `HistorySerializationPolicy` 的职责边界，不进入上下文主链路重构
 - 未明确 `request_assembler.py` 是正式上下文装配入口，不进入 context policy pipeline 落地
 - 未明确 RAG 与 context history 的边界，不进入“记忆系统”类设计
+
