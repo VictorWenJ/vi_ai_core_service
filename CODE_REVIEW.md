@@ -1,14 +1,11 @@
-﻿# CODE_REVIEW.md
+# CODE_REVIEW.md
 
 > 更新日期：2026-04-08
 
 ## 1. 文档定位
 
-本文件定义 `vi_ai_core_service` 的项目级 Code Review 标准。
-
-本文件只描述适用于整个仓库的通用审查原则、全局质量要求与跨模块检查点，  
-不替代模块内部更细粒度的 review 规则。  
-模块的局部 review 重点应写在各模块自身文档中。
+本文件定义 `vi_ai_core_service` 的项目级 Code Review 标准。  
+本文件只描述适用于整个仓库的通用审查原则、全局质量要求与跨模块检查点，不替代模块内部更细粒度的 review 规则。
 
 ---
 
@@ -36,8 +33,6 @@
 - 是否存在越层调用
 - 是否出现职责混乱
 
-如果位置就错了，实现再漂亮也不是正确结果。
-
 ### 3.2 先看结构，再看技巧
 
 本项目更重视：
@@ -46,8 +41,6 @@
 - 抽象是否合理
 - 契约是否稳定
 - 命名是否清晰
-
-而不是追求复杂技巧或“聪明写法”。
 
 ### 3.3 保守对待会扩大耦合的改动
 
@@ -75,7 +68,7 @@
 
 1. 这段代码为什么在这个目录，而不是别的目录？
 2. 这段逻辑属于哪个层？
-3. 是否破坏当前七层边界（含 observability 横切层）？
+3. 是否破坏当前七层边界？
 4. 是否出现跨层绕过？
 5. 是否引入循环依赖风险？
 6. 是否让未来演进更困难？
@@ -87,35 +80,27 @@
 
 ## 5. 全局边界检查清单
 
-审查时，重点检查以下项目级边界：
-
 ### API 层边界
-
 - API 层是否只做接入、校验、转发、返回
 - 是否把业务逻辑塞进了路由层
-- 是否保持 HTTP-only 运行约束（未重新引入 CLI 直接调用入口）
+- 是否保持 HTTP-only 运行约束
 
 ### Service 层边界
-
 - Service 是否仍然是编排层
 - 是否在 Service 中堆了过多底层适配细节
 
 ### Context / Prompt / Provider 边界
-
-- 这三个专项能力模块是否仍然职责分离
+- 三个专项能力模块是否仍然职责分离
 - 是否出现相互侵入和混写
 
-### Observability 层边界（新增）
-
-- 统一日志上报能力是否收敛在 `app/observability/`（当前实现为 `log_until.py`）
-- 是否存在到处 `print`、到处手写日志格式的散落实现
-- observability 是否被错误写成 `utils/common` 杂项层
-- observability 是否越权承担业务流程、provider 接入或 prompt/context 管理
+### Observability 层边界
+- 日志能力是否收敛在 `app/observability/`
+- 是否存在散落实现
+- observability 是否越权承担业务流程或 provider 接入
 
 ### Schema 边界
-
 - Schema 是否仍然是契约层
-- 是否把流程逻辑或临时厂商特例塞进了 schema
+- 是否把流程逻辑或临时厂商特例塞进 schema
 
 ---
 
@@ -126,20 +111,13 @@
 1. 目录命名是否体现职责
 2. 文件命名是否体现能力
 3. 类名/函数名是否体现真实用途
-4. 不允许使用大量模糊命名，例如：
-   - `util.py`
-   - `common.py`
-   - `temp.py`
-   - `new_service.py`
-   - `test2.py`
+4. 不允许大量模糊命名
 
-命名应尽量帮助协作者快速判断归属和职责。
-
-此外必须检查文本规范：
+同时必须检查文本规范：
 
 1. 代码注释、docstring、字段说明、错误提示、文档说明是否为中文
-2. 是否新增了英文说明文本而未同步中文化
-3. 技术标识符是否仍保持英文（避免误翻译导致语义偏差）
+2. 是否新增英文说明文本而未同步中文化
+3. 技术标识符仍保持英文，避免误翻译导致语义偏差
 
 ---
 
@@ -147,13 +125,11 @@
 
 必须重点检查：
 
-1. 是否新增了不合理依赖
+1. 是否新增不合理依赖
 2. 是否出现从下层反向依赖上层
 3. 是否让模块间关系变成网状耦合
-4. 是否出现“为了省事直接跨层调用”的情况
-5. 是否绕过共享 contract 直接使用私有内部结构
-
-如果依赖方向不对，应优先修正结构，而不是接受临时妥协。
+4. 是否出现“为了省事直接跨层调用”
+5. 是否绕过共享 contract 直接使用私有结构
 
 ---
 
@@ -166,10 +142,7 @@
 - 降低替换成本
 - 隔离变化点
 
-如果一个抽象只是“看起来更高级”，但没有实际收益，应谨慎引入。
-
-同时也要防止另一个极端：  
-重复逻辑明显存在，却迟迟不抽，导致后续维护困难。
+如果一个抽象只是“看起来更高级”但没有实际收益，应谨慎引入。
 
 ---
 
@@ -183,8 +156,6 @@
 4. 是否影响多个层
 5. 是否兼容现有调用方
 
-契约一旦成为跨模块共享内容，就不能随意修改。
-
 ---
 
 ## 10. 全局错误处理审查标准
@@ -195,16 +166,14 @@
 2. 错误是否被过早吞掉
 3. 错误是否被错误地上抛到不该知道细节的层
 4. 错误语义是否清晰
-5. 是否保留了必要的定位信息
+5. 是否保留了必要定位信息
 
-目标是让错误处理既有边界，又可追踪。
-
-同时，异常日志审查还应关注：
+异常日志还应关注：
 
 1. 是否按级别区分 `info` 与 `error`
-2. 是否输出了必须禁止的凭据字段（如 API key、Authorization）
-3. 当前阶段业务 payload 输出策略是否明确（默认可输出）
-4. 若存在 request/session/conversation 标识，是否以结构化字段输出在 `message=<json>` 中
+2. 是否输出敏感凭据
+3. 业务 payload 输出策略是否明确
+4. request/session/conversation 标识是否结构化输出
 
 ---
 
@@ -214,7 +183,7 @@
 
 1. 是否破坏现有可替换性
 2. 是否把未来扩展写死在当前实现里
-3. 是否留下了不合理的硬编码
+3. 是否留下不合理硬编码
 4. 是否会让后续新增模块变得困难
 
 ---
@@ -226,10 +195,10 @@
 1. 是否已有测试覆盖
 2. 是否应新增测试
 3. 是否破坏现有测试语义
-4. 是否新增了不可测分支
+4. 是否新增不可测分支
 5. 是否影响核心主链路回归安全
 
-对于以下改动，原则上应补测试：
+以下改动原则上应补测试：
 
 - 主链路改动
 - Provider 行为改动
@@ -242,27 +211,25 @@
 
 ## 13. 何时必须同步更新文档
 
-以下情况发生时，必须考虑同步更新文档：
+以下情况发生时，必须同步更新文档：
 
 1. 新增了项目级能力边界
 2. 修改了模块职责
 3. 修改了依赖方向
 4. 新增了新的 `app/` 一级目录
 5. 某模块复杂度显著上升
-6. 现有文档已无法准确描述当前代码结构
-
-原则是：**文档不能长期落后于架构现实。**
+6. 文档已无法准确描述当前代码结构
 
 ---
 
 ## 14. 常见应拒绝的问题改动
 
-以下类型的改动，在 review 中应高度警惕，必要时直接拒绝：
+以下类型改动应高度警惕，必要时直接拒绝：
 
-1. 为了快，直接跨层调用
+1. 为了快直接跨层调用
 2. 在错误目录中落代码
 3. 把模块边界打穿
-4. 把复杂业务逻辑塞进 API 层
+4. 在 API 层堆业务逻辑
 5. 把厂商细节泄露到上层
 6. 把 Prompt / Context / Provider 逻辑混写
 7. 把临时字段污染到共享 schema
@@ -272,16 +239,14 @@
 
 ## 15. Review 结论建议表达方式
 
-Review 时，建议优先从以下几个维度给出结论：
+Review 结论优先从以下几个维度给出：
 
-- **边界是否正确**
-- **结构是否合理**
-- **依赖是否健康**
-- **契约是否稳定**
-- **测试是否足够**
-- **文档是否需要同步**
-
-不要只给“能跑”或“可以 merge”这种过于薄弱的结论。
+- 边界是否正确
+- 结构是否合理
+- 依赖是否健康
+- 契约是否稳定
+- 测试是否足够
+- 文档是否需要同步
 
 ---
 
@@ -292,7 +257,7 @@ Review 时，建议优先从以下几个维度给出结论：
 
 ---
 
-## 17. 文档驱动闭环审查门禁（新增）
+## 17. 文档驱动闭环审查门禁
 
 每次 review 必须显式检查以下链路是否成立：
 
@@ -300,13 +265,13 @@ Review 时，建议优先从以下几个维度给出结论：
 
 ### 必查项
 
-1. 改动前是否按顺序阅读了根目录文档与模块文档
-2. 是否使用了正确 skill 与 checklist/test matrix
+1. 是否按顺序阅读了根目录文档与模块文档
+2. 是否使用了正确 skill 与 checklist / test matrix
 3. 代码是否只落在允许的模块边界内
-4. 是否完成了边界检查、依赖检查、契约检查、测试检查
+4. 是否完成边界检查、依赖检查、契约检查、测试检查
 5. 若代码事实变化，是否同步更新了对应文档
 
-### 直接拒绝条件（新增）
+### 直接拒绝条件
 
 - 绕过根目录文档直接改代码
 - 绕过模块 `AGENTS.md` 直接做模块改动
@@ -315,115 +280,92 @@ Review 时，建议优先从以下几个维度给出结论：
 
 ---
 
-## 18. Observability 专项审查门禁（新增）
+## 18. Observability 专项审查门禁
 
 涉及 observability 相关改动时，必须额外检查：
 
-1. 是否使用 Python 标准库 `logging`，而非额外重型日志框架
-2. 日志是否采用 `<time> <level> [<thread>] <logger> <file>:<line> event=<event> message=<json>` 约束
+1. 是否使用 Python 标准库 `logging`
+2. 日志是否采用统一前缀 + `message=<json>` 约束
 3. `message=<json>` 是否只承载业务信息
 4. `method/path` 等系统信息是否避免写入业务 JSON
 5. 是否可通过 `<file>:<line>` 快速定位日志调用点
 6. startup / API / services / providers / exception 关键边界是否有清晰日志策略
-7. `LOG_*` 配置若声明生效，是否已经真正接入运行时实现（避免“文档已生效、代码未接入”）
-8. 是否遵守当前阶段日志内容策略（业务 payload 默认可输出；凭据字段必须禁止输出）
-9. 当前阶段是否错误引入 tracing/metrics/alerting/APM 平台建设
-
-## 19. Context Engineering Phase 1 专项审查门禁
-
-涉及 `app/context/`、`app/services/request_assembler.py`、`app/services/chat_service.py` 的上下文工程改动时，必须额外检查以下事项：
-
-### 19.1 边界检查
-
-1. 是否把 history selection / truncation / serialization 直接写进了 `chat_service.py`
-2. 是否把最终 prompt assembly 顺序塞进了 `app/context/`
-3. 是否让 `request_assembler.py` 直接依赖某个具体 store
-4. 是否把 provider-specific 消息格式泄露到 context 层
-5. 是否在 API 层直接参与上下文治理
-
-### 19.2 策略抽象检查
-
-1. 是否至少定义并使用了以下策略接口之一：
-   - `WindowSelectionPolicy`
-   - `TruncationPolicy`
-   - `HistorySerializationPolicy`
-2. 是否仍然存在“全量 history 原样拼接”的默认路径
-3. 默认策略是否保持确定性、可测试、可推断
-
-### 19.3 契约检查
-
-1. `ContextMessage` / `ContextWindow` 是否仍然可作为 canonical history contract
-2. 是否新增了未来无法解释的隐式字段
-3. history selection 的中间结果是否可观测、可断言
-
-### 19.4 测试检查
-
-以下改动原则上必须补测试：
-
-- 最近 N 条消息窗口选择
-- 截断占位策略
-- 序列化结果顺序
-- request assembly 后的 message 顺序
-- response 后 context 回写行为
-- 空 session / 多轮 session / 超限 session 场景
-
-### 19.5 直接拒绝条件
-
-以下实现应直接拒绝：
-
-- 在 `chat_service.py` 中手写 history 截断逻辑
-- 在 `app/context/` 中拼接 system prompt
-- 为了快，直接在 assembler 中操作 `_windows` 或其他 store 私有状态
-- 把当前阶段实现包装成“RAG memory”或“long-term memory”
-- 未更新文档与 skill 就直接进入上下文主链路重构
+7. `LOG_*` 配置若声明生效，是否已经真正接入运行时实现
+8. 是否遵守当前阶段日志内容策略
+9. 是否错误引入 tracing/metrics/alerting/APM 平台建设
 
 ---
 
-## 20. Context Engineering Phase 2 专项审查门禁（新增）
+## 19. Context Engineering Phase 2 专项审查门禁
 
-在推进 Context Engineering Phase 2（token-aware 策略与摘要/压缩能力）时，必须额外检查：
+Phase 2 已完成主链路，当前应继续保持以下约束：
+
+1. token-aware 逻辑仍在 context policy 层
+2. summary 不直接调用外部 LLM
+3. `request_assembler.py` 仍是正式装配入口
+4. reset 通过 manager/service/API 分层调用
+5. trace 字段语义清晰、可测试
+6. 不把 Phase 2 包装成长期记忆或 RAG
+
+---
+
+## 20. Context Engineering Phase 3 专项审查门禁
+
+在推进 **持久化短期记忆（Persistent Session Memory）** 时，必须额外检查：
 
 ### 20.1 边界检查
 
-1. 是否把 token-aware 选择或截断逻辑写进 `chat_service.py` 或 API 层；正确做法是通过新的策略接口在 context 层实现。
-2. 是否把摘要/压缩逻辑放在 prompt 层或 provider 层；应该通过 `SummaryPolicy` / `CompactionPolicy` 在 context 策略中实现，并在 `request_assembler.py` 中装配。
-3. 是否在 context store 中实现了 reset/clear 行为；reset 应由 manager 暴露，再由服务层调用。
-4. 是否让 token-aware 策略强绑某个 provider 的 token 计算方式；应保留 provider-agnostic。
+1. Redis/持久化逻辑是否仅存在于 `app/context/stores/` 内
+2. 是否把 Redis client、key 拼接、TTL 控制写进了 `chat_service.py`、`request_assembler.py` 或 API 层
+3. `ContextManager` 是否继续作为 façade，而不是被绕过
+4. 是否把持久化短期记忆偷换成“长期记忆”或“RAG memory”
 
-### 20.2 策略抽象检查
+### 20.2 契约与配置检查
 
-1. 是否定义并使用了 `TokenAwareWindowSelectionPolicy` 和 `TokenAwareTruncationPolicy`。
-2. 是否定义并使用了 `SummaryPolicy` 或 `CompactionPolicy` 接口。
-3. 默认策略是否可以配置 token budget，且行为确定、可测试。
-4. `summary_then_drop_oldest` 与 `drop_oldest` 是否具有真实语义差异（而不是配置存在但行为一致）。
-5. 默认 summary 路径是否保留最近 raw message，避免 summary 吞掉最新原始上下文。
-4. 是否通过 context policy pipeline 组合策略，而不是在 assembler 中手写循环判断。
+1. 是否定义了独立的 `ContextStorageConfig`（或等价配置）而不是污染 `ContextPolicyConfig`
+2. 是否正确解析并使用以下配置：
+   - `CONTEXT_STORE_BACKEND`
+   - `CONTEXT_REDIS_URL`
+   - `CONTEXT_SESSION_TTL_SECONDS`
+   - `CONTEXT_STORE_KEY_PREFIX`
+   - `CONTEXT_ALLOW_MEMORY_FALLBACK`
+3. backend=`redis` 时失败语义是否清晰（允许回退时显式记录，禁止回退时显式报错）
+4. store contract 是否仍稳定，支持：
+   - get
+   - append
+   - replace
+   - reset_session
+   - reset_conversation
+5. session TTL / conversation reset / namespace 是否语义清晰
+6. 是否避免在多个层重复维护 key prefix / 序列化格式
 
-### 20.3 契约检查
+### 20.3 一致性与可恢复性检查
 
-1. 摘要/压缩后的历史是否符合 canonical `ContextMessage` / `ContextWindow` 契约。
-2. token-aware 裁剪后的上下文结果是否通过 trace/metadata 暴露以便调试。
-3. reset/clear API 是否影响共享契约的字段（session id / conversation id）。
-4. trace 字段是否区分 selection/truncation/summary 三阶段计数，避免 `dropped_message_count` 语义混淆。
-5. trace 中是否包含当前 token counter 类型与预算近似语义说明（例如 fixed overhead）。
+1. response 后 user/assistant 历史写回是否通过统一 manager/store 完成
+2. reset session / reset conversation 是否只影响目标范围
+3. store 序列化 / 反序列化是否稳定
+4. 持久化 store 不可用时是否有明确退化策略（例如开发环境 fallback 到 `memory`）
 
 ### 20.4 测试检查
 
-以下改动必须补测试：
+以下改动原则上必须补测试：
 
-- token-aware 窗口选择在不同 token 预算下的行为。
-- token-aware 截断策略是否正确裁剪过长消息或内容。
-- 摘要策略是否在预算不足时产生概要并被正确插入。
-- reset/clear 会话接口是否正确清空历史并返回预期响应。
-- request assembly 中 token-aware pipeline 的顺序和结果。
+- Redis store 基本读写
+- session history 持久化后再次读取
+- session TTL / key prefix 配置解析
+- reset_session / reset_conversation 在持久化 store 上行为正确
+- `request_assembler` 能读取持久化 history
+- `chat_service` 能在响应后正确写回持久化 history
+- 持久化 store 与 in-memory fallback 的行为差异与兼容性
 
 ### 20.5 直接拒绝条件
 
 以下实现应直接拒绝：
 
-- 在任何上层代码手写 token budget 逻辑或摘要文本拼接。
-- 摘要策略中直接调用 LLM summarization API（本阶段只允许最小策略或占位）。
-- 把 reset 动作内嵌在 context policy 逻辑中，而不是作为独立 API 调用。
-- 未更新文档与 skill，就直接上线 token-aware 或摘要特性。
+- 在 API/service 层直接访问 Redis
+- 把 TTL / key prefix 写死在多个文件中
+- 以“持久化”为名直接接入向量数据库或长期记忆
+- 未更新文档与 skill，就直接上线持久化短期记忆能力
+- 没有测试就修改 store contract
 
 ---

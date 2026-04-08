@@ -5,6 +5,12 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from app.config import AppConfig, ProviderConfig
+from app.context.manager import ContextManager
+from app.context.stores.redis_store import RedisContextStore
+from app.providers.base import BaseLLMProvider
+from app.providers.registry import ProviderRegistry
+from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse
 from app.server import app
 from app.services.errors import (
@@ -13,6 +19,12 @@ from app.services.errors import (
     ServiceNotImplementedError,
     ServiceValidationError,
 )
+from app.services.llm_service import LLMService
+
+try:
+    import fakeredis
+except ImportError:  # pragma: no cover - 依赖缺失时跳过
+    fakeredis = None
 
 
 class FakeChatService:
@@ -40,6 +52,17 @@ class FakeChatService:
             "remaining_message_count": 0,
             "scope": "conversation" if conversation_id else "session",
         }
+
+
+class FakeOpenAIProvider(BaseLLMProvider):
+    provider_name = "openai"
+
+    def chat(self, request: LLMRequest) -> LLMResponse:
+        return LLMResponse(
+            content=f"echo:{request.messages[-1].content}",
+            provider=self.provider_name,
+            model=request.model,
+        )
 
 
 class APIRouteTests(unittest.TestCase):
@@ -194,3 +217,58 @@ class APIRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("session_id required", response.json()["detail"])
+
+    @unittest.skipIf(fakeredis is None, "未安装 fakeredis，跳过 Redis API 测试。")
+    def test_chat_and_reset_work_with_redis_backend_service(self) -> None:
+        provider_configs = {
+            "openai": ProviderConfig(name="openai", api_key="k1", default_model="gpt-test"),
+            "deepseek": ProviderConfig(name="deepseek"),
+            "gemini": ProviderConfig(name="gemini"),
+            "doubao": ProviderConfig(name="doubao"),
+            "tongyi": ProviderConfig(name="tongyi"),
+        }
+        app_config = AppConfig(
+            default_provider="openai",
+            providers=provider_configs,
+        )
+        registry = ProviderRegistry(
+            config=app_config,
+            provider_overrides={"openai": FakeOpenAIProvider(provider_configs["openai"])},
+        )
+        redis_client = fakeredis.FakeRedis(decode_responses=True)
+        context_manager = ContextManager(
+            store=RedisContextStore(
+                redis_url="redis://localhost:6379/0",
+                key_prefix="test:api",
+                session_ttl_seconds=120,
+                redis_client=redis_client,
+            )
+        )
+        llm_service = LLMService(
+            config=app_config,
+            registry=registry,
+            context_manager=context_manager,
+        )
+
+        with patch("app.api.chat._get_chat_service", return_value=llm_service):
+            chat_response = self.client.post(
+                "/chat",
+                json={
+                    "user_prompt": "hello redis",
+                    "provider": "openai",
+                    "session_id": "session-redis",
+                    "conversation_id": "conv-redis",
+                },
+            )
+            reset_response = self.client.post(
+                "/chat/reset",
+                json={
+                    "session_id": "session-redis",
+                    "conversation_id": "conv-redis",
+                },
+            )
+
+        self.assertEqual(chat_response.status_code, 200)
+        self.assertEqual(chat_response.json()["content"], "echo:hello redis")
+        self.assertEqual(reset_response.status_code, 200)
+        self.assertEqual(reset_response.json()["scope"], "conversation")

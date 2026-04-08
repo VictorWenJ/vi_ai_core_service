@@ -7,6 +7,8 @@ from app.context.stores.base import BaseContextStore
 
 
 class InMemoryContextStore(BaseContextStore):
+    backend_name = "memory"
+
     def __init__(self) -> None:
         self._windows: dict[str, ContextWindow] = {}
 

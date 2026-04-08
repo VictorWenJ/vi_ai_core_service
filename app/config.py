@@ -13,6 +13,7 @@ SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS = (
     "summary_then_drop_oldest",
     "drop_oldest",
 )
+SUPPORTED_CONTEXT_STORE_BACKENDS = ("memory", "redis")
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_LOG_ENABLED = True
@@ -26,6 +27,11 @@ DEFAULT_CONTEXT_SUMMARY_ENABLED = True
 DEFAULT_CONTEXT_SUMMARY_MAX_CHARS = 320
 DEFAULT_CONTEXT_FALLBACK_BEHAVIOR = "summary_then_drop_oldest"
 DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS = 4
+DEFAULT_CONTEXT_STORE_BACKEND = "memory"
+DEFAULT_CONTEXT_REDIS_URL = "redis://localhost:6379/0"
+DEFAULT_CONTEXT_STORE_KEY_PREFIX = "vi_ai_core_service:context"
+DEFAULT_CONTEXT_SESSION_TTL_SECONDS = 86400
+DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK = True
 DEFAULT_BASE_URLS: dict[str, str | None] = {
     "openai": None,
     "deepseek": "https://api.deepseek.com",
@@ -80,6 +86,22 @@ class ContextPolicyConfig:
 
 
 @dataclass(frozen=True)
+class ContextStorageConfig:
+    """上下文存储后端与生命周期治理配置。"""
+
+    # 上下文存储后端：memory/redis。
+    backend: str = DEFAULT_CONTEXT_STORE_BACKEND
+    # Redis 连接地址；当 backend=redis 时生效。
+    redis_url: str = DEFAULT_CONTEXT_REDIS_URL
+    # 会话窗口 TTL（秒）；写入时刷新，用于短期记忆生命周期治理。
+    session_ttl_seconds: int = DEFAULT_CONTEXT_SESSION_TTL_SECONDS
+    # Redis key 前缀，用于隔离命名空间。
+    key_prefix: str = DEFAULT_CONTEXT_STORE_KEY_PREFIX
+    # 当 Redis 不可用时是否允许回退到内存存储（建议仅 dev/test 开启）。
+    allow_memory_fallback: bool = DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK
+
+
+@dataclass(frozen=True)
 class AppConfig:
     """应用顶层配置。"""
 
@@ -93,6 +115,8 @@ class AppConfig:
     observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
     # 上下文策略配置（token 预算、summary 开关、回退策略等）。
     context_policy_config: ContextPolicyConfig = field(default_factory=ContextPolicyConfig)
+    # 上下文存储配置（backend、TTL、key 前缀与回退策略）。
+    context_storage_config: ContextStorageConfig = field(default_factory=ContextStorageConfig)
 
     @classmethod
     def from_env(
@@ -173,12 +197,39 @@ class AppConfig:
             ),
         )
 
+        context_store_key_prefix = _read_optional(
+            "CONTEXT_STORE_KEY_PREFIX",
+            default=DEFAULT_CONTEXT_STORE_KEY_PREFIX,
+        )
+        if not context_store_key_prefix:
+            raise ConfigError("环境变量 'CONTEXT_STORE_KEY_PREFIX' 不能为空。")
+        context_storage = ContextStorageConfig(
+            backend=_read_context_store_backend(
+                "CONTEXT_STORE_BACKEND",
+                DEFAULT_CONTEXT_STORE_BACKEND,
+            ),
+            redis_url=_read_optional(
+                "CONTEXT_REDIS_URL",
+                default=DEFAULT_CONTEXT_REDIS_URL,
+            ) or DEFAULT_CONTEXT_REDIS_URL,
+            session_ttl_seconds=_read_int(
+                "CONTEXT_SESSION_TTL_SECONDS",
+                DEFAULT_CONTEXT_SESSION_TTL_SECONDS,
+            ),
+            key_prefix=context_store_key_prefix,
+            allow_memory_fallback=_read_bool(
+                "CONTEXT_ALLOW_MEMORY_FALLBACK",
+                DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK,
+            ),
+        )
+
         return cls(
             default_provider=default_provider,
             timeout_seconds=timeout_seconds,
             providers=providers,
             observability=observability,
             context_policy_config=context,
+            context_storage_config=context_storage,
         )
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig:
@@ -281,6 +332,20 @@ def _read_context_fallback_behavior(name: str, default: str) -> str:
         raise ConfigError(
             f"环境变量 '{name}' 必须是以下之一："
             f"{', '.join(SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS)}。"
+        )
+    return normalized_value
+
+
+def _read_context_store_backend(name: str, default: str) -> str:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized_value = raw_value.strip().lower()
+    if normalized_value not in SUPPORTED_CONTEXT_STORE_BACKENDS:
+        raise ConfigError(
+            f"环境变量 '{name}' 必须是以下之一："
+            f"{', '.join(SUPPORTED_CONTEXT_STORE_BACKENDS)}。"
         )
     return normalized_value
 

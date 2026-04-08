@@ -22,6 +22,11 @@ class ConfigTests(unittest.TestCase):
             "CONTEXT_SUMMARY_MAX_CHARS": "280",
             "CONTEXT_FALLBACK_BEHAVIOR": "summary_then_drop_oldest",
             "CONTEXT_MESSAGE_OVERHEAD_TOKENS": "6",
+            "CONTEXT_STORE_BACKEND": "redis",
+            "CONTEXT_REDIS_URL": "redis://localhost:6379/2",
+            "CONTEXT_SESSION_TTL_SECONDS": "7200",
+            "CONTEXT_STORE_KEY_PREFIX": "test:context",
+            "CONTEXT_ALLOW_MEMORY_FALLBACK": "false",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -43,6 +48,14 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(config.context_policy_config.summary_enabled)
         self.assertEqual(config.context_policy_config.summary_max_chars, 280)
         self.assertEqual(config.context_policy_config.message_overhead_tokens, 6)
+        self.assertEqual(config.context_storage_config.backend, "redis")
+        self.assertEqual(
+            config.context_storage_config.redis_url,
+            "redis://localhost:6379/2",
+        )
+        self.assertEqual(config.context_storage_config.session_ttl_seconds, 7200)
+        self.assertEqual(config.context_storage_config.key_prefix, "test:context")
+        self.assertFalse(config.context_storage_config.allow_memory_fallback)
 
     def test_invalid_default_provider_raises(self) -> None:
         with patch.dict(os.environ, {"LLM_DEFAULT_PROVIDER": "unknown"}, clear=True):
@@ -60,6 +73,15 @@ class ConfigTests(unittest.TestCase):
             "CONTEXT_TRUNCATION_TOKEN_BUDGET": "200",
         }
         with patch.dict(os.environ, env, clear=True):
+            with self.assertRaises(ConfigError):
+                AppConfig.from_env(load_dotenv_file=False)
+
+    def test_invalid_context_store_backend_raises(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"CONTEXT_STORE_BACKEND": "unknown"},
+            clear=True,
+        ):
             with self.assertRaises(ConfigError):
                 AppConfig.from_env(load_dotenv_file=False)
 

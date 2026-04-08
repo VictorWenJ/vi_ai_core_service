@@ -44,7 +44,7 @@ class ChatService:
         self._config = config
         self._registry = registry or ProviderRegistry(config)
         self._prompt_service = prompt_service or PromptService()
-        self._context_manager = context_manager or ContextManager()
+        self._context_manager = context_manager or ContextManager.from_app_config(config)
         self._request_assembler = request_assembler or ChatRequestAssembler(
             app_config=config,
             prompt_service=self._prompt_service,

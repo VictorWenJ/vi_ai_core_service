@@ -13,8 +13,14 @@ from app.context.policies.tokenizer import CharacterTokenCounter
 from app.context.policies.truncation import TokenAwareTruncationPolicy
 from app.context.policies.window_selection import TokenAwareWindowSelectionPolicy
 from app.context.stores.in_memory import InMemoryContextStore
+from app.context.stores.redis_store import RedisContextStore
 from app.services.prompt_service import PromptService
 from app.services.request_assembler import ChatRequestAssembler
+
+try:
+    import fakeredis
+except ImportError:  # pragma: no cover - 依赖缺失时跳过
+    fakeredis = None
 
 
 class StubPromptService(PromptService):
@@ -159,3 +165,45 @@ class RequestAssemblerTests(unittest.TestCase):
             + trace["truncation_dropped_message_count"]
             + trace["summary_dropped_message_count"],
         )
+
+    @unittest.skipIf(fakeredis is None, "未安装 fakeredis，跳过 Redis assembler 测试。")
+    def test_assemble_can_read_history_from_redis_store(self) -> None:
+        redis_client = fakeredis.FakeRedis(decode_responses=True)
+        manager = ContextManager(
+            store=RedisContextStore(
+                redis_url="redis://localhost:6379/0",
+                key_prefix="test:assembler",
+                session_ttl_seconds=120,
+                redis_client=redis_client,
+            )
+        )
+        manager.replace_context_messages(
+            "session-redis",
+            [
+                ContextMessage(role="user", content="redis-user-1"),
+                ContextMessage(role="assistant", content="redis-assistant-1"),
+            ],
+        )
+        assembler = ChatRequestAssembler(
+            app_config=self.config,
+            prompt_service=StubPromptService(),
+            context_policy_pipeline=self.pipeline,
+        )
+
+        request = assembler.assemble_from_user_prompt(
+            ChatRequest(
+                user_prompt="new-input",
+                provider="openai",
+                stream=False,
+                session_id="session-redis",
+                conversation_id="conversation-redis",
+                request_id="request-redis",
+            ),
+            context_manager=manager,
+        )
+
+        trace = request.metadata["context_assembly"]
+        self.assertTrue(trace["enabled"])
+        self.assertEqual(trace["session_id"], "session-redis")
+        self.assertEqual(trace["source_message_count"], 2)
+        self.assertGreaterEqual(trace["serialized_message_count"], 1)

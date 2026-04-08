@@ -4,7 +4,9 @@ import unittest
 
 from app.api.schemas import ChatRequest
 from app.config import AppConfig, ProviderConfig
+from app.context.manager import ContextManager
 from app.context.models import ContextMessage, ContextWindow
+from app.context.stores.redis_store import RedisContextStore
 from app.providers.base import BaseLLMProvider, ProviderNotImplementedError
 from app.providers.registry import ProviderRegistry
 from app.schemas.llm_request import LLMMessage, LLMRequest
@@ -16,6 +18,11 @@ from app.services.errors import (
 )
 from app.services.llm_service import LLMService
 from app.services.prompt_service import PromptService
+
+try:
+    import fakeredis
+except ImportError:  # pragma: no cover - 依赖缺失时跳过
+    fakeredis = None
 
 
 class FakeProvider(BaseLLMProvider):
@@ -313,3 +320,43 @@ class LLMServiceTests(unittest.TestCase):
         self.assertEqual(result["session_id"], "session-1")
         self.assertEqual(result["conversation_id"], "conversation-1")
         self.assertEqual(result["scope"], "conversation")
+
+    @unittest.skipIf(fakeredis is None, "未安装 fakeredis，跳过 Redis service 测试。")
+    def test_chat_service_persists_history_to_redis_store(self) -> None:
+        redis_client = fakeredis.FakeRedis(decode_responses=True)
+        redis_context_manager = ContextManager(
+            store=RedisContextStore(
+                redis_url="redis://localhost:6379/0",
+                key_prefix="test:service",
+                session_ttl_seconds=120,
+                redis_client=redis_client,
+            )
+        )
+        service = LLMService(
+            config=self.config,
+            registry=self.registry,
+            prompt_service=PromptService(),
+            context_manager=redis_context_manager,
+        )
+
+        response = service.chat_from_user_prompt(
+            ChatRequest(
+                user_prompt="persist me",
+                session_id="session-redis",
+                conversation_id="conversation-redis",
+                provider="openai",
+                stream=False,
+            )
+        )
+        self.assertEqual(response.provider, "openai")
+        window = redis_context_manager.get_context("session-redis")
+        self.assertEqual(window.message_count, 2)
+        self.assertEqual(window.messages[0].role, "user")
+        self.assertEqual(window.messages[1].role, "assistant")
+
+        service.reset_context(
+            session_id="session-redis",
+            conversation_id="conversation-redis",
+        )
+        cleared = redis_context_manager.get_context("session-redis")
+        self.assertEqual(cleared.message_count, 0)

@@ -8,6 +8,8 @@ from app.context.models import ContextMessage, ContextWindow
 
 
 class BaseContextStore(ABC):
+    backend_name: str = "unknown"
+
     @abstractmethod
     def get_window(self, session_id: str) -> ContextWindow:
         raise NotImplementedError

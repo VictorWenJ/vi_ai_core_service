@@ -1,69 +1,48 @@
 # app/api/AGENTS.md
 
-> 更新日期：2026-04-07
-
+> 更新日期：2026-04-08
 
 ## 1. 文档定位
 
-本文件定义 `app/api/` 目录的职责、边界、结构约束、演进方向与代码审查标准。
-
-当前阶段，本文件临时同时承担该模块的：
-
-- AGENTS.md
-- PROJECT_PLAN.md
-- ARCHITECTURE.md
-- CODE_REVIEW.md
-
-功能。
-
-本文件只约束 API 接入层，不定义全项目规则，不替代根目录文档。
+本文件定义 `app/api/` 目录的职责、边界、结构约束、演进方向与代码审查标准。  
+当前阶段，本文件临时同时承担该模块的 AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW 职责。
 
 ---
 
 ## 2. 模块定位
 
-`app/api/` 是系统的 **API 接入层**。
-
+`app/api/` 是系统的 **API 接入层**。  
 它负责将外部 HTTP 请求接入系统，并将内部应用编排能力暴露为稳定、清晰、可测试的接口。
 
-当前目录下已有文件：
+当前目录中重点包括：
 
-- `chat.py`：聊天路由入口（薄路由）
-  - 当前包含 `/chat` 与 `/chat/reset`
-- `health.py`：健康检查相关接口
-- `schemas/chat.py`：chat 请求/响应 schema
-- `deps.py`：路由依赖装配
-- `error_mapping.py`：service 异常到 HTTP 语义映射
-- `__init__.py`
+- `chat.py`
+- `health.py`
+- `schemas/chat.py`
+- `deps.py`
+- `error_mapping.py`
 
 ---
 
 ## 3. 本层职责
 
-API 接入层负责：
-
 1. 定义 HTTP 路由与接口入口
 2. 接收并解析请求
-3. 做接口层的输入校验与基础错误处理
-4. 调用应用编排层（`app/services/`）
+3. 做接口层输入校验与基础错误处理
+4. 调用 `app/services/`
 5. 将内部结果映射为外部响应
 6. 输出标准化 HTTP 状态码与错误语义
-7. 承载接口层必要的日志、可观测性与追踪入口
 
 ---
 
 ## 4. 本层不负责什么
 
-API 层不负责：
-
 1. 不负责模型厂商 API 适配
 2. 不负责 Prompt 模板渲染细节
-3. 不负责上下文存储与上下文裁剪策略
+3. 不负责 context store 的持久化实现
 4. 不负责具体业务流程编排
-5. 不负责 provider 选择、provider fallback、provider 归一化
-6. 不负责将大量业务逻辑堆在路由函数中
-
-一句话：**API 层只做接入与转发，不做底层实现与复杂业务编排。**
+5. 不负责 provider 选择与 provider fallback
+6. 不负责直接访问 Redis 或其他存储后端
 
 ---
 
@@ -71,54 +50,37 @@ API 层不负责：
 
 ### 允许依赖
 
-`app/api/` 可以依赖：
-
 - `app/services/`
 - `app/schemas/`
-- 必要的框架基础设施（如 FastAPI）
-- 少量配置读取（仅限接口层确实需要）
+- 必要的框架基础设施（FastAPI）
+- 少量接口层必要配置
 
 ### 禁止直接依赖
 
-`app/api/` 不应直接依赖：
-
+- `app/context/stores/*`
 - `app/providers/` 作为常规调用路径
 - `app/prompts/` 作为常规调用路径
-- `app/context/` 作为常规调用路径
-- provider 层异常类型（API 仅处理 service-facing error）
-
-说明：
-
-- 正常业务请求应通过 `app/services/` 进入系统
-- API 层不允许绕过应用编排层直接拼装 provider/prompt/context 逻辑
-- 健康检查等极特殊场景可有限例外，但必须保持极简
+- Redis client 或 key 规则
 
 ---
 
 ## 6. 当前建议结构
 
-当前 API 层建议维持“薄路由”结构：
+API 层维持“薄路由”结构：
 
 - `chat.py`
-  - 仅负责 chat 接口定义与请求转发
+  - `/chat`
+  - `/chat/reset`
 - `schemas/`
-  - 承载路由请求/响应 schema
+  - 请求/响应 schema
 - `deps.py`
-  - 承载 service 装配与依赖入口
+  - service 装配与依赖入口
 - `error_mapping.py`
-  - 承载异常映射与错误响应语义
+  - service 异常到 HTTP 语义映射
 - `health.py`
-  - 仅负责 liveness / readiness / basic health 能力
-- 若未来增加新接口，按资源或能力拆文件，而不是继续堆在 `chat.py`
+  - liveness/readiness/basic health
 
-后续可扩展方向包括：
-
-- `completion.py`
-- `models.py`
-- `admin.py`
-- `metrics.py`
-
-但只有在能力真实出现后再新增，不提前造目录。
+后续若有真实需求，再考虑 conversation 管理类接口，但本阶段不做大扩张。
 
 ---
 
@@ -133,171 +95,87 @@ API 层不负责：
 - 调用 service
 - 返回响应
 
-不要把复杂业务逻辑写在路由中。
+### 7.2 持久化细节不进入路由层
 
-### 7.2 显式错误语义
-
-接口层返回值必须让调用方能明确区分：
-
-- 参数错误
-- 服务不可用
-- provider 错误
-- 内部系统错误
+Phase 3 中 API 层可以暴露与 session / conversation 相关的接口，但绝不直接操作持久化 store。
 
 ### 7.3 响应结构稳定
 
-同一类接口响应结构应保持稳定，不随内部实现变化频繁变更。
-
-### 7.4 易测性优先
-
-API 层应保持简单，以便：
-
-- 单元测试
-- 接口测试
-- 错误路径测试
-- 健康检查测试
+同一类接口响应结构应保持稳定，不随内部实现频繁变更。
 
 ---
 
-## 8. 新增接口时的规则
+## 8. 当前阶段能力声明
 
-新增接口时，必须遵守以下规则：
-
-1. 先判断该能力是否真的属于 HTTP API 暴露层
-2. 接口命名应体现资源或能力，而不是体现内部实现细节
-3. 路由函数不得直接组装 provider 请求
-4. 路由函数不得直接读取 prompt 模板并渲染
-5. 路由函数不得直接操作上下文存储
-6. 必须将核心流程委托给 `app/services/`
-7. 必须定义清晰的请求模型与响应模型
-8. 必须补充对应测试
-
----
-
-## 9. 当前阶段演进计划
-
-本层当前阶段目标：
-
-1. 保持 chat 接口清晰、可运行、可测试
-2. 保持 health 接口简单可靠
-3. 稳定 API 层与 service 层之间的调用边界
-4. 避免 API 层提前承载流式输出、鉴权、限流等大量复杂逻辑
-
-### 当前阶段能力声明（强约束）
-
-- 本阶段已实现并验收：
-  - HTTP API 是唯一调用入口（不含 CLI 直调）
-  - `/health` 基础健康检查
-  - `/chat` 单轮非流式调用
-  - `/chat/reset` 会话重置入口（通过 service->context manager 执行）
-  - 基础输入校验与状态码映射
-- 本阶段仅预留，不要求落地：
-  - streaming 接口真实实现
-  - 多模态输入真实处理
-  - tools/function calling 真实执行链路
-  - 结构化输出 真实输出链路
-
-后续阶段可演进：
-
-1. 流式响应接口
-2. 模型列表查询接口
-3. 会话管理接口
-4. 管理类接口
-5. 监控与诊断接口
-
-这些扩展必须在真实需求出现后，再进行结构拆分。
+- 已实现并验收：
+  - `/health`
+  - `/chat`
+  - `/chat/reset`
+  - 基础输入校验与错误映射
+- 当前已落地：
+  - `/chat` 与 `/chat/reset` 在持久化短期记忆（Redis backend）场景下保持稳定
+  - API 层继续通过 service 调用，不直接触达 Redis/store 细节
+- 当前不要求落地：
+  - streaming 接口
+  - 多模态接口
+  - conversation CRUD 全家桶
+  - 管理后台接口
 
 ---
 
-## 10. 代码修改约束
+## 9. 修改规则
 
-修改 API 层代码时，必须优先检查：
-
-1. 是否把业务逻辑错误地塞进了路由层
-2. 是否绕过了 service 层直接调用 provider/context/prompts
-3. 是否引入了不稳定的响应结构
-4. 是否破坏了现有 HTTP 语义
-5. 是否增加了难以测试的分支逻辑
-6. 是否影响健康检查的简单性与可靠性
+1. 不允许在 API 层读写 store 私有状态
+2. 不允许在路由里拼接 Redis key 或设置 TTL
+3. 不允许在路由里手写上下文治理逻辑
+4. 必须把核心流程委托给 `app/services/`
+5. 变更接口契约必须同步更新 schema、测试与文档
 
 ---
 
-## 11. Code Review 清单
+## 10. Code Review 清单
 
-评审 `app/api/` 代码时，重点检查：
-
-### 职责边界
-
-- 路由层是否保持薄
-- 是否有越层调用
-- 是否把 provider/prompt/context 细节拉进 API 层
-
-### 接口设计
-
-- 接口命名是否清晰
-- 请求/响应结构是否稳定
-- 状态码是否合理
-- 错误信息是否可理解
-
-### 可维护性
-
-- 路由函数是否过长
-- 是否存在重复的参数处理
-- 是否存在重复的异常转换逻辑
-
-### 可测试性
-
-- 是否容易写接口测试
-- 是否覆盖成功路径与失败路径
-- 是否有基础健康检查覆盖
+1. 路由层是否保持薄？
+2. 是否越层调用 context store / Redis？
+3. 请求/响应结构是否稳定？
+4. 错误信息是否清晰？
+5. reset 接口语义是否仍然正确？
+6. 是否破坏现有 `/chat` 与 `/chat/reset` 契约？
 
 ---
 
-## 12. 测试要求
+## 11. 测试要求
 
-API 层建议至少覆盖：
+至少覆盖：
 
-1. 健康检查成功路径
-2. chat 请求成功路径
-3. 非法输入路径
-4. service 抛错后的错误映射路径
-5. 基本响应结构断言
-
----
-
-## 13. 禁止事项
-
-以下做法在本层应避免：
-
-- 在路由里写 provider 调用细节
-- 在路由里拼接 prompt
-- 在路由里直接读写 context store
-- 在路由里做复杂分支编排
-- 将 API 层写成“第二个 service 层”
+1. `/health` 成功路径
+2. `/chat` 成功路径
+3. `/chat/reset` session 路径
+4. `/chat/reset` conversation 路径
+5. service 抛错后的错误映射路径
 
 ---
 
-## 14. 一句话总结
+## 12. 一句话总结
 
-`app/api/` 是系统的外部接入门面，职责是 **接入、校验、转发、返回**，而不是承担内部核心业务实现。
-
----
-
-## 15. 本模块任务执行链路（强制）
-
-API 类任务必须按以下顺序执行：
-
-1. 先读根目录四文档（`AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`）
-2. 再读本文件
-3. 再执行 `skills/python-api-capability/SKILL.md` 与其 checklist/reference
-4. 再改 `app/api/` 代码
-5. 再按根 `CODE_REVIEW.md` + 本文件 + skill checklist 自审
-6. 若接口契约或边界事实变化，回写对应文档
+`app/api/` 的职责是**接入、校验、转发、返回**。  
+进入 Phase 3 后，这一点不变；变化的是服务层和 context 层会在 API 背后接入持久化短期记忆，但这些细节不应泄漏到路由层。
 
 ---
 
-## 16. 本模块交付门禁（新增）
+## 13. 本模块任务执行链路（强制）
 
-- 未通过 `python-api-capability` checklist，不视为完成
-- 发现 API 越层调用（直连 provider/prompt/context）必须先整改
+1. 根目录四文档
+2. 本文件
+3. `app/services/AGENTS.md` 与 `app/context/AGENTS.md`
+4. 对应 skill 文档
+5. 修改 API 代码
+6. 更新测试与文档回写
+
+---
+
+## 14. 本模块交付门禁
+
+- 发现 API 越层调用 context store / Redis，必须先整改
 - 变更影响主链路时，必须补充或更新 API 测试
+- 未通过 `python-api-capability` checklist，不视为完成
