@@ -1,4 +1,4 @@
-"""Truncation policies for selected history."""
+"""已选历史的截断策略。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from app.context.policies.tokenizer import (
 
 
 class NoOpTruncationPolicy(TruncationPolicy):
-    """Keep selected history unchanged."""
+    """保持已选历史不变。"""
 
     name = "truncation.noop"
 
@@ -32,13 +32,13 @@ class NoOpTruncationPolicy(TruncationPolicy):
 
 
 class CharacterBudgetTruncationPolicy(TruncationPolicy):
-    """Lightweight truncation placeholder based on character budget."""
+    """基于字符预算的轻量截断占位策略。"""
 
     name = "truncation.character_budget"
 
     def __init__(self, max_characters: int) -> None:
         if max_characters <= 0:
-            raise ValueError("max_characters must be greater than 0.")
+            raise ValueError("max_characters 必须大于 0。")
         self._max_characters = max_characters
 
     def truncate(self, selection_result: ContextSelectionResult) -> ContextTruncationResult:
@@ -70,7 +70,7 @@ class CharacterBudgetTruncationPolicy(TruncationPolicy):
 
 
 class TokenAwareTruncationPolicy(TruncationPolicy):
-    """Token-budget truncation that preserves recency and truncates oldest content if needed."""
+    """基于 token 预算的截断：优先保留最近内容，并优先截断更旧内容。"""
 
     name = "truncation.token_aware"
 
@@ -80,7 +80,7 @@ class TokenAwareTruncationPolicy(TruncationPolicy):
         token_counter: BaseTokenCounter | None = None,
     ) -> None:
         if max_tokens <= 0:
-            raise ValueError("max_tokens must be greater than 0.")
+            raise ValueError("max_tokens 必须大于 0。")
         self._max_tokens = max_tokens
         self._token_counter = token_counter or build_default_token_counter()
 
@@ -105,17 +105,8 @@ class TokenAwareTruncationPolicy(TruncationPolicy):
         # 剩余 token 预算
         remaining_budget = self._max_tokens
 
-        # “按 token 预算保留最近历史”的截断，核心规则是“新消息优先保留”
-
-        # 先算这条消息 token 数 message_tokens。
-        # 如果整条能放下：保留，扣预算。
-        # 如果预算已经 0：直接丢弃。
-        # 如果还有一点预算但整条放不下：
-        #   尝试把这条消息内容截短到 remaining_budget 能容纳。
-        #   截不出内容就丢弃。
-        #   截出来后构造 truncated_message（打标 truncated=True 和原长度）。
-        #   再算一次截断后 token；若仍无效则丢弃。
-        #   否则保留截断后的消息并扣预算。
+        # 优先保留最近历史。
+        # 如果整条消息放不下，尝试将其内容截断到剩余预算。
         for message in reversed(selection_result.selected_messages):
             message_tokens = self._token_counter.count_message_tokens(message)
             if message_tokens <= remaining_budget:

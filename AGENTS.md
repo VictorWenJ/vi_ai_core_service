@@ -1,6 +1,6 @@
-﻿# AGENTS.md
+# AGENTS.md
 
-> 更新日期：2026-04-07
+> 更新日期：2026-04-08
 
 
 ## 1. 文档定位
@@ -105,10 +105,10 @@
 
 在本仓库中：
 
-- Prompt
-- Context
-- Provider
-- Observability
+- 提示词工程（Prompt）
+- 上下文工程（Context）
+- Provider 适配层（Provider）
+- 可观测性基础设施（Observability）
 - 模型调用契约
 
 都属于核心工程组成部分，而不是零散辅助代码。
@@ -245,6 +245,14 @@
 - 可测试优于难验证
 - 可替换优于强绑定
 - 可审查优于“看不懂但能跑”
+- 注解、提示、说明类文本统一使用中文（保持原意不变）
+
+### 9.1 中文文本强制规则（新增）
+
+1. 仓库内注解、提示、说明（包括代码注释、docstring、字段说明、错误提示、文档说明）默认使用中文。
+2. 新增上述文本时，必须直接使用中文，不允许新增英文说明后再补翻译。
+3. 技术标识符（如类名、函数名、模块名、环境变量名、协议字段名）保持英文，不纳入中文化范围。
+4. 如需保留行业术语，可采用“中文说明 + 英文术语/标识”方式，避免语义歧义。
 
 ---
 
@@ -302,22 +310,22 @@
   - 覆盖主链路的最小测试门禁
   - observability 最小基础设施实现（`log_until.py` 统一日志入口 + 前缀/JSON 输出约束）与文档治理闭环
 - 当前仅预留，不作为本阶段已实现能力：
-  - streaming
+  - 流式能力（streaming）
   - 多模态真实链路
   - tools/function calling 真正执行链路
-  - structured output 真正能力
-  - context persistence / advanced summary memory / long-term compaction
+  - 结构化输出 真正能力
+  - context persistence / advanced summary memory / long-term compaction（上下文持久化/高级摘要记忆/长期压缩）
   - 新 provider 的完整落地
 
 #### 当前阶段能力增强（Context Engineering Phase 2）
 
 随着项目进入 Context Engineering Phase 2，本阶段在前述基础能力之上增加以下能力并明确约束：
 
-1. **Token‑aware 上下文策略**：context 层引入 `TokenAwareWindowSelectionPolicy` 与 `TokenAwareTruncationPolicy`，根据会话历史的 token 数量动态选择并截断历史，避免全量拼接；默认以可配置的最大 token 预算为界，替换 Phase 1 的“最近 N 条”策略。
-2. **Summary/Compaction 策略**：定义 `SummaryPolicy` 接口，并提供默认简单实现（例如截断提示或取每条消息首句），用于在超过 token 预算时压缩历史。该策略仅提供 hook，不调用外部 LLM；真实摘要将在后续阶段实现。
+1. **Token‑aware 上下文策略**：context 层引入 `TokenAwareWindowSelectionPolicy` 与 `TokenAwareTruncationPolicy`，根据会话历史 token 预算动态选择并截断历史，避免全量拼接；默认路径已切换为 token-aware，不再以“最近 N 条”作为主策略。
+2. **Summary/Compaction 策略**：定义 `SummaryPolicy` 接口并落地 `DeterministicSummaryPolicy`。默认回退策略为 `summary_then_drop_oldest`，必须优先保留最近原始消息，先截短 summary，再删除更旧 raw history，避免 summary 吞掉最新 raw context。
 3. **会话重置能力**：`ContextManager` 增加 `reset_conversation` 等方法；服务层与 API 层提供会话重置接口，允许用户主动清除当前 session/conversation 历史。重置操作仅影响短期会话，不能跨用户或跨会话误删数据。
-4. **ContextPolicyPipeline 升级**：升级默认的 context policy pipeline，执行顺序为 token‑aware 选择 → token‑aware 截断 → summary/compaction → serialization，并将执行 trace 写入 metadata。`request_assembler.py` 必须通过该管道获取历史。
-5. **配置与默认值更新**：在配置中新增最大 token 预算、截断预算、summary 开关等参数，确保可以灵活调整策略行为；`defaults.py` 应提供实例化这些策略的工厂函数。
+4. **ContextPolicyPipeline 升级**：默认 pipeline 固定顺序为 token‑aware 选择 → token‑aware 截断 → summary/compaction → serialization，并将各阶段 trace 写入 metadata。`request_assembler.py` 必须通过该管道获取历史。
+5. **配置与默认值更新**：配置中已支持最大 token 预算、截断预算、summary 开关、fallback 行为、`message_overhead_tokens` 等参数；`defaults.py` 提供默认策略工厂。
 
 这些增强能力仍仅针对短期会话窗口控制和重置；不代表我们已经实现了复杂的 long‑term memory 平台、RAG 记忆耦合或多模态链路。任何持久化存储、检索、流式输出等高级能力仍属于未来阶段，不能在当前阶段提前实现或穿透边界。
 

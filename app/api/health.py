@@ -1,4 +1,4 @@
-"""Health-check API route."""
+"""健康检查 API 路由。"""
 
 from __future__ import annotations
 

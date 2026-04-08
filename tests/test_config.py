@@ -21,6 +21,7 @@ class ConfigTests(unittest.TestCase):
             "CONTEXT_SUMMARY_ENABLED": "true",
             "CONTEXT_SUMMARY_MAX_CHARS": "280",
             "CONTEXT_FALLBACK_BEHAVIOR": "summary_then_drop_oldest",
+            "CONTEXT_MESSAGE_OVERHEAD_TOKENS": "6",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -37,10 +38,11 @@ class ConfigTests(unittest.TestCase):
             config.get_provider_config("deepseek").default_model,
             "deepseek-chat",
         )
-        self.assertEqual(config.context.max_token_budget, 1500)
-        self.assertEqual(config.context.truncation_token_budget, 1200)
-        self.assertTrue(config.context.summary_enabled)
-        self.assertEqual(config.context.summary_max_chars, 280)
+        self.assertEqual(config.context_policy_config.max_token_budget, 1500)
+        self.assertEqual(config.context_policy_config.truncation_token_budget, 1200)
+        self.assertTrue(config.context_policy_config.summary_enabled)
+        self.assertEqual(config.context_policy_config.summary_max_chars, 280)
+        self.assertEqual(config.context_policy_config.message_overhead_tokens, 6)
 
     def test_invalid_default_provider_raises(self) -> None:
         with patch.dict(os.environ, {"LLM_DEFAULT_PROVIDER": "unknown"}, clear=True):

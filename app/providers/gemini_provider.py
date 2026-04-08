@@ -1,4 +1,4 @@
-"""Gemini provider scaffold."""
+"""Gemini Provider 脚手架。"""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ from app.schemas.llm_response import LLMResponse
 
 
 class GeminiProvider(BaseLLMProvider):
-    """Scaffold for future Gemini integration."""
+    """面向后续 Gemini 接入的脚手架。"""
 
     provider_name = "gemini"
 
     def chat(self, request: LLMRequest) -> LLMResponse:
         self.ensure_non_streaming(request)
         raise ProviderNotImplementedError(
-            "Gemini provider is scaffolded only in Phase 1. TODO: implement vendor API mapping."
+            "Gemini Provider 当前仅为脚手架（Phase 1）。TODO：实现厂商 API 映射。"
         )

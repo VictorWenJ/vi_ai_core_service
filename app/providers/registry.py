@@ -1,4 +1,4 @@
-"""Centralized provider registration and resolution."""
+"""集中式 Provider 注册与解析。"""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from app.providers.tongyi_provider import TongyiProvider
 
 @dataclass(frozen=True)
 class ProviderDescriptor:
-    """Provider maturity and capability descriptor for governance-friendly lookup."""
+    """用于治理友好查询的 Provider 成熟度与能力描述。"""
 
     provider_class: type[BaseLLMProvider]
     maturity: str
@@ -65,7 +65,7 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
 
 
 class ProviderRegistry:
-    """Single place responsible for provider resolution."""
+    """负责 Provider 解析的统一入口。"""
 
     def __init__(
         self,
@@ -92,8 +92,8 @@ class ProviderRegistry:
             descriptor = PROVIDER_CATALOG[normalized_name]
         except KeyError as exc:
             raise ProviderConfigurationError(
-                f"Unsupported provider '{provider_name}'. "
-                f"Supported providers: {', '.join(PROVIDER_CATALOG.keys())}."
+                f"不支持的 Provider '{provider_name}'。 "
+                f"支持的 Provider：{', '.join(PROVIDER_CATALOG.keys())}。"
             ) from exc
 
         provider = descriptor.provider_class(self._config.get_provider_config(normalized_name))
@@ -109,6 +109,6 @@ class ProviderRegistry:
             return PROVIDER_CATALOG[normalized_name]
         except KeyError as exc:
             raise ProviderConfigurationError(
-                f"Unsupported provider '{provider_name}'. "
-                f"Supported providers: {', '.join(PROVIDER_CATALOG.keys())}."
+                f"不支持的 Provider '{provider_name}'。 "
+                f"支持的 Provider：{', '.join(PROVIDER_CATALOG.keys())}。"
             ) from exc

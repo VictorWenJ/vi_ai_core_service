@@ -1,4 +1,4 @@
-"""DeepSeek provider implementation."""
+"""DeepSeek Provider 实现。"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from app.providers.openai_compatible_base import OpenAICompatibleBaseProvider
 
 
 class DeepSeekProvider(OpenAICompatibleBaseProvider):
-    """DeepSeek provider built on the OpenAI-compatible API surface."""
+    """基于 OpenAI 兼容接口的 DeepSeek Provider。"""
 
     provider_name = "deepseek"
 

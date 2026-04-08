@@ -1,4 +1,4 @@
-"""Default history window selection policies."""
+"""默认历史窗口选择策略。"""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from app.context.policies.tokenizer import (
 
 
 class LastNMessagesSelectionPolicy(WindowSelectionPolicy):
-    """Select the most recent N messages while preserving chronological order."""
+    """在保持时间顺序的前提下选择最近 N 条消息。"""
 
     name = "window_selection.last_n_messages"
 
@@ -21,7 +21,7 @@ class LastNMessagesSelectionPolicy(WindowSelectionPolicy):
         token_counter: BaseTokenCounter | None = None,
     ) -> None:
         if max_messages <= 0:
-            raise ValueError("max_messages must be greater than 0.")
+            raise ValueError("max_messages 必须大于 0。")
         self._max_messages = max_messages
         self._token_counter = token_counter or build_default_token_counter()
 
@@ -43,7 +43,7 @@ class LastNMessagesSelectionPolicy(WindowSelectionPolicy):
 
 
 class TokenAwareWindowSelectionPolicy(WindowSelectionPolicy):
-    """Select recent history according to a max token budget."""
+    """按最大 token 预算选择最近历史。"""
 
     name = "window_selection.token_aware"
 
@@ -53,7 +53,7 @@ class TokenAwareWindowSelectionPolicy(WindowSelectionPolicy):
         token_counter: BaseTokenCounter | None = None,
     ) -> None:
         if max_tokens <= 0:
-            raise ValueError("max_tokens must be greater than 0.")
+            raise ValueError("max_tokens 必须大于 0。")
         self._max_tokens = max_tokens
         self._token_counter = token_counter or build_default_token_counter()
 
@@ -65,7 +65,7 @@ class TokenAwareWindowSelectionPolicy(WindowSelectionPolicy):
         for message in reversed(window.messages):
             message_tokens = self._token_counter.count_message_tokens(message)
             if not selected_reversed and message_tokens > self._max_tokens:
-                # 保留最新的超大消息，以便截断策略对其进行压缩。
+                # 保留最新且超预算的消息，交由截断策略压缩处理。
                 selected_reversed.append(message)
                 selected_tokens = message_tokens
                 continue

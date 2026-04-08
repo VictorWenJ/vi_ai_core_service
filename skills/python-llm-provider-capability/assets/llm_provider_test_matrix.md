@@ -1,4 +1,4 @@
-# LLM Provider Test Matrix（Phase 1）
+# LLM Provider 测试矩阵（Phase 1）
 
 > 更新日期：2026-04-06
 
@@ -13,7 +13,7 @@
 ## 当前阶段不测项（仅预留）
 
 1. streaming 真实输出
-2. tools/function calling
-3. structured output
+2. tools/function calling（工具/函数调用）
+3. 结构化输出
 4. 多模态真实链路
 

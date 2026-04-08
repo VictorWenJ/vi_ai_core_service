@@ -1,4 +1,4 @@
-﻿# app/services/AGENTS.md
+# app/services/AGENTS.md
 
 > 更新日期：2026-04-07
 
@@ -183,13 +183,13 @@ service 的输入输出应尽量稳定、明确，便于：
   - service-facing error 向 API 层传播
 - 本阶段正在增强并要求边界正确：
   - `request_assembler.py` 的上下文装配中枢职责
-  - token-aware history selection / truncation / summary / serialization pipeline
+  - token-aware 历史选择 / 截断 / 摘要 / 序列化管线
   - stateful session history 的 budget-aware 治理与 reset 流程
 - 本阶段仅预留，不要求落地：
   - streaming 编排
   - 多模态编排
   - tools/function calling 编排
-  - structured output 编排
+  - 结构化输出 编排
   - persistence / advanced summary memory / semantic recall / RAG 编排
 
 ---

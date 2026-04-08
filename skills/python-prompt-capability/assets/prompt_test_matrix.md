@@ -1,4 +1,4 @@
-# Prompt Test Matrix
+# Prompt 测试矩阵
 
 > 更新日期：2026-04-06
 
@@ -12,7 +12,7 @@
 
 ## 当前阶段不测项（仅预留）
 
-1. Prompt orchestration engine
+1. Prompt 编排引擎
 2. Prompt 版本治理平台
-3. tools/structured output/multimodal 完整提示编排
+3. tools/结构化输出/multimodal 完整提示编排
 

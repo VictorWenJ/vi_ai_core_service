@@ -1,4 +1,4 @@
-# Observability Capability Checklist
+# Observability 能力检查清单
 
 > 更新日期：2026-04-07
 

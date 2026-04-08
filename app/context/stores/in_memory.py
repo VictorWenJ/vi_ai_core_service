@@ -1,4 +1,4 @@
-"""In-memory context store skeleton."""
+"""内存上下文存储骨架。"""
 
 from __future__ import annotations
 

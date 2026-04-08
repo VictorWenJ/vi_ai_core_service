@@ -1,4 +1,4 @@
-﻿# Prompt 层边界与验收标准
+# Prompt 层边界与验收标准
 
 > 更新日期：2026-04-06
 
@@ -24,9 +24,9 @@ Prompt 层不负责：
 - provider SDK / HTTP 调用
 - 业务主流程编排
 - context store 管理
-- tool execution loop
-- Agent planning
-- fallback / routing policy
+- 工具执行循环
+- Agent 规划
+- 回退 / 路由策略
 - 用户态业务规则引擎
 
 ---
@@ -39,9 +39,9 @@ Prompt 层不负责：
 4. Prompt 层应面向主流 C 端 AI 产品常见形态：
    - 多轮会话
    - tools
-   - structured output
-   - multimodal input
-   - cache-friendly stable blocks
+   - 结构化输出
+   - 多模态输入
+   - 缓存友好的稳定区块
 5. registry 与 renderer 必须保持清晰、显式、易测。
 6. 当前阶段只做合理工程化，不做过度平台化。
 
@@ -82,7 +82,7 @@ Prompt 层不负责：
 - 后续替换 provider 成本高
 - 无法保持系统内部语义稳定
 
-### 反模式 5：Prompt 模型只考虑纯文本、忽略 tools / structured output / multimodal
+### 反模式 5：Prompt 模型只考虑纯文本、忽略 tools / 结构化输出 / multimodal
 
 错误原因：
 
@@ -110,7 +110,7 @@ Prompt 层不负责：
 - renderer 稳定
 - 模板命名合理
 - 具备 system / scenario / constraint 分层意识
-- 对 tools / structured output / multimodal 有清晰扩展位
+- 对 tools / 结构化输出 / multimodal 有清晰扩展位
 - 保持 provider-agnostic
 - 当前复杂度与项目阶段匹配
 

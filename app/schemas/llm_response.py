@@ -1,4 +1,4 @@
-"""Normalized response models for LLM access."""
+"""LLM 访问的规范化响应模型。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 
 @dataclass
 class LLMUsage:
-    """Normalized token usage."""
+    """规范化 token 用量。"""
 
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
@@ -17,7 +17,7 @@ class LLMUsage:
 
 @dataclass
 class LLMResponse:
-    """Normalized provider response returned to business code."""
+    """返回给业务代码的规范化 Provider 响应。"""
 
     content: str
     provider: str

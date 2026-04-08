@@ -1,4 +1,4 @@
-"""Chat route request/response schemas."""
+"""聊天路由请求/响应模型。"""
 
 from __future__ import annotations
 
@@ -8,29 +8,29 @@ from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):
-    user_prompt: str = Field(min_length=1, description="Single-turn user prompt.")
-    provider: str | None = Field(default=None, description="Optional provider override.")
-    model: str | None = Field(default=None, description="Optional model override.")
+    user_prompt: str = Field(min_length=1, description="单轮用户输入。")
+    provider: str | None = Field(default=None, description="可选的 Provider 覆盖。")
+    model: str | None = Field(default=None, description="可选的模型覆盖。")
     temperature: float | None = Field(
         default=None,
         ge=0,
         le=2,
-        description="Optional sampling temperature override.",
+        description="可选的采样温度覆盖。",
     )
     max_tokens: int | None = Field(
         default=None,
         gt=0,
-        description="Optional max tokens override.",
+        description="可选的最大 token 覆盖。",
     )
-    system_prompt: str | None = Field(default=None, description="Optional system prompt.")
-    stream: bool = Field(default=False, description="Streaming response toggle (reserved).")
-    session_id: str | None = Field(default=None, description="Optional stateful session id.")
+    system_prompt: str | None = Field(default=None, description="可选的系统提示词。")
+    stream: bool = Field(default=False, description="流式响应开关（预留）。")
+    session_id: str | None = Field(default=None, description="可选的有状态会话 ID。")
     conversation_id: str | None = Field(
         default=None,
-        description="Optional conversation id for cross-request continuity.",
+        description="可选的会话轮次 ID，用于跨请求连续性。",
     )
-    request_id: str | None = Field(default=None, description="Optional external request id.")
-    metadata: dict[str, Any] | None = Field(default=None, description="Optional metadata.")
+    request_id: str | None = Field(default=None, description="可选的外部请求 ID。")
+    metadata: dict[str, Any] | None = Field(default=None, description="可选的元数据。")
 
 
 class ChatUsage(BaseModel):
@@ -50,10 +50,10 @@ class ChatResponse(BaseModel):
 
 
 class ChatResetRequest(BaseModel):
-    session_id: str = Field(min_length=1, description="Target session id to reset.")
+    session_id: str = Field(min_length=1, description="待重置的会话 ID。")
     conversation_id: str | None = Field(
         default=None,
-        description="Optional conversation id; when absent reset whole session window.",
+        description="可选会话轮次 ID；缺省时重置整个会话窗口。",
     )
 
 

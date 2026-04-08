@@ -1,10 +1,10 @@
-﻿---
+---
 name: python-prompt-capability
 description: 用于为 vi_ai_core_service 搭建和标准化面向主流 C 端 AI 应用的 Prompt 资产层。重点关注模板资产管理、分层指令组合、registry/renderer、系统提示与场景提示分离、多模态输入预留、工具调用与结构化输出提示约束，以及与 service/provider/context 的清晰边界。
 last_updated: 2026-04-06
 ---
 
-# Purpose
+# 目的
 
 本 skill 用于指导 `vi_ai_core_service` 中 Prompt 资产层的新增、整理、标准化与升级工作。
 
@@ -42,23 +42,23 @@ last_updated: 2026-04-06
 
 ---
 
-# Current Phase Constraint (Must Follow)
+# 当前阶段约束（必须遵守）
 
 在 `vi_ai_core_service` 当前阶段，执行本 skill 时必须默认遵守以下范围：
 
 - Prompt 层只要求“基础资产目录 + registry + renderer + 默认 chat system prompt”稳定可用。
-- tools、structured output、多模态等仅做提示层预留，不做完整 orchestration engine。
+- tools、结构化输出、多模态等仅做提示层预留，不做完整 orchestration engine。
 - 不把 Prompt 层扩展成策略平台或业务规则引擎。
 - 重点是收敛散落 Prompt、稳定渲染行为、保持与 service/provider/context 的边界清晰。
 
 ---
 
-# Use This Skill When
+# 适用场景
 
 在以下场景中使用本 skill：
 
 - 新增 `app/prompts/` 下的 Prompt 模板目录
-- 新增 system prompt / scenario prompt / fallback prompt
+- 新增 system prompt / 场景提示词（scenario prompt） / fallback prompt
 - 新增或整理 registry / renderer
 - 把散落在 service / script 中的 prompt 文本收敛到 Prompt 层
 - 为多轮对话、工具调用、结构化输出场景补充 Prompt 资产
@@ -67,7 +67,7 @@ last_updated: 2026-04-06
 
 ---
 
-# Do Not Use This Skill For
+# 不适用场景
 
 以下场景不应使用本 skill：
 
@@ -75,15 +75,15 @@ last_updated: 2026-04-06
 - API 路由设计
 - context store 管理
 - 业务主流程编排
-- tool execution loop
-- Agent planning
-- retrieval / RAG pipeline
+- 工具执行循环
+- Agent 规划
+- 检索 / RAG 管线
 - 复杂 prompt orchestration engine 的一次性实现
 - 在 Prompt 层中写业务规则引擎
 
 ---
 
-# Layer Responsibility
+# 分层职责
 
 Prompt 层负责：
 
@@ -92,11 +92,11 @@ Prompt 层负责：
 - 提供 registry 用于查找模板
 - 提供 renderer 用于模板渲染与组合
 - 区分不同 Prompt 类型，例如：
-  - base system prompt
-  - product policy prompt
-  - scenario prompt
-  - output constraint prompt
-  - tool-use guidance prompt
+  - 基础系统提示词（base system prompt）
+  - 产品策略提示词（product policy prompt）
+  - 场景提示词（scenario prompt）
+  - 输出约束提示词（输出约束（output constraint） prompt）
+  - 工具使用引导提示词（工具使用引导（tool-use guidance） prompt）
 - 为多模态输入、结构化输出、工具调用等场景预留提示层扩展位
 - 为未来版本治理、缓存友好结构、变体选择预留空间
 
@@ -112,14 +112,14 @@ Prompt 层不负责：
 
 ---
 
-# Required Inputs
+# 必要输入
 
 使用本 skill 前，应明确以下输入信息：
 
 1. 当前要新增或改造的是哪类 Prompt 资产：
    - system
    - scenario
-   - output constraint
+   - 输出约束（output constraint）
    - tool guidance
    - multimodal prompt support
 2. 该 Prompt 对应哪个产品场景：
@@ -128,16 +128,16 @@ Prompt 层不负责：
    - summarize
    - rewrite
    - task guidance
-   - structured output
+   - 结构化输出
 3. Prompt 是否需要变量渲染
 4. Prompt 是否需要分层组合
 5. 是否需要为 tools / function calling 预留提示结构
-6. 是否需要为 structured output / JSON mode 预留约束提示
+6. 是否需要为 结构化输出 / JSON mode（JSON 模式） 预留约束提示
 7. 当前是否只做最小落地，还是同时补 registry / renderer / variants 能力
 
 ---
 
-# Expected Outputs
+# 预期输出
 
 使用本 skill 后，交付物应至少包括：
 
@@ -146,13 +146,13 @@ Prompt 层不负责：
 3. registry 中显式的模板标识与查找逻辑
 4. renderer 中稳定、可测试的渲染逻辑
 5. system / scenario / constraint 等 Prompt 分层思路或落地
-6. 对 tools / structured output / multimodal 的扩展位
+6. 对 tools / 结构化输出 / multimodal 的扩展位
 7. 最小运行与验证说明
 8. 必要时补充测试
 
 ---
 
-# Required Workflow
+# 必要流程
 
 1. 先确认本次需求是否真的属于 Prompt 层。
 2. 先检查根目录文档与 `app/prompts/AGENTS.md`。
@@ -160,7 +160,7 @@ Prompt 层不负责：
 4. 按场景将模板放入 `app/prompts/templates/` 的合理目录中。
 5. 在 registry 中显式注册模板标识，不要靠隐式路径猜测。
 6. 在 renderer 中实现基础变量渲染与必要的分层组合。
-7. 若存在 system / scenario / output constraint / tool guidance，应明确分层边界。
+7. 若存在 system / scenario / 输出约束（output constraint） / tool guidance，应明确分层边界。
 8. 保持 Prompt 层 provider-agnostic，不嵌入厂商私有请求协议。
 9. 为未来 variants / versioning / cache-friendly blocks 预留结构，但当前不做过度复杂化。
 10. 对照 checklist 自检。
@@ -168,34 +168,34 @@ Prompt 层不负责：
 
 ---
 
-# Design Rules
+# 设计规则
 
-## 1. Prompt Is an Asset, Not Inline Text
+## 1. Prompt 是资产，不是内联文本
 
 Prompt 应被视为长期维护的工程资产，而不是散落在 service、script、provider 中的字符串常量。
 
-## 2. Layered Instruction Composition
+## 2. 分层指令组合
 
 Prompt 层设计时，应优先考虑分层组合，而不是把所有要求塞进一个超长 system prompt。
 
 典型层次可包括：
 
-- base system instruction
-- product / safety instruction
-- scenario-specific instruction
-- output constraint
-- tool-use guidance
-- runtime variable injection
+- 基础系统指令（base system instruction）
+- 产品/安全指令（product / safety instruction）
+- 场景特定指令（scenario-specific instruction）
+- 输出约束（output constraint）
+- 工具使用引导（tool-use guidance）
+- 运行时变量注入（runtime variable injection）
 
 当前可以不全部实现，但结构上应允许未来演进。
 
-## 3. Provider-Agnostic By Default
+## 3. 默认保持 Provider 无关
 
 Prompt 层不应绑定某个 provider 的私有字段名、SDK 参数名或响应对象格式。
 
 Prompt 应服务于系统内部语义，不应服务于厂商私有协议。
 
-## 4. Prompt Layer Should Support Real Product Shapes
+## 4. Prompt 层应支持真实产品形态
 
 Prompt 结构设计时，应面向主流 C 端 AI 产品常见形态：
 
@@ -206,7 +206,7 @@ Prompt 结构设计时，应面向主流 C 端 AI 产品常见形态：
 - 长上下文场景下的稳定 system blocks
 - 可缓存的稳定提示块
 
-## 5. Keep Stable Blocks Discoverable
+## 5. 保持稳定区块可发现
 
 对于稳定且可能重复使用的 Prompt 片段，应允许未来做：
 
@@ -217,18 +217,18 @@ Prompt 结构设计时，应面向主流 C 端 AI 产品常见形态：
 
 不要把所有提示写成一个不可拆的大文件。
 
-## 6. Renderer Must Be Deterministic
+## 6. 渲染器必须确定性
 
 Renderer 行为必须尽量确定、易读、易测。
 
 不要让 renderer 变成隐式业务路由器或复杂决策引擎。
 
-## 7. Separate Prompt Assets From Business Routing
+## 7. Prompt 资产与业务路由分离
 
 Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，  
 不负责“什么时候走哪个产品流程”。
 
-## 8. Current Stage Avoids Overbuilding
+## 8. 当前阶段避免过度建设
 
 当前阶段不应在 Prompt 层提前引入：
 
@@ -241,7 +241,7 @@ Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，
 
 ---
 
-# Verification Standard
+# 验证标准
 
 一个合格的面向主流 C 端 AI 应用的 Prompt 层实现，至少应满足：
 
@@ -251,13 +251,13 @@ Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，
 - renderer 渲染逻辑稳定
 - Prompt 资产不再大量散落在其他层
 - system / scenario / constraint 等层次有清晰思路或落地
-- 对 tools / structured output / multimodal 具备扩展意识
+- 对 tools / 结构化输出 / multimodal 具备扩展意识
 - 保持 provider-agnostic
 - 当前阶段未引入不必要的复杂引擎
 
 ---
 
-# Done Criteria
+# 完成标准
 
 本 skill 任务完成，至少表示：
 
@@ -272,7 +272,7 @@ Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，
 
 ---
 
-# Notes
+# 备注
 
 本 skill 适用于当前 `vi_ai_core_service` 的 Prompt 资产层建设阶段。  
 未来若 Prompt 层复杂度提升，可继续细分为：
@@ -309,13 +309,13 @@ Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，
 
 # 资产与验证索引
 
-1. Checklist：`assets/prompt_capability_checklist.md`
-2. Test Matrix：`assets/prompt_test_matrix.md`
-3. References：`references/prompt_boundaries_and_acceptance.md`
+1. 检查清单：`assets/prompt_capability_checklist.md`
+2. 测试矩阵：`assets/prompt_test_matrix.md`
+3. 参考文档：`references/prompt_boundaries_and_acceptance.md`
 
 ---
 
-# Governance Linkage
+# 治理联动
 
 执行本 skill 时必须遵循统一闭环：
 

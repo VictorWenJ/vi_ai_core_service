@@ -1,4 +1,4 @@
-﻿# app/api/AGENTS.md
+# app/api/AGENTS.md
 
 > 更新日期：2026-04-07
 
@@ -195,7 +195,7 @@ API 层应保持简单，以便：
   - streaming 接口真实实现
   - 多模态输入真实处理
   - tools/function calling 真实执行链路
-  - structured output 真实输出链路
+  - 结构化输出 真实输出链路
 
 后续阶段可演进：
 

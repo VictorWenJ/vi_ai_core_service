@@ -1,4 +1,4 @@
-"""Request assembly and normalization helpers for chat orchestration."""
+"""聊天编排的请求装配与规范化辅助。"""
 
 from __future__ import annotations
 
@@ -22,19 +22,19 @@ from app.services.prompt_service import PromptService
 
 
 class ChatRequestAssembler:
-    """Assemble chat requests from API inputs and normalize canonical requests."""
+    """从 API 输入装配聊天请求并规范化标准请求。"""
 
     def __init__(
             self,
-            config: AppConfig,
+            app_config: AppConfig,
             prompt_service: PromptService,
             context_policy_pipeline: ContextPolicyPipeline | None = None,
     ) -> None:
-        self._config = config
+        self._config = app_config
         self._prompt_service = prompt_service
         self._context_policy_pipeline = (
                 context_policy_pipeline
-                or build_default_context_policy_pipeline(config.context)
+                or build_default_context_policy_pipeline(app_config.context_policy_config)
         )
 
     def assemble_from_user_prompt(self, request: ChatRequest, context_manager: ContextManager) -> LLMRequest:
@@ -115,13 +115,13 @@ class ChatRequestAssembler:
         if not model_name:
             env_var_name = f"{provider_name.upper()}_DEFAULT_MODEL"
             raise ServiceValidationError(
-                f"Model is required for provider '{provider_name}'. "
-                f"Provide it in the request or configure {env_var_name}."
+                f"Provider '{provider_name}' 需要模型。"
+                f"请在请求中提供，或配置 {env_var_name}。"
             )
 
         if llm_request.stream:
             raise ServiceNotImplementedError(
-                "Streaming is intentionally out of scope for this Phase 1 implementation."
+                "当前基础阶段明确不支持流式能力。"
             )
 
         normalized_messages = list(llm_request.messages)
@@ -132,7 +132,7 @@ class ChatRequestAssembler:
             )
 
         if not normalized_messages:
-            raise ServiceValidationError("At least one message is required.")
+            raise ServiceValidationError("至少需要一条消息。")
 
         return replace(
             llm_request,
@@ -159,28 +159,51 @@ def build_context_assembly_trace(
     truncation = policy_result.truncation
     summary = policy_result.summary
     serialized_count = len(policy_result.serialized_messages)
-    dropped_message_count = (
-        selection.dropped_message_count + truncation.truncated_message_count
+    selection_dropped_message_count = selection.dropped_message_count
+    truncation_dropped_message_count = len(truncation.dropped_messages)
+    summary_dropped_message_count = summary.dropped_message_count
+    total_dropped_message_count = (
+        selection_dropped_message_count
+        + truncation_dropped_message_count
+        + summary_dropped_message_count
     )
     return {
         "enabled": use_server_history,
         "session_id": session_id,
-        "total_messages_before_selection": selection.source_message_count,
-        "raw_message_count": selection.source_message_count,
-        "selected_message_count": selection.selected_message_count,
-        "dropped_message_count": dropped_message_count,
-        "selection_dropped_message_count": selection.dropped_message_count,
-        "truncated_message_count": truncation.truncated_message_count,
-        "token_budget": selection.token_budget,
-        "selected_token_count": selection.selected_token_count,
+        "source_message_count": selection.source_message_count,
+        "source_token_count": selection.source_token_count,
+        "selection_selected_message_count": selection.selected_message_count,
+        "selection_dropped_message_count": selection_dropped_message_count,
+        "selection_token_budget": selection.token_budget,
+        "selection_selected_token_count": selection.selected_token_count,
+        "truncation_input_message_count": truncation.input_message_count,
+        "truncation_output_message_count": truncation.final_message_count,
+        "truncation_dropped_message_count": truncation_dropped_message_count,
+        "truncation_input_token_count": truncation.input_token_count,
+        "truncation_final_token_count": truncation.final_token_count,
         "truncation_token_budget": truncation.token_budget,
-        "final_token_count_after_truncation": truncation.final_token_count,
-        "final_token_count_after_summary": summary.final_token_count,
         "truncation_applied": truncation.truncation_applied,
+        "summary_input_message_count": summary.input_message_count,
+        "summary_output_message_count": summary.final_message_count,
+        "summary_dropped_message_count": summary_dropped_message_count,
+        "summary_input_token_count": summary.input_token_count,
+        "summary_final_token_count": summary.final_token_count,
         "summary_applied": summary.summary_applied,
+        "total_dropped_message_count": total_dropped_message_count,
         "selection_policy": selection.selection_policy,
         "truncation_policy": truncation.truncation_policy,
         "summary_policy": summary.summary_policy,
         "serialization_policy": policy_result.serialization_policy,
+        "token_counter": policy_result.token_counter,
         "serialized_message_count": serialized_count,
+        # 为现有调用方/测试保留兼容别名。
+        "total_messages_before_selection": selection.source_message_count,
+        "raw_message_count": selection.source_message_count,
+        "selected_message_count": selection.selected_message_count,
+        "dropped_message_count": total_dropped_message_count,
+        "truncated_message_count": truncation.truncated_message_count,
+        "token_budget": selection.token_budget,
+        "selected_token_count": selection.selected_token_count,
+        "final_token_count_after_truncation": truncation.final_token_count,
+        "final_token_count_after_summary": summary.final_token_count,
     }

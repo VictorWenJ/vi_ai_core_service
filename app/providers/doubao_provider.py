@@ -1,4 +1,4 @@
-"""Doubao provider scaffold."""
+"""豆包 Provider 脚手架。"""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ from app.schemas.llm_response import LLMResponse
 
 
 class DoubaoProvider(BaseLLMProvider):
-    """Scaffold for future Doubao integration."""
+    """面向后续豆包接入的脚手架。"""
 
     provider_name = "doubao"
 
     def chat(self, request: LLMRequest) -> LLMResponse:
         self.ensure_non_streaming(request)
         raise ProviderNotImplementedError(
-            "Doubao provider is scaffolded only in Phase 1. TODO: implement vendor API mapping."
+            "豆包 Provider 当前仅为脚手架（Phase 1）。TODO：实现厂商 API 映射。"
         )

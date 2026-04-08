@@ -1,4 +1,4 @@
-"""Normalized request models for LLM access."""
+"""LLM 访问的规范化请求模型。"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ ALLOWED_MESSAGE_ROLES = {"system", "user", "assistant", "tool"}
 
 @dataclass
 class LLMMessage:
-    """A single normalized LLM message."""
+    """单条规范化 LLM 消息。"""
 
     role: str
     content: str
@@ -21,16 +21,16 @@ class LLMMessage:
 
         if self.role not in ALLOWED_MESSAGE_ROLES:
             raise ValueError(
-                f"Unsupported message role '{self.role}'. "
-                f"Supported roles: {', '.join(sorted(ALLOWED_MESSAGE_ROLES))}."
+                f"不支持的消息角色 '{self.role}'。 "
+                f"支持的角色：{', '.join(sorted(ALLOWED_MESSAGE_ROLES))}。"
             )
         if not self.content:
-            raise ValueError("Message content must not be empty.")
+            raise ValueError("消息内容不能为空。")
 
 
 @dataclass
 class LLMRequest:
-    """Normalized request model shared by service and providers."""
+    """供 service 与 providers 共享的规范化请求模型。"""
 
     provider: str | None = None
     model: str | None = None
@@ -68,7 +68,7 @@ class LLMRequest:
             self.request_id = self.request_id.strip() or None
 
         if self.temperature is not None and not 0 <= self.temperature <= 2:
-            raise ValueError("temperature must be between 0 and 2.")
+            raise ValueError("temperature 必须在 0 到 2 之间。")
 
         if self.max_tokens is not None and self.max_tokens <= 0:
-            raise ValueError("max_tokens must be greater than 0.")
+            raise ValueError("max_tokens 必须大于 0。")

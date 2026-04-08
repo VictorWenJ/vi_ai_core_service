@@ -1,4 +1,4 @@
-"""Policy interfaces for context history governance."""
+"""上下文历史治理的策略接口。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from app.context.models import (
 
 
 class WindowSelectionPolicy(ABC):
-    """Selects a manageable history window from raw session context."""
+    """从原始会话上下文中选择可管理的历史窗口。"""
 
     name: str = "window_selection.base"
 
@@ -23,7 +23,7 @@ class WindowSelectionPolicy(ABC):
 
 
 class TruncationPolicy(ABC):
-    """Applies budget-like truncation on selected history."""
+    """对已选历史应用预算化截断。"""
 
     name: str = "truncation.base"
 
@@ -33,7 +33,7 @@ class TruncationPolicy(ABC):
 
 
 class SummaryPolicy(ABC):
-    """Optionally compacts dropped history into a deterministic summary."""
+    """可选地将丢弃历史压缩为确定性摘要。"""
 
     name: str = "summary.base"
 
@@ -49,7 +49,7 @@ class SummaryPolicy(ABC):
 
 
 class HistorySerializationPolicy(ABC):
-    """Serializes provider-agnostic history messages for request assembly."""
+    """将与 Provider 无关的历史消息序列化供请求装配使用。"""
 
     name: str = "serialization.base"
 

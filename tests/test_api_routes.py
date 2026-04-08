@@ -145,7 +145,7 @@ class APIRouteTests(unittest.TestCase):
             response = self.client.post("/chat", json={"user_prompt": "hello"})
 
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json()["detail"], "Internal server error.")
+        self.assertEqual(response.json()["detail"], "服务器内部错误。")
 
     def test_chat_reset_delegates_to_service(self) -> None:
         fake_service = FakeChatService()
@@ -165,6 +165,21 @@ class APIRouteTests(unittest.TestCase):
             {"session_id": "session-1", "conversation_id": "conv-1"},
         )
 
+    def test_chat_reset_session_scope_without_conversation_id(self) -> None:
+        fake_service = FakeChatService()
+        with patch("app.api.chat._get_chat_service", return_value=fake_service):
+            response = self.client.post(
+                "/chat/reset",
+                json={"session_id": "session-1"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["scope"], "session")
+        self.assertEqual(
+            fake_service.last_reset_payload,
+            {"session_id": "session-1", "conversation_id": None},
+        )
+
     def test_chat_reset_maps_service_validation_error_to_400(self) -> None:
         class ValidationErrorResetService:
             def reset_context(self, *, session_id: str, conversation_id: str | None = None):
@@ -179,4 +194,3 @@ class APIRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("session_id required", response.json()["detail"])
-

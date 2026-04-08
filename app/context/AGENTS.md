@@ -1,106 +1,128 @@
 # app/context/AGENTS.md
 
-> 更新日期：2026-04-07
+> 更新日期：2026-04-08
 
 ## 1. 文档定位
 
-本文件约束 `app/context/` 的模块职责、边界、演进和 review 标准。
-
+本文件定义 `app/context/` 模块的职责边界、演进约束、交付门禁与 review 标准。  
 执行 context 相关任务时，必须先读根目录四文档，再读本文件，再执行 `skills/python-context-capability/`。
 
 ---
 
 ## 2. 模块定位
 
-`app/context/` 是短期会话上下文治理层，负责历史消息的表示、选择、截断、压缩与存储抽象。
+`app/context/` 是短期会话上下文治理层，负责 provider-agnostic 的会话历史表示、存储抽象和策略执行。  
+当前处于 **Context Engineering Phase 2 收尾阶段**，默认主链路已落地：
 
-当前阶段为 **Context Engineering Phase 2**，已落地：
-
-- token-aware window selection
-- token-aware truncation
-- deterministic summary/compaction
-- session/conversation reset
+- token 感知窗口选择（token-aware window selection）
+- token 感知截断（token-aware truncation）
+- 确定性摘要/压缩（deterministic summary/compaction）
+- 历史序列化（history serialization）
+- 会话/对话重置（session/conversation reset）
 
 ---
 
 ## 3. 本层职责
 
-1. 定义 provider-agnostic 的 context canonical models。
+1. 定义 canonical context models（message/window 与策略中间结果）。
 2. 定义并实现 store contract 与 in-memory store。
-3. 通过 `ContextManager` 暴露统一入口。
-4. 提供 `WindowSelectionPolicy` / `TruncationPolicy` / `SummaryPolicy` / `HistorySerializationPolicy`。
-5. 通过 `ContextPolicyPipeline` 输出可观测 trace 数据。
+3. 通过 `ContextManager` 暴露统一 façade（get/append/reset/replace）。
+4. 实现 `WindowSelectionPolicy` / `TruncationPolicy` / `SummaryPolicy` / `HistorySerializationPolicy`。
+5. 通过 `ContextPolicyPipeline` 提供固定顺序执行与可观测 trace。
+6. 保持 token 预算、fallback、summary 开关等参数可配置。
 
 ---
 
 ## 4. 本层不负责什么
 
-1. 不负责 HTTP 接口接入。
-2. 不负责业务主流程编排。
-3. 不负责 provider 协议与请求 payload 细节。
-4. 不负责 prompt 模板管理与最终 prompt 顺序装配。
+1. 不负责 HTTP 接入与路由。
+2. 不负责业务流程编排。
+3. 不负责 provider payload 协议。
+4. 不负责 prompt 模板管理与 system prompt 选择。
 5. 不负责 RAG、长期记忆、Redis/DB 持久化。
+6. 不负责外部 LLM 摘要编排。
 
 ---
 
 ## 5. 依赖边界
 
-- 允许依赖：`app/schemas/`（必要契约）、基础配置、标准库。
+- 允许依赖：`app/schemas/`（必要契约）、`app/config.py`、标准库。
 - 禁止依赖：`app/api/`、`app/services/`、`app/providers/` 的业务流程实现。
-- `request_assembler.py` 调用 context 层策略；context 层不得反向依赖 assembler。
+- `services/request_assembler.py` 可调用 context 层；context 层不得反向依赖 assembler/service。
 
 ---
 
-## 6. 当前默认策略（Phase 2）
+## 6. 当前默认行为（Phase 2 收尾版）
 
-默认 pipeline 顺序固定为：
+默认管线顺序固定为：
 
 `token-aware selection -> token-aware truncation -> summary/compaction -> serialization`
 
-默认行为：
+### 6.1 选择（selection）
 
-1. 有 `session_id` 时读取服务端历史。
-2. 按 token budget 选择最近历史。
-3. 超预算时执行 token-aware 截断。
-4. 仍有被丢弃历史且 summary 开启时，插入 deterministic summary message。
-5. 输出结构化 trace（policy 名称、计数、预算、是否截断/摘要）。
+- 有 session 历史时按 token budget 选择窗口，不再默认全量拼接。
+
+### 6.2 截断（truncation）
+
+- 当 selected history 超预算时做 token-aware 截断。
+- 优先保留最近消息；必要时截断更旧消息内容。
+
+### 6.3 摘要（summary）
+
+- 默认 `DeterministicSummaryPolicy`，不调用外部 LLM。
+- 默认 `fallback_behavior=summary_then_drop_oldest` 必须遵守：
+  1. 不吞掉最近 raw message；
+  2. 先截短 summary；
+  3. 再删除更旧 raw history。
+- `drop_oldest` 作为独立 fallback，允许直接按最老优先丢弃（包含 summary）。
+
+### 6.4 序列化（serialization）
+
+- 输出 provider-agnostic 的 `{role, content}` 列表给 assembler。
+
+### 6.5 追踪信息（trace）
+
+- 必须区分 selection / truncation / summary 三阶段计数与预算字段。
+- 必须包含 token counter 类型（例如 `tokenizer.tiktoken_cl100k_base` / `tokenizer.character_fallback`）。
+- `message_overhead_tokens` 属于当前阶段工程近似，不是精确计费。
 
 ---
 
 ## 7. 修改规则
 
 1. 任何策略改动必须保持 provider-agnostic。
-2. 不允许在 context 层直接调用外部 LLM 做摘要。
-3. 不允许在 context 层实现最终 `system + history + user` 装配。
-4. reset 行为必须通过 manager 对外暴露，不允许 API/service 直接操作 store 私有状态。
-5. 改动策略契约时必须同步更新测试和 skill 资产文档。
+2. 不允许在 context 层直接接入外部 LLM 做摘要。
+3. 不允许在 context 层拼接最终 `system + history + user` 顺序。
+4. reset 行为必须通过 manager 暴露，不允许 API/service 直改 store 私有状态。
+5. 变更策略语义时必须同步更新测试与 skill 文档。
 
 ---
 
 ## 8. Code Review 清单
 
-1. 是否存在越层依赖（尤其 context 反向依赖 service/api）。
-2. 策略顺序是否仍是 selection->truncation->summary->serialization。
-3. token budget 是否配置化，避免硬编码散落。
-4. summary 是否保持确定性、低耦合、可测试。
-5. reset 是否仅作用于目标 session/conversation。
-6. metadata trace 是否完整且可用于排查。
+1. 是否存在 context 反向依赖 service/api 的越层行为？
+2. 管线顺序是否仍为 selection->truncation->summary->serialization？
+3. `summary_then_drop_oldest` 与 `drop_oldest` 是否行为有差异？
+4. 默认 summary 是否会吞掉最近 raw message（必须为否）？
+5. token 预算与 overhead 是否可配置且语义清晰？
+6. trace 字段是否可用于阶段级排查，命名是否无歧义？
 
 ---
 
 ## 9. 测试门禁
 
-至少验证：
+至少覆盖：
 
-1. token-aware selection 行为。
-2. token-aware truncation 行为。
-3. summary 默认行为与预算约束。
-4. reset session / reset conversation 行为。
-5. assembler 接入后的顺序与 trace 字段。
+1. token-aware selection 在不同预算下的行为；
+2. token-aware truncation 对超长消息的处理；
+3. summary 默认行为不吞最近 raw；
+4. 两种 fallback 行为差异；
+5. summary disabled 的 no-op 路径；
+6. 会话级重置（reset session）/ 对话级重置（reset conversation）；
+7. assembler 的 message 顺序与 trace 字段。
 
 ---
 
 ## 10. 一句话总结
 
-`app/context/` 在 Phase 2 的目标是：在不引入长期记忆平台的前提下，把短期会话历史治理做成可配置、可测试、可演进的 token-aware pipeline。
-
+`app/context/` 在 Phase 2 的目标是：在不引入长期记忆平台的前提下，把短期会话历史治理做成可配置、可测试、可演进、可排查的 token-aware 策略管线。

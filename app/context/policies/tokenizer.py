@@ -1,4 +1,4 @@
-"""Tokenizer adapters for context token-aware policies."""
+"""面向上下文 token 策略的分词器适配器。"""
 
 from __future__ import annotations
 
@@ -6,11 +6,22 @@ from abc import ABC, abstractmethod
 
 from app.context.models import ContextMessage
 
+DEFAULT_MESSAGE_OVERHEAD_TOKENS = 4
+
 
 class BaseTokenCounter(ABC):
-    """Provider-agnostic token counter contract."""
+    """与 Provider 无关的 token 计数契约。"""
 
     name: str = "tokenizer.base"
+
+    def __init__(
+        self,
+        *,
+        message_overhead_tokens: int = DEFAULT_MESSAGE_OVERHEAD_TOKENS,
+    ) -> None:
+        if message_overhead_tokens <= 0:
+            raise ValueError("message_overhead_tokens 必须大于 0。")
+        self._message_overhead_tokens = message_overhead_tokens
 
     @abstractmethod
     def count_text_tokens(self, text: str) -> int:
@@ -26,11 +37,11 @@ class BaseTokenCounter(ABC):
     ) -> str:
         raise NotImplementedError
 
-    # 每条消息的固定 token 额外开销（不含正文内容）
+    # 每条消息的固定 token 额外开销（不含正文内容）。
+    # 当前为工程近似值，可通过配置或子类覆写调整。
     def message_overhead_tokens(self, role: str) -> int:
-        # 参数当前实现里没用到，只是为了接口统一、避免未使用变量告警。
         del role
-        return 4
+        return self._message_overhead_tokens
 
     def count_message_tokens(self, message: ContextMessage) -> int:
         return self.message_overhead_tokens(message.role) + self.count_text_tokens(
@@ -59,9 +70,16 @@ class BaseTokenCounter(ABC):
 
 
 class CharacterTokenCounter(BaseTokenCounter):
-    """Fallback deterministic tokenizer based on unicode character count."""
+    """基于 Unicode 字符计数的回退型确定性分词器。"""
 
     name = "tokenizer.character_fallback"
+
+    def __init__(
+        self,
+        *,
+        message_overhead_tokens: int = DEFAULT_MESSAGE_OVERHEAD_TOKENS,
+    ) -> None:
+        super().__init__(message_overhead_tokens=message_overhead_tokens)
 
     def count_text_tokens(self, text: str) -> int:
         stripped = text.strip()
@@ -87,11 +105,17 @@ class CharacterTokenCounter(BaseTokenCounter):
 
 
 class TiktokenTokenCounter(BaseTokenCounter):
-    """Token counter backed by tiktoken when dependency is available."""
+    """依赖可用时基于 tiktoken 的 token 计数器。"""
 
     name = "tokenizer.tiktoken_cl100k_base"
 
-    def __init__(self, encoding_name: str = "cl100k_base") -> None:
+    def __init__(
+        self,
+        encoding_name: str = "cl100k_base",
+        *,
+        message_overhead_tokens: int = DEFAULT_MESSAGE_OVERHEAD_TOKENS,
+    ) -> None:
+        super().__init__(message_overhead_tokens=message_overhead_tokens)
         import tiktoken
 
         self._encoding = tiktoken.get_encoding(encoding_name)
@@ -122,8 +146,11 @@ class TiktokenTokenCounter(BaseTokenCounter):
         return self._encoding.decode(truncated).strip()
 
 
-def build_default_token_counter() -> BaseTokenCounter:
+def build_default_token_counter(
+    *,
+    message_overhead_tokens: int = DEFAULT_MESSAGE_OVERHEAD_TOKENS,
+) -> BaseTokenCounter:
     try:
-        return TiktokenTokenCounter()
+        return TiktokenTokenCounter(message_overhead_tokens=message_overhead_tokens)
     except Exception:
-        return CharacterTokenCounter()
+        return CharacterTokenCounter(message_overhead_tokens=message_overhead_tokens)

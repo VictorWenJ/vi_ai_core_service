@@ -1,67 +1,57 @@
-﻿# Context Skeleton Checklist
+# Context 能力检查清单
 
-> 更新日期：2026-04-06
-
+> 更新日期：2026-04-08
 
 ## 目录与落位
 
-- Context 相关代码位于 `app/context/` 下。
-- 文件命名与目录结构能够体现职责。
-- 没有把 context 逻辑错误放到 API、service、provider 或 prompts 层。
+- [ ] Context 相关代码位于 `app/context/`，未越层散落。
+- [ ] `request_assembler.py` 作为上下文装配入口，未反向下沉到 API/chat_service。
+- [ ] 未新增与当前阶段无关的新系统层。
 
 ## 基础结构
 
-- `models.py` 定义了基础上下文实体。
-- `stores/base.py` 定义了清晰、显式的 store interface。
-- `stores/in_memory.py` 提供了本地 in-memory 实现。
-- `manager.py` 提供了面向上层的统一入口。
+- [ ] `models.py` 定义 canonical message/window 与策略结果模型。
+- [ ] `stores/base.py` 契约清晰，包含 reset 与 replace 能力。
+- [ ] `stores/in_memory.py` 行为与 store 契约一致。
+- [ ] `manager.py` 仅做 façade，不承担业务编排。
 
-## C 端 AI 产品适配性
+## 策略链路（Phase 2）
 
-- 模型设计已考虑 conversation/session/message 级结构，或已清晰预留。
-- 对 stateful（服务端持有状态）与 stateless（客户端带历史）模式有清晰承接思路或预留。
-- 消息结构没有被写死成仅支持纯文本字符串。
-- 若当前阶段需要，已为 attachment / multimodal metadata 预留字段或扩展位。
-- 已考虑未来 compaction / summary / token budget hook 的扩展方向。
+- [ ] 默认顺序固定：selection -> truncation -> summary -> serialization。
+- [ ] 默认 selection 为 token-aware，不再以 last-N 作为主策略。
+- [ ] 默认 truncation 为 token-aware，支持超长消息截断。
+- [ ] 默认 summary 为 deterministic，不调用外部 LLM。
+- [ ] `summary_then_drop_oldest` 不吞掉最近 raw message。
+- [ ] `drop_oldest` 与 `summary_then_drop_oldest` 行为有真实差异。
 
-## 职责边界
+## Token 语义
 
-- Context 层保持 provider-agnostic。
-- Context 层没有直接调用 provider。
-- Context 层没有承担 API 接入职责。
-- Context 层没有承担业务编排职责。
-- Context 层没有承担 prompt 资产管理职责。
+- [ ] token 计数保持 provider-agnostic。
+- [ ] `message_overhead_tokens` 可配置或可覆写。
+- [ ] trace 中能看到 token counter 类型与关键预算字段。
+- [ ] 文档明确当前 token accounting 是工程近似，不是精确计费。
+
+## Reset 行为
+
+- [ ] `reset_session` 与 `reset_conversation` 均可用。
+- [ ] `/chat/reset` 通过 service 调用 manager，不直接操作 store 私有状态。
+- [ ] conversation 级 reset 不误删其他 conversation。
+
+## Trace 与契约
+
+- [ ] `context_assembly` 字段区分 selection/truncation/summary 三阶段语义。
+- [ ] dropped 计数语义不混淆（阶段计数 + 总计数）。
+- [ ] 保留兼容字段时有明确标注，不与 canonical 字段冲突。
 
 ## 当前阶段约束
 
-- 没有引入复杂 long-term memory policy。
-- 没有引入 retrieval / RAG 逻辑。
-- 没有引入数据库、队列或分布式状态系统。
-- 没有进行与当前阶段不匹配的过度架构扩张。
-
-## 行为设计
-
-- manager 暴露的操作最小且清晰。
-- store 接口容易替换和扩展。
-- in-memory 行为轻量、确定、易于理解。
-- 没有隐式副作用或难推断状态。
+- [ ] 未引入 Redis/DB 持久化。
+- [ ] 未引入 RAG/语义检索/长期记忆系统。
+- [ ] 未引入 streaming/tools/multimodal 的真实链路。
 
 ## 验证与测试
 
-- Context skeleton 可以被清晰发现和使用。
-- 接口易于扩展。
-- 至少具备最小可验证路径。
-- 若改动影响上下文主行为，已补充或更新测试。
-
-## Phase 2 增强检查
-
-在 Context Engineering Phase 2 中，需要额外检查以下事项：
-
-- 是否在 `window_selection.py` 中实现 `TokenAwareWindowSelectionPolicy`；
-- 是否在 `truncation.py` 中实现 `TokenAwareTruncationPolicy`；
-- 是否新增 `summary.py` 策略文件；
-- `ContextPolicyPipeline` 是否按顺序组合 token‑aware window selection → token‑aware truncation → summary/compaction → serialization；
-- 是否在 `ContextManager`/`manager.py` 中新增 `reset_session`/`clear_session` 方法，并由上层正确调用；
-- 是否为 token 预算、窗口大小、摘要开关提供配置，并通过 `AppConfig.context.*` 管理；
-- 是否新增测试覆盖 token‑aware 选择、token‑aware 截断、summary 生成和重置行为；
-- 是否更新相关文档、skill、checklist、test matrix 与 code review。
+- [ ] context policy 核心行为测试已覆盖。
+- [ ] request assembler trace/顺序测试已覆盖。
+- [ ] reset session/conversation 测试已覆盖。
+- [ ] 主链路回归测试通过。

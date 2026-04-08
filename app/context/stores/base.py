@@ -1,4 +1,4 @@
-"""Base interface for context storage backends."""
+"""上下文存储后端基础接口。"""
 
 from __future__ import annotations
 

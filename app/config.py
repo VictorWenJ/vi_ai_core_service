@@ -1,4 +1,4 @@
-﻿"""Centralized application and provider configuration."""
+"""集中式应用与 Provider 配置。"""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ DEFAULT_CONTEXT_TRUNCATION_TOKEN_BUDGET = 900
 DEFAULT_CONTEXT_SUMMARY_ENABLED = True
 DEFAULT_CONTEXT_SUMMARY_MAX_CHARS = 320
 DEFAULT_CONTEXT_FALLBACK_BEHAVIOR = "summary_then_drop_oldest"
+DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS = 4
 DEFAULT_BASE_URLS: dict[str, str | None] = {
     "openai": None,
     "deepseek": "https://api.deepseek.com",
@@ -35,12 +36,12 @@ DEFAULT_BASE_URLS: dict[str, str | None] = {
 
 
 class ConfigError(ValueError):
-    """Raised when application configuration is invalid."""
+    """当应用配置无效时抛出。"""
 
 
 @dataclass(frozen=True)
 class ProviderConfig:
-    """Configuration for a single provider."""
+    """单个 Provider 的配置。"""
 
     name: str
     api_key: str | None = None
@@ -51,7 +52,7 @@ class ProviderConfig:
 
 @dataclass(frozen=True)
 class ObservabilityConfig:
-    """Configuration for observability and logging behavior."""
+    """可观测性与日志行为配置。"""
 
     log_enabled: bool = DEFAULT_LOG_ENABLED
     log_level: str = DEFAULT_LOG_LEVEL
@@ -62,7 +63,7 @@ class ObservabilityConfig:
 
 @dataclass(frozen=True)
 class ContextPolicyConfig:
-    """Configuration for context policy pipeline behavior."""
+    """上下文策略管线行为配置。"""
 
     # 上下文选窗阶段的最大 token 预算。
     max_token_budget: int = DEFAULT_CONTEXT_MAX_TOKEN_BUDGET
@@ -74,11 +75,13 @@ class ContextPolicyConfig:
     summary_max_chars: int = DEFAULT_CONTEXT_SUMMARY_MAX_CHARS
     # 当摘要后仍超预算时的回退策略。
     fallback_behavior: str = DEFAULT_CONTEXT_FALLBACK_BEHAVIOR
+    # 估算消息 token 时每条消息的固定开销（工程近似值，可配置）。
+    message_overhead_tokens: int = DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS
 
 
 @dataclass(frozen=True)
 class AppConfig:
-    """Top-level application configuration."""
+    """应用顶层配置。"""
 
     # 默认 provider 名称；当请求未显式指定 provider 时使用。
     default_provider: str = "openai"
@@ -89,7 +92,7 @@ class AppConfig:
     # 可观测性配置（日志开关、级别、格式等）。
     observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
     # 上下文策略配置（token 预算、summary 开关、回退策略等）。
-    context: ContextPolicyConfig = field(default_factory=ContextPolicyConfig)
+    context_policy_config: ContextPolicyConfig = field(default_factory=ContextPolicyConfig)
 
     @classmethod
     def from_env(
@@ -105,8 +108,8 @@ class AppConfig:
 
         if default_provider not in SUPPORTED_PROVIDER_NAMES:
             raise ConfigError(
-                f"Unsupported default provider '{default_provider}'. "
-                f"Supported providers: {', '.join(SUPPORTED_PROVIDER_NAMES)}."
+                f"不支持的默认 Provider '{default_provider}'。 "
+                f"支持的 Provider：{', '.join(SUPPORTED_PROVIDER_NAMES)}。"
             )
 
         providers = {
@@ -148,8 +151,8 @@ class AppConfig:
         )
         if truncation_token_budget > max_token_budget:
             raise ConfigError(
-                "CONTEXT_TRUNCATION_TOKEN_BUDGET must be less than or equal to "
-                "CONTEXT_MAX_TOKEN_BUDGET."
+                "CONTEXT_TRUNCATION_TOKEN_BUDGET 必须小于或等于 "
+                "CONTEXT_MAX_TOKEN_BUDGET。"
             )
 
         context = ContextPolicyConfig(
@@ -164,6 +167,10 @@ class AppConfig:
                 "CONTEXT_FALLBACK_BEHAVIOR",
                 DEFAULT_CONTEXT_FALLBACK_BEHAVIOR,
             ),
+            message_overhead_tokens=_read_int(
+                "CONTEXT_MESSAGE_OVERHEAD_TOKENS",
+                DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS,
+            ),
         )
 
         return cls(
@@ -171,7 +178,7 @@ class AppConfig:
             timeout_seconds=timeout_seconds,
             providers=providers,
             observability=observability,
-            context=context,
+            context_policy_config=context,
         )
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig:
@@ -180,8 +187,8 @@ class AppConfig:
             return self.providers[normalized_name]
         except KeyError as exc:
             raise ConfigError(
-                f"Unsupported provider '{provider_name}'. "
-                f"Supported providers: {', '.join(self.providers.keys())}."
+                f"不支持的 Provider '{provider_name}'。 "
+                f"支持的 Provider：{', '.join(self.providers.keys())}。"
             ) from exc
 
 
@@ -202,7 +209,7 @@ def _read_float(name: str, default: float) -> float:
     try:
         return float(raw_value)
     except ValueError as exc:
-        raise ConfigError(f"Environment variable '{name}' must be a number.") from exc
+        raise ConfigError(f"环境变量 '{name}' 必须是数字。") from exc
 
 
 def _read_int(name: str, default: int) -> int:
@@ -213,10 +220,10 @@ def _read_int(name: str, default: int) -> int:
     try:
         parsed = int(raw_value)
     except ValueError as exc:
-        raise ConfigError(f"Environment variable '{name}' must be an integer.") from exc
+        raise ConfigError(f"环境变量 '{name}' 必须是整数。") from exc
 
     if parsed <= 0:
-        raise ConfigError(f"Environment variable '{name}' must be greater than 0.")
+        raise ConfigError(f"环境变量 '{name}' 必须大于 0。")
     return parsed
 
 
@@ -231,8 +238,8 @@ def _read_bool(name: str, default: bool) -> bool:
     if normalized_value in {"0", "false", "no", "off"}:
         return False
     raise ConfigError(
-        f"Environment variable '{name}' must be a boolean "
-        "(true/false/1/0/yes/no/on/off)."
+        f"环境变量 '{name}' 必须是布尔值 "
+        "（true/false/1/0/yes/no/on/off）。"
     )
 
 
@@ -244,8 +251,8 @@ def _read_log_level(name: str, default: str) -> str:
     normalized_value = raw_value.strip().upper()
     if normalized_value not in SUPPORTED_LOG_LEVELS:
         raise ConfigError(
-            f"Environment variable '{name}' must be one of: "
-            f"{', '.join(SUPPORTED_LOG_LEVELS)}."
+            f"环境变量 '{name}' 必须是以下之一："
+            f"{', '.join(SUPPORTED_LOG_LEVELS)}。"
         )
     return normalized_value
 
@@ -258,8 +265,8 @@ def _read_log_format(name: str, default: str) -> str:
     normalized_value = raw_value.strip().lower()
     if normalized_value not in SUPPORTED_LOG_FORMATS:
         raise ConfigError(
-            f"Environment variable '{name}' must be one of: "
-            f"{', '.join(SUPPORTED_LOG_FORMATS)}."
+            f"环境变量 '{name}' 必须是以下之一："
+            f"{', '.join(SUPPORTED_LOG_FORMATS)}。"
         )
     return normalized_value
 
@@ -272,8 +279,8 @@ def _read_context_fallback_behavior(name: str, default: str) -> str:
     normalized_value = raw_value.strip().lower()
     if normalized_value not in SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS:
         raise ConfigError(
-            f"Environment variable '{name}' must be one of: "
-            f"{', '.join(SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS)}."
+            f"环境变量 '{name}' 必须是以下之一："
+            f"{', '.join(SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS)}。"
         )
     return normalized_value
 
@@ -287,10 +294,9 @@ def _load_dotenv(dotenv_path: str | None) -> None:
         from dotenv import load_dotenv
     except ImportError as exc:
         raise ConfigError(
-            "Missing dependency 'python-dotenv'. Install it with "
-            "'pip install -r requirements.txt'."
+            "缺少依赖 'python-dotenv'。请先安装："
+            "'pip install -r requirements.txt'。"
         ) from exc
 
-    # Keep real environment variables higher priority than local .env values.
+    # 保持真实环境变量优先级高于本地 .env 值。
     load_dotenv(dotenv_path=dotenv_file, override=False)
-

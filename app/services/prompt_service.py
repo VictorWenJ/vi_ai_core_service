@@ -1,4 +1,4 @@
-"""Minimal prompt assembly helpers."""
+"""最小化提示词装配辅助。"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ DEFAULT_CHAT_SYSTEM_TEMPLATE_ID = "chat.default_system"
 
 
 class PromptService:
-    """Phase 1 prompt helper: only message assembly, nothing more."""
+    """当前阶段提示词辅助：仅做消息装配。"""
 
     def get_default_system_prompt(self) -> str:
         return render_prompt(DEFAULT_CHAT_SYSTEM_TEMPLATE_ID).strip()
@@ -29,7 +29,7 @@ class PromptService:
             assembled_messages.append(LLMMessage(role="user", content=user_prompt))
 
         if not assembled_messages:
-            raise ValueError("At least one message or user_prompt is required.")
+            raise ValueError("至少需要一条消息或 user_prompt。")
 
         return assembled_messages
 

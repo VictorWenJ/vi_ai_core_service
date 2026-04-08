@@ -1,4 +1,4 @@
-﻿# LLM Provider Test Matrix
+# LLM Provider 测试矩阵
 
 > 更新日期：2026-04-06
 
@@ -49,7 +49,7 @@
 
 - tools / function schemas 映射正确。
 - tool_choice / mode 映射正确。
-- response_format / structured output 参数映射正确。
+- response_format / 结构化输出 参数映射正确。
 - 不支持的工具或结构化输出能力有明确失败语义。
 
 ---
@@ -69,7 +69,7 @@
 ### Tool / Structured Output 结果
 
 - tool call 信息可被归一化提取。
-- structured output 结果可被稳定提取。
+- 结构化输出 结果可被稳定提取。
 - 不同厂商差异不会直接泄漏到 service 层主逻辑。
 
 ---
@@ -108,7 +108,7 @@
 
 ## 八、兼容族复用检查
 
-- OpenAI-compatible provider 优先复用了兼容基类（如果真实兼容）。
+- OpenAI 兼容 provider 优先复用了兼容基类（如果真实兼容）。
 - 不兼容的 provider 没有被错误强塞进兼容基类。
 - family base 抽象没有掩盖关键协议差异。
 
@@ -123,4 +123,4 @@
 - 1 个响应归一化路径
 - 1 个异常包装路径
 - 若支持 streaming，则至少 1 个流式路径
-- 若支持 tools 或 structured output，则至少 1 个相关路径
+- 若支持 tools 或 结构化输出，则至少 1 个相关路径

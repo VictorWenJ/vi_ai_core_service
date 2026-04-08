@@ -1,4 +1,4 @@
-"""OpenAI provider implementation."""
+"""OpenAI Provider 实现。"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from app.providers.openai_compatible_base import OpenAICompatibleBaseProvider
 
 
 class OpenAIProvider(OpenAICompatibleBaseProvider):
-    """Provider for OpenAI chat completions."""
+    """OpenAI 聊天补全 Provider。"""
 
     provider_name = "openai"
 

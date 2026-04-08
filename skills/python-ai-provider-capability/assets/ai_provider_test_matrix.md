@@ -1,4 +1,4 @@
-# AI Provider Test Matrix
+# AI Provider 测试矩阵
 
 > 更新日期：2026-04-06
 
@@ -15,5 +15,5 @@
 1. streaming 真实事件流
 2. 多模态真实请求/响应
 3. tools/function calling
-4. structured output
+4. 结构化输出
 

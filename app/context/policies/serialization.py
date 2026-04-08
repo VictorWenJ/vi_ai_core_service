@@ -1,4 +1,4 @@
-"""Serialization policies for context history messages."""
+"""上下文历史消息的序列化策略。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from app.context.policies.base import HistorySerializationPolicy
 
 
 class DefaultHistorySerializationPolicy(HistorySerializationPolicy):
-    """Serialize selected history as provider-agnostic role/content pairs."""
+    """将已选历史序列化为与 Provider 无关的 role/content 对。"""
 
     name = "serialization.default_history"
 

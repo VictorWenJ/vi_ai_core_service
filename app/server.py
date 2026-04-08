@@ -1,4 +1,4 @@
-"""FastAPI application entrypoint for HTTP serving."""
+"""用于 HTTP 服务的 FastAPI 应用入口。"""
 
 from __future__ import annotations
 
@@ -24,6 +24,6 @@ def on_startup() -> None:
     except Exception:
         logging.basicConfig(level=logging.ERROR)
         logging.getLogger("vi_ai_core_service.startup").exception(
-            "Application startup initialization failed."
+            "应用启动初始化失败。"
         )
         raise

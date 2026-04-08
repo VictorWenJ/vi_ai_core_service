@@ -1,4 +1,4 @@
-﻿# app/schemas/AGENTS.md
+# app/schemas/AGENTS.md
 
 > 更新日期：2026-04-06
 
@@ -134,7 +134,7 @@ schema 主要是数据契约，不是业务服务对象。
 
 - 外部 API contract
 - 内部 canonical contract
-- provider-specific temporary mapping contract
+- provider 专用的临时映射契约（provider-specific temporary mapping contract）
 
 ---
 
@@ -154,7 +154,7 @@ schema 主要是数据契约，不是业务服务对象。
   - 单轮非流式主链路所需字段稳定性
 - 本阶段仅预留，不要求落地：
   - tools/function calling contract 完整落地
-  - structured output contract 完整落地
+  - 结构化输出 contract 完整落地
   - 多模态 contract 完整落地
   - 大规模内外 contract 分层重构
 

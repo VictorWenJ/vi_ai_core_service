@@ -1,17 +1,17 @@
-﻿---
+---
 name: python-api-capability
 description: 用于为 vi_ai_core_service 搭建和标准化面向 C 端 AI 应用的 Python API 接入层骨架。重点关注薄路由、service 委托、会话标识、流式输出预留、多模态输入、稳定响应契约与 API 边界。
 last_updated: 2026-04-06
 ---
 
-# Purpose
+# 目的
 
 本 skill 用于指导 `vi_ai_core_service` 中 API 接入层的新增、整理与标准化工作。
 
 它面向的是当前主流 C 端 AI 应用产品常见的 API 接入模式，而不只是传统的“同步文本接口”：
 
 - 多轮 chat API
-- health / readiness endpoint
+- health / readiness 端点
 - streaming response endpoint 预留
 - 会话/对话标识透传
 - 多模态输入入口预留
@@ -37,18 +37,18 @@ last_updated: 2026-04-06
 
 ---
 
-# Current Phase Constraint (Must Follow)
+# 当前阶段约束（必须遵守）
 
 在 `vi_ai_core_service` 当前阶段，执行本 skill 时必须默认遵守以下范围：
 
 - 只交付单轮非流式 chat 主链路与基础 health 路由。
-- `streaming`、多模态、tools、structured output 仅允许预留字段或预留接口，不做真实功能落地。
+- `streaming`、多模态、tools、结构化输出 仅允许预留字段或预留接口，不做真实功能落地。
 - API 层必须保持薄路由，只依赖 service-facing contract 与 service-facing errors。
 - 不为未来能力引入超出当前阶段的大型抽象或平台化改造。
 
 ---
 
-# Use This Skill When
+# 适用场景
 
 在以下场景中使用本 skill：
 
@@ -62,7 +62,7 @@ last_updated: 2026-04-06
 
 ---
 
-# Do Not Use This Skill For
+# 不适用场景
 
 以下场景不应使用本 skill：
 
@@ -75,7 +75,7 @@ last_updated: 2026-04-06
 
 ---
 
-# Layer Responsibility
+# 分层职责
 
 API 层负责：
 
@@ -100,7 +100,7 @@ API 层不负责：
 
 ---
 
-# Required Inputs
+# 必要输入
 
 使用本 skill 前，应明确以下输入信息：
 
@@ -123,7 +123,7 @@ API 层不负责：
 
 ---
 
-# Expected Outputs
+# 预期输出
 
 使用本 skill 后，交付物应至少包括：
 
@@ -139,7 +139,7 @@ API 层不负责：
 
 ---
 
-# Required Workflow
+# 必要流程
 
 1. 先确认本次需求是否真的属于 API 层。
 2. 先检查根目录文档与 `app/api/AGENTS.md`。
@@ -160,7 +160,7 @@ API 层不负责：
 
 ---
 
-# Design Rules
+# 设计规则
 
 ## 1. 薄路由优先
 
@@ -201,7 +201,7 @@ API 层应允许未来同时支持：
 
 ---
 
-# Verification Standard
+# 验证标准
 
 一个合格的面向 C 端 AI 应用的 API skeleton，至少应满足：
 
@@ -216,7 +216,7 @@ API 层应允许未来同时支持：
 
 ---
 
-# Done Criteria
+# 完成标准
 
 本 skill 任务完成，至少表示：
 
@@ -231,7 +231,7 @@ API 层应允许未来同时支持：
 
 ---
 
-# Notes
+# 备注
 
 本 skill 适用于当前 `vi_ai_core_service` 的 API 接入层建设阶段。  
 未来如果 API 层复杂度提升，可继续细分为：
@@ -267,13 +267,13 @@ API 层应允许未来同时支持：
 
 # 资产与验证索引
 
-1. Checklist：`assets/api_capability_checklist.md`
-2. Test Matrix：`assets/api_test_matrix.md`
-3. References：`references/api_boundaries_and_antipatterns.md`
+1. 检查清单：`assets/api_capability_checklist.md`
+2. 测试矩阵：`assets/api_test_matrix.md`
+3. 参考文档：`references/api_boundaries_and_antipatterns.md`
 
 ---
 
-# Governance Linkage
+# 治理联动
 
 执行本 skill 时必须遵循统一闭环：
 

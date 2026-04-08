@@ -1,4 +1,4 @@
-"""Context manager skeleton."""
+"""上下文管理器骨架。"""
 
 from __future__ import annotations
 

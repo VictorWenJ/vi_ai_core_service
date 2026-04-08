@@ -1,4 +1,4 @@
-"""Shared base for OpenAI-compatible chat providers."""
+"""OpenAI 兼容聊天 Provider 的共享基类。"""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover - handled at runtime if dependency is mi
 
 
 class OpenAICompatibleBaseProvider(BaseLLMProvider):
-    """Base implementation for providers that expose an OpenAI-compatible API."""
+    """面向 OpenAI 兼容 API 的 Provider 基础实现。"""
 
     provider_name = "openai_compatible"
 
@@ -40,7 +40,7 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
 
         if not llm_request.model:
             raise ProviderConfigurationError(
-                f"Provider '{self.provider_name}' requires a model."
+                f"Provider '{self.provider_name}' 需要模型。"
             )
 
         llm_payload = {
@@ -77,7 +77,7 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
                 },
             )
             raise ProviderInvocationError(
-                f"Provider '{self.provider_name}' request failed: {exc}"
+                f"Provider '{self.provider_name}' 请求失败：{exc}"
             ) from exc
 
         response = self._to_response(llm_vendor_response)
@@ -86,7 +86,7 @@ class OpenAICompatibleBaseProvider(BaseLLMProvider):
     def _build_client(self):
         if OpenAI is None:
             raise ProviderConfigurationError(
-                "Missing dependency 'openai'. Install it with 'pip install openai'."
+                "缺少依赖 'openai'。请先执行 'pip install openai'。"
             )
 
         client_kwargs = {

@@ -1,4 +1,4 @@
-"""HTTP error mapping helpers for chat route."""
+"""聊天路由的 HTTP 错误映射辅助。"""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def build_service_http_exception(
             traceback.format_exception(type(exc), exc, exc.__traceback__)
         )
         log_report(f"{event_prefix}.error", error_payload)
-        return HTTPException(status_code=500, detail="Internal server error.")
+        return HTTPException(status_code=500, detail="服务器内部错误。")
 
     return HTTPException(status_code=status_code, detail=str(exc))
 

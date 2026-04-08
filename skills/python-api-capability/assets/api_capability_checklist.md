@@ -1,4 +1,4 @@
-﻿# API Skeleton Checklist
+# API 骨架检查清单
 
 > 更新日期：2026-04-06
 
@@ -19,7 +19,7 @@
 ## C 端 AI 产品适配性
 
 - 请求结构已考虑 conversation_id / session_id / request_id 等标识，或已明确预留。
-- 若场景需要，已考虑 messages / attachments / multimodal inputs 的入口结构。
+- 若场景需要，已考虑 messages / attachments / 多模态输入s 的入口结构。
 - 若场景需要，已考虑 streaming response 的接口形态或预留。
 - API 结构没有被写死成只支持一次性纯文本同步返回。
 

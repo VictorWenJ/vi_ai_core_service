@@ -1,2 +1,2 @@
-"""Integration test package skeleton for future expansion."""
+"""用于后续扩展的集成测试包骨架。"""
 

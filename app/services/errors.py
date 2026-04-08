@@ -1,27 +1,26 @@
-"""Service-facing error contract.
+"""面向 Service 层的错误契约。
 
-API 层应只依赖这些异常语义，不直接依赖 provider 层异常类型。
+API 层应只依赖这些异常语义，不直接依赖 Provider 层异常类型。
 """
 
 from __future__ import annotations
 
 
 class ServiceError(Exception):
-    """Base class for service-layer errors exposed to API handlers."""
+    """暴露给 API 处理器的 Service 层错误基类。"""
 
 
 class ServiceValidationError(ServiceError):
-    """Raised when service input is invalid for current business constraints."""
+    """当 Service 输入不满足当前业务约束时抛出。"""
 
 
 class ServiceConfigurationError(ServiceError):
-    """Raised when required runtime configuration is missing or invalid."""
+    """当必需运行时配置缺失或无效时抛出。"""
 
 
 class ServiceDependencyError(ServiceError):
-    """Raised when an upstream dependency (for example provider) fails."""
+    """当上游依赖（例如 Provider）失败时抛出。"""
 
 
 class ServiceNotImplementedError(ServiceError):
-    """Raised when a requested capability is intentionally not available yet."""
-
+    """当请求能力尚未提供且为有意保留时抛出。"""

@@ -1,4 +1,4 @@
-"""Service package exports."""
+"""服务包导出。"""
 
 from app.services.errors import (
     ServiceConfigurationError,

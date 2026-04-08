@@ -95,7 +95,7 @@
   - request context 贯穿
   - middleware 自动注入 request_id
   - `.env` 运行时日志开关接入
-  - tracing/metrics/alerting/APM
+  - tracing/metrics/alerting/APM 平台建设
 
 ---
 

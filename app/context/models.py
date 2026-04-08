@@ -1,4 +1,4 @@
-"""Canonical context models for short-term history governance."""
+"""用于短期历史治理的规范化上下文模型。"""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ class ContextWindow:
 
 @dataclass
 class ContextSelectionResult:
-    """Output of history window selection before truncation."""
+    """截断前的历史窗口选择结果。"""
 
     session_id: str
     source_message_count: int
@@ -51,7 +51,7 @@ class ContextSelectionResult:
 
 @dataclass
 class ContextTruncationResult:
-    """Output of truncation policy before serialization."""
+    """序列化前的截断策略结果。"""
 
     session_id: str
     source_message_count: int
@@ -79,7 +79,7 @@ class ContextTruncationResult:
 
 @dataclass
 class ContextSummaryResult:
-    """Output of summary/compaction policy before serialization."""
+    """序列化前的摘要/压缩策略结果。"""
 
     session_id: str
     source_message_count: int
@@ -88,6 +88,7 @@ class ContextSummaryResult:
     input_token_count: int
     token_budget: int
     messages: list[ContextMessage] = field(default_factory=list)
+    dropped_messages: list[ContextMessage] = field(default_factory=list)
     summary_policy: str = "summary.noop"
     summary_applied: bool = False
     summary_text: str | None = None
@@ -96,3 +97,7 @@ class ContextSummaryResult:
     @property
     def final_message_count(self) -> int:
         return len(self.messages)
+
+    @property
+    def dropped_message_count(self) -> int:
+        return len(self.dropped_messages)

@@ -1,1 +1,1 @@
-"""Prompt asset package."""
+"""提示词资产包。"""

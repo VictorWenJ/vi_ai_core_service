@@ -57,7 +57,7 @@ class RequestAssemblerTests(unittest.TestCase):
     def test_assemble_without_session_does_not_use_server_history(self) -> None:
         manager = ContextManager(store=InMemoryContextStore())
         assembler = ChatRequestAssembler(
-            config=self.config,
+            app_config=self.config,
             prompt_service=StubPromptService(),
             context_policy_pipeline=self.pipeline,
         )
@@ -74,10 +74,11 @@ class RequestAssemblerTests(unittest.TestCase):
         self.assertEqual([message.role for message in request.messages], ["system", "user"])
         trace = request.metadata["context_assembly"]
         self.assertFalse(trace["enabled"])
-        self.assertEqual(trace["total_messages_before_selection"], 0)
-        self.assertEqual(trace["selected_message_count"], 0)
+        self.assertEqual(trace["source_message_count"], 0)
+        self.assertEqual(trace["selection_selected_message_count"], 0)
         self.assertEqual(trace["serialized_message_count"], 0)
         self.assertIn("summary_policy", trace)
+        self.assertIn("token_counter", trace)
 
     def test_assemble_with_session_uses_token_aware_pipeline_and_trace(self) -> None:
         manager = ContextManager(store=InMemoryContextStore())
@@ -90,7 +91,7 @@ class RequestAssemblerTests(unittest.TestCase):
             ],
         )
         assembler = ChatRequestAssembler(
-            config=self.config,
+            app_config=self.config,
             prompt_service=StubPromptService(),
             context_policy_pipeline=self.pipeline,
         )
@@ -112,10 +113,14 @@ class RequestAssemblerTests(unittest.TestCase):
         trace = request.metadata["context_assembly"]
         self.assertTrue(trace["enabled"])
         self.assertEqual(trace["session_id"], "session-1")
-        self.assertEqual(trace["total_messages_before_selection"], 3)
-        self.assertIn("token_budget", trace)
+        self.assertEqual(trace["source_message_count"], 3)
+        self.assertIn("selection_token_budget", trace)
         self.assertIn("truncation_applied", trace)
         self.assertIn("summary_applied", trace)
+        self.assertEqual(trace["selection_policy"], "window_selection.token_aware")
+        self.assertEqual(trace["truncation_policy"], "truncation.token_aware")
+        self.assertEqual(trace["summary_policy"], "summary.deterministic_compaction")
+        self.assertEqual(trace["serialization_policy"], "serialization.default_history")
         self.assertEqual(request.metadata["used_context_history"], trace)
 
     def test_assemble_does_not_keep_full_raw_history_metadata(self) -> None:
@@ -130,7 +135,7 @@ class RequestAssemblerTests(unittest.TestCase):
             ],
         )
         assembler = ChatRequestAssembler(
-            config=self.config,
+            app_config=self.config,
             prompt_service=StubPromptService(),
             context_policy_pipeline=self.pipeline,
         )
@@ -148,4 +153,9 @@ class RequestAssemblerTests(unittest.TestCase):
         trace = request.metadata["context_assembly"]
         self.assertNotIn("messages", trace)
         self.assertGreaterEqual(trace["dropped_message_count"], 0)
-
+        self.assertEqual(
+            trace["total_dropped_message_count"],
+            trace["selection_dropped_message_count"]
+            + trace["truncation_dropped_message_count"]
+            + trace["summary_dropped_message_count"],
+        )

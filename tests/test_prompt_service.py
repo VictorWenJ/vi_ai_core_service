@@ -38,7 +38,7 @@ class PromptServiceTests(unittest.TestCase):
         messages = self.prompt_service.build_chat_messages(user_prompt="Hello")
 
         self.assertEqual(messages[0].role, "system")
-        self.assertIn("helpful AI assistant", messages[0].content)
+        self.assertIn("乐于助人的 AI 助手", messages[0].content)
         self.assertEqual(messages[1].role, "user")
         self.assertEqual(messages[1].content, "Hello")
 

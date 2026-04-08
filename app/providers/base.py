@@ -1,4 +1,4 @@
-"""Base abstractions and shared exceptions for LLM providers."""
+"""LLM Provider 的基础抽象与共享异常。"""
 
 from __future__ import annotations
 
@@ -10,27 +10,27 @@ from app.schemas.llm_response import LLMResponse
 
 
 class ProviderError(Exception):
-    """Base class for provider-layer errors."""
+    """Provider 层错误基类。"""
 
 
 class ProviderConfigurationError(ProviderError):
-    """Raised when provider configuration is missing or invalid."""
+    """当 Provider 配置缺失或无效时抛出。"""
 
 
 class ProviderInvocationError(ProviderError):
-    """Raised when the vendor SDK or API call fails."""
+    """当厂商 SDK 或 API 调用失败时抛出。"""
 
 
 class ProviderNotImplementedError(ProviderError):
-    """Raised for provider scaffolds that are intentionally not implemented yet."""
+    """用于尚未实现的 Provider 脚手架。"""
 
 
 class StreamNotImplementedError(ProviderError):
-    """Raised when streaming is requested before the feature exists."""
+    """在功能未实现时请求流式能力会抛出。"""
 
 
 class BaseLLMProvider(ABC):
-    """Stable interface for all providers, including scaffolds."""
+    """所有 Provider（含脚手架）的稳定接口。"""
 
     provider_name: str = "base"
 
@@ -43,22 +43,22 @@ class BaseLLMProvider(ABC):
 
     @abstractmethod
     def chat(self, request: LLMRequest) -> LLMResponse:
-        """Execute a standard non-streaming chat request."""
+        """执行标准非流式聊天请求。"""
 
     def stream_chat(self, request: LLMRequest) -> LLMResponse:
         raise StreamNotImplementedError(
-            f"Streaming is not implemented yet for provider '{self.provider_name}'."
+            f"Provider '{self.provider_name}' 暂未实现流式能力。"
         )
 
     def ensure_api_key(self) -> str:
         if not self.provider_config.api_key:
             raise ProviderConfigurationError(
-                f"Provider '{self.provider_name}' requires an API key."
+                f"Provider '{self.provider_name}' 需要 API Key。"
             )
         return self.provider_config.api_key
 
     def ensure_non_streaming(self, request: LLMRequest) -> None:
         if request.stream:
             raise StreamNotImplementedError(
-                "This Phase 1 foundation only supports chat(), not streaming."
+                "当前基础阶段仅支持 chat()，不支持流式。"
             )

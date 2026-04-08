@@ -1,4 +1,4 @@
-﻿# Prompt Capability Checklist
+# Prompt 能力检查清单
 
 > 更新日期：2026-04-06
 
@@ -20,7 +20,7 @@
 
 - Prompt 结构已考虑 system / scenario / output constraint 等层次，或已明确预留。
 - 对 tools / function calling guidance 有清晰扩展位或预留。
-- 对 structured output / JSON mode 的提示约束有清晰扩展位或预留。
+- 对 结构化输出 / JSON mode 的提示约束有清晰扩展位或预留。
 - 对多模态输入说明有清晰扩展位或预留。
 - 对稳定可复用 Prompt 块有缓存友好组织意识或预留。
 
@@ -30,7 +30,7 @@
 - service 层可以调用 registry / renderer，但不应长期持有 Prompt 文件。
 - provider 层保持 prompt-agnostic。
 - Prompt 层没有承担业务主流程编排。
-- Prompt 层没有承担 tool execution loop。
+- Prompt 层没有承担 工具执行循环。
 
 ## 当前阶段约束
 

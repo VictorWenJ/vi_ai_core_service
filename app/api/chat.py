@@ -1,4 +1,4 @@
-"""Minimal chat API skeleton."""
+"""最小化聊天 API 骨架。"""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from app.observability.log_until import log_report
 from app.schemas import LLMResponse
 
 router = APIRouter(tags=["chat"])
-# Backward-compatible alias used by existing API tests.
+# 供现有 API 测试使用的向后兼容别名。
 _get_chat_service = get_chat_service
 
 

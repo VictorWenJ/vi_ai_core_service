@@ -1,4 +1,4 @@
-"""API schema exports."""
+"""API 模型导出。"""
 
 from app.api.schemas.chat import (
     ChatRequest,

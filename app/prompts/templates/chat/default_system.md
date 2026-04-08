@@ -1,2 +1,2 @@
-You are a helpful AI assistant.
-Provide clear and concise answers.
+你是一个乐于助人的 AI 助手。
+请提供清晰且简洁的回答。

@@ -1,10 +1,8 @@
-"""Composable context policy pipeline."""
+"""可组合的上下文策略管线。"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-from app.observability.log_until import log_report
 
 from app.context.models import (
     ContextSelectionResult,
@@ -18,6 +16,7 @@ from app.context.policies.base import (
     TruncationPolicy,
     WindowSelectionPolicy,
 )
+from app.observability.log_until import log_report
 
 
 @dataclass(frozen=True)
@@ -26,18 +25,15 @@ class ContextPolicyExecutionResult:
     truncation: ContextTruncationResult
     summary: ContextSummaryResult
     serialization_policy: str
+    token_counter: str | None
     serialized_messages: list[dict[str, str]]
 
 
 @dataclass(frozen=True)
 class ContextPolicyPipeline:
-    # 窗口选择策略
     selection_policy: WindowSelectionPolicy
-    # 截断策略
     truncation_policy: TruncationPolicy
-    # 总结策略
     summary_policy: SummaryPolicy
-    # 历史上下文序列化策略
     serialization_policy: HistorySerializationPolicy
 
     def run(self, window: ContextWindow) -> ContextPolicyExecutionResult:
@@ -62,5 +58,19 @@ class ContextPolicyPipeline:
             truncation=truncation,
             summary=summary,
             serialization_policy=self.serialization_policy.name,
+            token_counter=_resolve_token_counter_name(
+                self.selection_policy,
+                self.truncation_policy,
+                self.summary_policy,
+            ),
             serialized_messages=serialized_messages,
         )
+
+
+def _resolve_token_counter_name(*policies: object) -> str | None:
+    for policy in policies:
+        token_counter = getattr(policy, "_token_counter", None)
+        token_counter_name = getattr(token_counter, "name", None)
+        if isinstance(token_counter_name, str) and token_counter_name:
+            return token_counter_name
+    return None

@@ -256,6 +256,7 @@ class LLMServiceTests(unittest.TestCase):
         self.assertEqual(used_context_history["selected_message_count"], 1)
         self.assertEqual(used_context_history["dropped_message_count"], 0)
         self.assertEqual(used_context_history["serialized_message_count"], 1)
+        self.assertIn("token_counter", used_context_history)
         self.assertNotIn("messages", used_context_history)
 
     def test_chat_from_user_prompt_without_session_does_not_access_context(self) -> None:
@@ -294,3 +295,21 @@ class LLMServiceTests(unittest.TestCase):
         self.assertEqual(result["session_id"], "session-1")
         self.assertEqual(result["scope"], "session")
         self.assertEqual(result["remaining_message_count"], 0)
+
+    def test_reset_context_by_conversation_keeps_scope(self) -> None:
+        fake_context_manager = FakeContextManager()
+        service = LLMService(
+            config=self.config,
+            registry=self.registry,
+            prompt_service=PromptService(),
+            context_manager=fake_context_manager,
+        )
+
+        result = service.reset_context(
+            session_id="session-1",
+            conversation_id="conversation-1",
+        )
+
+        self.assertEqual(result["session_id"], "session-1")
+        self.assertEqual(result["conversation_id"], "conversation-1")
+        self.assertEqual(result["scope"], "conversation")

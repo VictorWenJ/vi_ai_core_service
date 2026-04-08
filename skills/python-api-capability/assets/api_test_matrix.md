@@ -1,4 +1,4 @@
-# API Test Matrix
+# API 测试矩阵
 
 > 更新日期：2026-04-06
 
@@ -15,5 +15,5 @@
 1. streaming 实时输出
 2. 多模态真实请求
 3. tools/function calling 执行链路
-4. structured output 真实输出链路
+4. 结构化输出 真实输出链路
 

@@ -1,4 +1,4 @@
-﻿---
+---
 name: python-ai-provider-capability
 description: 用于在 Python 项目中重构或新增外部 AI Provider 集成。覆盖 LLM、图像生成、视频生成、音频、embedding、reranker 等类型。重点用于 provider 抽象、请求/响应归一化、service 层解耦、配置外置化与聚焦式结构重构。不用于 RAG 编排、Agent 逻辑、工作流引擎、数据库或无关重构。
 last_updated: 2026-04-06
@@ -13,8 +13,8 @@ last_updated: 2026-04-06
 - 图像生成 Provider
 - 视频生成 Provider
 - 音频 Provider
-- Embedding Provider
-- Reranker Provider
+- 向量嵌入 Provider
+- 重排 Provider
 - 未来新增的外部 AI 能力 Provider
 
 目标是确保所有 Provider 集成遵循一致工程规则：
@@ -30,7 +30,7 @@ last_updated: 2026-04-06
 在 `vi_ai_core_service` 当前基础设施阶段，使用本 Skill 必须严格限制范围：
 
 - 仅稳定当前主链路使用的非流式 LLM Provider 路径。
-- streaming、多模态、tools/function calling、structured output 以及非 LLM Provider 家族能力均为后续阶段预留。
+- streaming、多模态、tools/function calling、结构化输出 以及非 LLM Provider 家族能力均为后续阶段预留。
 - 不引入重型 Provider 平台（路由引擎、fallback 框架、能力协商系统等）。
 - 优先保证边界正确、契约归一化与可测试行为。
 
@@ -47,7 +47,7 @@ last_updated: 2026-04-06
 # 不适用场景
 
 本 Skill 不用于：
-- RAG Pipeline 实现
+- RAG 管线 实现
 - Agent 逻辑
 - 工作流引擎设计
 - 后台任务系统
@@ -124,9 +124,9 @@ last_updated: 2026-04-06
 
 # 资产与验证索引
 
-1. Checklist：`assets/ai_provider_capability_checklist.md`
-2. Test Matrix：`assets/ai_provider_test_matrix.md`
-3. References：`references/ai_provider_capability_boundary_and_acceptance.md`
+1. 检查清单：`assets/ai_provider_capability_checklist.md`
+2. 测试矩阵：`assets/ai_provider_test_matrix.md`
+3. 参考文档：`references/ai_provider_capability_boundary_and_acceptance.md`
 
 # 治理链路
 

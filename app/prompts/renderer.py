@@ -1,4 +1,4 @@
-"""Prompt renderer skeleton."""
+"""提示词渲染器骨架。"""
 
 from __future__ import annotations
 

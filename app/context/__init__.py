@@ -1,4 +1,4 @@
-"""Context engineering package exports."""
+"""上下文工程包导出。"""
 
 from app.context.manager import ContextManager
 from app.context.models import (

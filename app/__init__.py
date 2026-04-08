@@ -1,1 +1,1 @@
-"""Application package for the AI capability service."""
+"""AI 能力服务的应用包。"""

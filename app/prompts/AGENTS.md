@@ -1,4 +1,4 @@
-﻿# app/prompts/AGENTS.md
+# app/prompts/AGENTS.md
 
 > 更新日期：2026-04-06
 
@@ -153,9 +153,9 @@ Prompt 不应散落在 service 或 provider 代码中。
   - registry + renderer 最小闭环
   - 单轮 chat 默认 system prompt 支撑
 - 本阶段仅预留，不要求落地：
-  - Prompt orchestration engine
+  - Prompt 编排引擎
   - 大规模 Prompt 版本治理平台
-  - tools/structured output/multimodal 的完整提示编排体系
+  - tools/结构化输出/multimodal 的完整提示编排体系
 
 后续演进方向：
 

@@ -1,4 +1,4 @@
-"""Service-level chat orchestration with separated request assembly."""
+"""带独立请求装配的服务层聊天编排。"""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ from app.services.request_assembler import ChatRequestAssembler
 
 
 class ChatService:
-    """Business-facing chat orchestration for Phase 1 non-streaming requests."""
+    """面向业务的聊天编排（当前非流式阶段）。"""
 
     def __init__(
             self,
@@ -46,7 +46,7 @@ class ChatService:
         self._prompt_service = prompt_service or PromptService()
         self._context_manager = context_manager or ContextManager()
         self._request_assembler = request_assembler or ChatRequestAssembler(
-            config=config,
+            app_config=config,
             prompt_service=self._prompt_service,
         )
 
@@ -160,7 +160,7 @@ class ChatService:
     ) -> dict[str, Any]:
         normalized_session_id = (session_id or "").strip()
         if not normalized_session_id:
-            raise ServiceValidationError("session_id is required for reset.")
+            raise ServiceValidationError("重置操作必须提供 session_id。")
 
         normalized_conversation_id = (conversation_id or "").strip() or None
         if normalized_conversation_id is None:

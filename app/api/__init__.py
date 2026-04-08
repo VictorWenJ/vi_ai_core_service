@@ -1,1 +1,1 @@
-"""API package for HTTP route definitions."""
+"""HTTP 路由定义的 API 包。"""

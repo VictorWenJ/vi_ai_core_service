@@ -1,4 +1,4 @@
-"""Schema package exports."""
+"""Schema 包导出。"""
 
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.schemas.llm_response import LLMResponse, LLMUsage

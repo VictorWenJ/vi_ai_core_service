@@ -1,4 +1,4 @@
-"""Dependency wiring helpers for API routes."""
+"""API 路由依赖装配辅助。"""
 
 from __future__ import annotations
 

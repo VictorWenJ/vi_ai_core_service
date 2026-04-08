@@ -1,4 +1,4 @@
-﻿# AI Provider Capability Checklist
+# AI Provider 能力检查清单
 
 > 更新日期：2026-04-06
 
@@ -6,7 +6,7 @@
 ## 当前阶段使用说明（vi_ai_core_service）
 
 - 当前阶段只要求非流式 LLM provider 主路径稳定。
-- checklist 中涉及 streaming、polling、artifact、多模态、tools、structured output 的项，仅在该能力已真实实现时检查。
+- checklist 中涉及 streaming、polling、artifact、多模态、tools、结构化输出 的项，仅在该能力已真实实现时检查。
 - 对未实现能力，要求是“明确预留与明确失败语义”，而不是“伪实现”。
 
 ## 目录与落位

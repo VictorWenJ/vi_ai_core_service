@@ -1,6 +1,6 @@
 ﻿# CODE_REVIEW.md
 
-> 更新日期：2026-04-07
+> 更新日期：2026-04-08
 
 ## 1. 文档定位
 
@@ -81,6 +81,7 @@
 6. 是否让未来演进更困难？
 7. 是否需要同步更新文档？
 8. 是否需要补测试？
+9. 注解、提示、说明类文本是否统一使用中文（且语义与原有行为一致）？
 
 ---
 
@@ -133,6 +134,12 @@
    - `test2.py`
 
 命名应尽量帮助协作者快速判断归属和职责。
+
+此外必须检查文本规范：
+
+1. 代码注释、docstring、字段说明、错误提示、文档说明是否为中文
+2. 是否新增了英文说明文本而未同步中文化
+3. 技术标识符是否仍保持英文（避免误翻译导致语义偏差）
 
 ---
 
@@ -388,6 +395,8 @@ Review 时，建议优先从以下几个维度给出结论：
 1. 是否定义并使用了 `TokenAwareWindowSelectionPolicy` 和 `TokenAwareTruncationPolicy`。
 2. 是否定义并使用了 `SummaryPolicy` 或 `CompactionPolicy` 接口。
 3. 默认策略是否可以配置 token budget，且行为确定、可测试。
+4. `summary_then_drop_oldest` 与 `drop_oldest` 是否具有真实语义差异（而不是配置存在但行为一致）。
+5. 默认 summary 路径是否保留最近 raw message，避免 summary 吞掉最新原始上下文。
 4. 是否通过 context policy pipeline 组合策略，而不是在 assembler 中手写循环判断。
 
 ### 20.3 契约检查
@@ -395,6 +404,8 @@ Review 时，建议优先从以下几个维度给出结论：
 1. 摘要/压缩后的历史是否符合 canonical `ContextMessage` / `ContextWindow` 契约。
 2. token-aware 裁剪后的上下文结果是否通过 trace/metadata 暴露以便调试。
 3. reset/clear API 是否影响共享契约的字段（session id / conversation id）。
+4. trace 字段是否区分 selection/truncation/summary 三阶段计数，避免 `dropped_message_count` 语义混淆。
+5. trace 中是否包含当前 token counter 类型与预算近似语义说明（例如 fixed overhead）。
 
 ### 20.4 测试检查
 

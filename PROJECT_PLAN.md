@@ -1,6 +1,6 @@
-﻿# PROJECT_PLAN.md
+# PROJECT_PLAN.md
 
-> 更新日期：2026-04-07
+> 更新日期：2026-04-08
 
 
 ## 1. 文档定位
@@ -54,9 +54,9 @@
 
 高级特性如：
 
-- RAG
-- Agent
-- Tool orchestration
+- RAG（检索增强生成）
+- Agent（智能体）
+- 工具编排（Tool orchestration）
 - 多模态
 - Streaming 深度治理
 
@@ -79,12 +79,12 @@
   - 最小必要测试回归
   - observability 最小基础设施实现（`log_until.py` 统一日志上报 + 前缀/`message=<json>` 输出）
 - 仅预留，不作为本阶段验收项：
-  - streaming
+  - 流式能力（streaming）
   - 多模态真实落地
   - tools/function calling 真正实现
-  - structured output 真正实现
-  - context persistence / advanced summary memory / long-term compaction
-  - prompt orchestration engine
+  - 结构化输出 真正实现
+  - context persistence / advanced summary memory / long-term compaction（上下文持久化/高级摘要记忆/长期压缩）
+  - prompt orchestration engine（提示词编排引擎）
   - 新 provider 的完整接入
 
 ### 3.5 当前阶段 observability 建设目标（新增）
@@ -143,6 +143,7 @@
 - 完成各模块目录的 `AGENTS.md`
 - 固化当前七层系统划分（含 observability 横切层）
 - 明确根目录文档与模块文档的职责边界
+- 固化文本规范：注解、提示、说明统一中文，新增同类文本默认中文
 
 ### 本阶段完成标准
 
@@ -232,7 +233,7 @@
 - 历史序列化接口化
 - request assembly 中的上下文装配流程正式化
 
-#### In Scope
+#### 范围内
 
 1. `ContextPolicy` 组合策略占位
 2. `WindowSelectionPolicy` 接口与默认实现
@@ -244,16 +245,16 @@
 8. 最近 N 条消息窗口治理
 9. 可观测的上下文装配 metadata / trace
 
-#### Out of Scope
+#### 范围外
 
-- RAG 检索链路
+- RAG 检索链路（RAG retrieval）
 - 向量数据库
-- Redis / DB persistence
-- summary memory
-- semantic retrieval memory
-- user profile memory
+- Redis / DB persistence（Redis/数据库持久化）
+- summary memory（摘要记忆）
+- semantic retrieval memory（语义检索记忆）
+- user profile memory（用户画像记忆）
 - token-aware 精准预算控制
-- distributed state / MQ / workflow engine
+- distributed state / MQ / workflow engine（分布式状态 / MQ / 工作流引擎）
 
 #### 本阶段完成标准
 
@@ -269,6 +270,9 @@
 
 将 Context skeleton 升级为 **token-aware**，具备预算感知的窗口选择、截断和摘要/压缩能力，并提供会话重置能力。保证在不破坏现有主链路基础上，引入能够精确控制历史消息长度和成本的策略，为未来长期记忆/RAG/多模态扩展打下基础。
 
+> 当前状态（2026-04-08）：主链路已落地并进入收尾治理阶段。默认策略已为  
+> `token-aware selection -> token-aware truncation -> deterministic summary -> serialization`，并已接入 reset 接口与 metadata trace。
+
 #### 重点
 
 1. **Token-aware context policy**：增加 `TokenAwareWindowSelectionPolicy` 和 `TokenAwareTruncationPolicy`，根据最大 token 预算而不是固定消息数量选择与截断历史。
@@ -277,7 +281,7 @@
 4. **request assembler 升级**：在 `app/services/request_assembler.py` 中集成新的 token-aware pipeline 和摘要/裁剪机制，并暴露 context assembly trace。
 5. **文档与测试治理**：同步更新模块文档与 skill，补充 token-aware 选择、截断、摘要以及 reset 行为的测试覆盖。
 
-#### In Scope
+#### 范围内
 
 - Context policy 抽象和默认实现的增加。
 - 新的 `ContextPolicyPipeline` 组合策略流程。
@@ -286,7 +290,7 @@
 - request assembly 的 token-aware 裁剪流程。
 - 文档治理、code review checklist 和基础测试。
 
-#### Out of Scope
+#### 范围外
 
 - 持久化存储、Redis/DB store 或分布式状态系统。
 - 完整语义摘要或大模型 summarization 服务。
@@ -316,7 +320,7 @@
 - `app/tooling/`
 - `app/evaluation/`
 - 更细的内部 contract 分层
-- integration tests / e2e tests
+- integration tests / e2e tests（集成测试 / 端到端测试）
 
 ### 注意
 
@@ -342,15 +346,15 @@
 
 - Provider 体系进一步统一
 - Prompt 资产治理进一步增强
-- Context Policy Pipeline 落地
-- request assembly 的上下文治理增强
-- **Context Engineering Phase 2 的 token-aware 与摘要能力**
+- request assembly 的上下文治理细节优化
+- token accounting 精度提升（仍保持 provider-agnostic）
+- Context trace 字段与测试门禁持续收紧
 
 ### P2：后续阶段能力
 
-- RAG
-- Agent
-- Tool use
+- RAG（检索增强生成）
+- Agent（智能体）
+- Tool use（工具使用）
 - 更复杂的上下文治理
 - 更复杂的调度与治理能力
 - 多模态与高级输出能力

@@ -1,4 +1,4 @@
-﻿# Provider 层边界、兼容策略与验收标准
+# Provider 层边界、兼容策略与验收标准
 
 > 更新日期：2026-04-06
 
@@ -24,7 +24,7 @@ Provider 层不负责：
 - 业务主流程编排
 - context 管理
 - prompt 模板组织
-- tool execution loop
+- 工具执行循环
 - agent planning
 - provider routing / fallback policy
 - 用户态业务逻辑
@@ -38,10 +38,10 @@ Provider 层不负责：
 3. Provider 层必须显式说明 capability，不依赖隐式猜测。
 4. Provider 层必须面向当前主流 C 端 AI 应用常见能力：
    - streaming
-   - multimodal input
+   - 多模态输入
    - tools
-   - structured output
-   - usage extraction
+   - 结构化输出
+   - 用量提取
 5. Provider 层应尽量保持可替换、可扩展、可测试。
 6. provider routing / fallback 一律放在 service 层。
 
@@ -53,11 +53,11 @@ Provider 层不负责：
 
 新增 provider 前，先判断它属于哪个协议族：
 
-- OpenAI-compatible
-- OpenAI native style
-- Anthropic Messages style
-- Gemini content generation style
-- other custom style
+- OpenAI 兼容
+- OpenAI 原生风格
+- Anthropic Messages 风格
+- Gemini 内容生成风格
+- 其他自定义风格
 
 ### 2. 能复用时复用，不能复用时不要硬套
 
@@ -67,21 +67,21 @@ Provider 层不负责：
 ### 3. canonical contract 高于厂商 contract
 
 系统内部 contract 应稳定。  
-某个厂商私有字段如确有价值，应进入 metadata 或 raw_response，而不是污染主 contract。
+某个厂商私有字段如确有价值，应进入 metadata 或 raw_response（原始响应），而不是污染主 contract。
 
 ### 4. streaming 兼容必须单独验证
 
 很多 provider 在非流式上看似兼容，但 streaming event 格式、usage 返回时机、finish 语义差异很大。  
 streaming 兼容不能只靠非流式成功来判断。
 
-### 5. tools / structured output 兼容必须单独验证
+### 5. tools / 结构化输出 兼容必须单独验证
 
 不同 provider 对：
 
-- tools schema
-- tool choice
-- JSON mode
-- strict structured output
+- tools schema（工具定义结构）
+- tool choice（工具选择）
+- JSON mode（JSON 模式）
+- strict 结构化输出
 
 支持程度差异明显。  
 必须独立验证，不能默认“兼容”。
@@ -114,7 +114,7 @@ streaming 兼容不能只靠非流式成功来判断。
 - 上层逻辑被厂商协议污染
 - 后续新增 provider 成本暴涨
 
-### 反模式 4：只支持 text chat，忽略 streaming / multimodal / tools / structured output
+### 反模式 4：只支持 text chat，忽略 streaming / multimodal / tools / 结构化输出
 
 错误原因：
 
@@ -122,7 +122,7 @@ streaming 兼容不能只靠非流式成功来判断。
 - 后续扩展成本很高
 - 很快会触发大重构
 
-### 反模式 5：为了复用而强行套 OpenAI-compatible 基类
+### 反模式 5：为了复用而强行套 OpenAI 兼容 基类
 
 错误原因：
 
@@ -150,7 +150,7 @@ streaming 兼容不能只靠非流式成功来判断。
 - 可完成 request / response 归一化
 - 流式与非流式行为清晰
 - 多模态输入支持或预留清晰
-- tools / structured output 支持或预留清晰
+- tools / 结构化输出 支持或预留清晰
 - 无业务流程逻辑混入
 - 无 routing / fallback 逻辑混入
 - 可被测试矩阵验证
@@ -161,4 +161,4 @@ streaming 兼容不能只靠非流式成功来判断。
 
 Provider 层的正确实现方式是：
 
-**把厂商差异收敛在 provider 层内部，以统一 contract、显式 capability、稳定归一化和清晰边界为核心，为主流 C 端 AI 应用常见的 streaming、多模态、tools 与 structured output 能力提供可扩展支撑。**
+**把厂商差异收敛在 provider 层内部，以统一 contract、显式 capability、稳定归一化和清晰边界为核心，为主流 C 端 AI 应用常见的 streaming、多模态、tools 与 结构化输出 能力提供可扩展支撑。**
