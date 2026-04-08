@@ -351,7 +351,7 @@ def _read_context_store_backend(name: str, default: str) -> str:
 
 
 def _load_dotenv(dotenv_path: str | None) -> None:
-    dotenv_file = Path(dotenv_path) if dotenv_path else Path(".env")
+    dotenv_file = Path(dotenv_path) if dotenv_path else Path(".env.example")
     if not dotenv_file.exists():
         return
 
@@ -363,5 +363,5 @@ def _load_dotenv(dotenv_path: str | None) -> None:
             "'pip install -r requirements.txt'。"
         ) from exc
 
-    # 保持真实环境变量优先级高于本地 .env 值。
+    # 保持真实环境变量优先级高于本地 .env.example 值。
     load_dotenv(dotenv_path=dotenv_file, override=False)

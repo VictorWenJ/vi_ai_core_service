@@ -29,7 +29,7 @@
 
 1. request context 贯穿
 2. middleware 自动日志
-3. `.env` 运行时日志开关接入
+3. `.env.example` 运行时日志开关接入
 4. tracing/metrics/alerting/APM 平台
 
 ---

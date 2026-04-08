@@ -97,7 +97,7 @@ class ConfigTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            dotenv_path = os.path.join(temp_dir, ".env")
+            dotenv_path = os.path.join(temp_dir, ".env.example")
             with open(dotenv_path, "w", encoding="utf-8") as file:
                 file.write(dotenv_content)
 
@@ -114,7 +114,7 @@ class ConfigTests(unittest.TestCase):
 
     def test_environment_variables_override_dotenv(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            dotenv_path = os.path.join(temp_dir, ".env")
+            dotenv_path = os.path.join(temp_dir, ".env.example")
             with open(dotenv_path, "w", encoding="utf-8") as file:
                 file.write("DEEPSEEK_DEFAULT_MODEL=dotenv-model\n")
 

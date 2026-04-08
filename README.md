@@ -69,7 +69,7 @@ curl -X POST "http://127.0.0.1:8000/chat/reset" \\
 - 凭据字段（如 API key、Authorization）必须禁止输出。
 - 未知异常对外保持通用错误语义（HTTP 500: `服务器内部错误。`），内部通过 `error` 级日志记录 traceback。
 
-## `.env` 关键开关
+## `.env.example` 关键开关
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |

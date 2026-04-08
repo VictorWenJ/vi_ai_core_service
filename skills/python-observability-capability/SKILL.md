@@ -62,7 +62,7 @@ Observability 层当前不负责：
 
 1. request context 贯穿
 2. middleware 自动 request_id 注入
-3. `.env` 运行时开关实际生效控制
+3. `.env.example` 运行时开关实际生效控制
 4. 异常治理平台化封装
 
 ---

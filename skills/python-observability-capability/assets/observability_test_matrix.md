@@ -14,5 +14,5 @@
 
 1. request context 注入与清理
 2. middleware 请求起止日志
-3. `.env` 运行时日志开关行为
+3. `.env.example` 运行时日志开关行为
 4. tracing/metrics/alerting/APM 平台能力

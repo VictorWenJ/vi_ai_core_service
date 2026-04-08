@@ -19,42 +19,35 @@
 4. 是否可维护、可扩展、可测试
 5. 是否引入了不必要的耦合和复杂度
 6. 是否破坏已有文档治理规则
+7. 是否让运行时基础设施治理与业务代码边界混乱
 
 ---
 
 ## 3. 全局审查原则
 
 ### 3.1 先看边界，再看实现
-
-审查代码时，优先判断：
-
 - 代码是否写在正确目录
-- 逻辑是否落在正确层
+- 逻辑是否落在正确层/治理域
 - 是否存在越层调用
 - 是否出现职责混乱
 
 ### 3.2 先看结构，再看技巧
-
-本项目更重视：
-
+更重视：
 - 分层是否正确
 - 抽象是否合理
 - 契约是否稳定
 - 命名是否清晰
 
 ### 3.3 保守对待会扩大耦合的改动
-
-凡是会导致以下问题的改动，都要谨慎：
-
+以下改动应谨慎：
 - 上层与下层强绑定
 - 多个模块互相知道太多细节
 - 某个模块承担了不属于自己的职责
 - Schema 被临时需求污染
+- 运行时基础设施细节渗入业务主链路
 
 ### 3.4 可测试性是硬要求
-
 无法被合理测试的代码，通常说明：
-
 - 抽象有问题
 - 职责有问题
 - 耦合过高
@@ -67,7 +60,7 @@
 每次 review，至少要回答以下问题：
 
 1. 这段代码为什么在这个目录，而不是别的目录？
-2. 这段逻辑属于哪个层？
+2. 这段逻辑属于哪个层或哪个治理域？
 3. 是否破坏当前七层边界？
 4. 是否出现跨层绕过？
 5. 是否引入循环依赖风险？
@@ -102,6 +95,12 @@
 - Schema 是否仍然是契约层
 - 是否把流程逻辑或临时厂商特例塞进 schema
 
+### Infra 边界（新增）
+- Docker / compose / env 样例是否收敛在 `infra/`
+- 是否把容器编排细节写进 `app/` 业务代码
+- 是否把 Redis 连接细节散落到 API / service 层
+- `infra/` 是否承担了不属于它的业务逻辑
+
 ---
 
 ## 6. 全局命名与结构标准
@@ -130,6 +129,7 @@
 3. 是否让模块间关系变成网状耦合
 4. 是否出现“为了省事直接跨层调用”
 5. 是否绕过共享 contract 直接使用私有结构
+6. 是否让 `infra/` 反向影响业务依赖链
 
 ---
 
@@ -185,6 +185,7 @@
 2. 是否把未来扩展写死在当前实现里
 3. 是否留下不合理硬编码
 4. 是否会让后续新增模块变得困难
+5. 是否把本应属于 `infra/` 的运行配置混进业务配置语义中
 
 ---
 
@@ -206,6 +207,7 @@
 - Context 行为改动
 - Schema 契约改动
 - 配置加载改动
+- Docker / compose 运行方式改动（至少做最小联调验证）
 
 ---
 
@@ -219,6 +221,7 @@
 4. 新增了新的 `app/` 一级目录
 5. 某模块复杂度显著上升
 6. 文档已无法准确描述当前代码结构
+7. 新增或修改 `infra/` 这类项目级工程基础设施治理域
 
 ---
 
@@ -234,6 +237,8 @@
 6. 把 Prompt / Context / Provider 逻辑混写
 7. 把临时字段污染到共享 schema
 8. 没有文档更新、没有测试补充的大改动
+9. 在 `app/` 内部散落 Docker / compose / 容器编排逻辑
+10. 用 `infra/` 脚本替代业务层契约与配置治理
 
 ---
 
@@ -247,13 +252,14 @@ Review 结论优先从以下几个维度给出：
 - 契约是否稳定
 - 测试是否足够
 - 文档是否需要同步
+- 本地运行方式是否可复现
 
 ---
 
 ## 16. 一句话总结
 
 本项目的 Code Review 核心不是检查“代码写没写完”，而是检查：  
-**它是否仍然属于正确的层、遵守正确的边界、维持正确的依赖方向，并且没有破坏系统后续演进能力。**
+**它是否仍然属于正确的层/治理域、遵守正确的边界、维持正确的依赖方向，并且没有破坏系统后续演进能力。**
 
 ---
 
@@ -263,40 +269,13 @@ Review 结论优先从以下几个维度给出：
 
 `根目录文档 -> 模块 AGENTS -> 对应 skill -> 代码实现 -> review -> 文档回写`
 
-### 必查项
+对于 `infra/` 类任务，当前链路为：
 
-1. 是否按顺序阅读了根目录文档与模块文档
-2. 是否使用了正确 skill 与 checklist / test matrix
-3. 代码是否只落在允许的模块边界内
-4. 是否完成边界检查、依赖检查、契约检查、测试检查
-5. 若代码事实变化，是否同步更新了对应文档
-
-### 直接拒绝条件
-
-- 绕过根目录文档直接改代码
-- 绕过模块 `AGENTS.md` 直接做模块改动
-- 无 skill 支撑的自由发挥式实现
-- 只改代码不改文档，或只改文档不校验代码
+`根目录文档 -> infra/AGENTS.md -> 代码实现 -> review -> 文档回写`
 
 ---
 
-## 18. Observability 专项审查门禁
-
-涉及 observability 相关改动时，必须额外检查：
-
-1. 是否使用 Python 标准库 `logging`
-2. 日志是否采用统一前缀 + `message=<json>` 约束
-3. `message=<json>` 是否只承载业务信息
-4. `method/path` 等系统信息是否避免写入业务 JSON
-5. 是否可通过 `<file>:<line>` 快速定位日志调用点
-6. startup / API / services / providers / exception 关键边界是否有清晰日志策略
-7. `LOG_*` 配置若声明生效，是否已经真正接入运行时实现
-8. 是否遵守当前阶段日志内容策略
-9. 是否错误引入 tracing/metrics/alerting/APM 平台建设
-
----
-
-## 19. Context Engineering Phase 2 专项审查门禁
+## 18. Context Engineering Phase 2 专项审查门禁
 
 Phase 2 已完成主链路，当前应继续保持以下约束：
 
@@ -309,47 +288,37 @@ Phase 2 已完成主链路，当前应继续保持以下约束：
 
 ---
 
-## 20. Context Engineering Phase 3 专项审查门禁
+## 19. Context Engineering Phase 3 专项审查门禁
 
 在推进 **持久化短期记忆（Persistent Session Memory）** 时，必须额外检查：
 
-### 20.1 边界检查
-
+### 19.1 边界检查
 1. Redis/持久化逻辑是否仅存在于 `app/context/stores/` 内
 2. 是否把 Redis client、key 拼接、TTL 控制写进了 `chat_service.py`、`request_assembler.py` 或 API 层
 3. `ContextManager` 是否继续作为 façade，而不是被绕过
 4. 是否把持久化短期记忆偷换成“长期记忆”或“RAG memory”
 
-### 20.2 契约与配置检查
-
-1. 是否定义了独立的 `ContextStorageConfig`（或等价配置）而不是污染 `ContextPolicyConfig`
+### 19.2 契约与配置检查
+1. 是否定义了独立的 `ContextStorageConfig`
 2. 是否正确解析并使用以下配置：
    - `CONTEXT_STORE_BACKEND`
    - `CONTEXT_REDIS_URL`
    - `CONTEXT_SESSION_TTL_SECONDS`
    - `CONTEXT_STORE_KEY_PREFIX`
    - `CONTEXT_ALLOW_MEMORY_FALLBACK`
-3. backend=`redis` 时失败语义是否清晰（允许回退时显式记录，禁止回退时显式报错）
-4. store contract 是否仍稳定，支持：
-   - get
-   - append
-   - replace
-   - reset_session
-   - reset_conversation
+3. backend=`redis` 时失败语义是否清晰
+4. store contract 是否仍稳定，支持 get / append / replace / reset
 5. session TTL / conversation reset / namespace 是否语义清晰
 6. 是否避免在多个层重复维护 key prefix / 序列化格式
 
-### 20.3 一致性与可恢复性检查
-
+### 19.3 一致性与可恢复性检查
 1. response 后 user/assistant 历史写回是否通过统一 manager/store 完成
 2. reset session / reset conversation 是否只影响目标范围
 3. store 序列化 / 反序列化是否稳定
-4. 持久化 store 不可用时是否有明确退化策略（例如开发环境 fallback 到 `memory`）
+4. 持久化 store 不可用时是否有明确退化策略
 
-### 20.4 测试检查
-
+### 19.4 测试检查
 以下改动原则上必须补测试：
-
 - Redis store 基本读写
 - session history 持久化后再次读取
 - session TTL / key prefix 配置解析
@@ -358,10 +327,8 @@ Phase 2 已完成主链路，当前应继续保持以下约束：
 - `chat_service` 能在响应后正确写回持久化 history
 - 持久化 store 与 in-memory fallback 的行为差异与兼容性
 
-### 20.5 直接拒绝条件
-
+### 19.5 直接拒绝条件
 以下实现应直接拒绝：
-
 - 在 API/service 层直接访问 Redis
 - 把 TTL / key prefix 写死在多个文件中
 - 以“持久化”为名直接接入向量数据库或长期记忆
@@ -369,3 +336,27 @@ Phase 2 已完成主链路，当前应继续保持以下约束：
 - 没有测试就修改 store contract
 
 ---
+
+## 20. Infra / Docker / Compose 专项审查门禁（新增）
+
+在推进 `infra/` 目录与 Docker / compose 本地联调能力时，必须额外检查：
+
+### 20.1 边界检查
+1. Dockerfile / compose / env 样例是否收敛在 `infra/`
+2. 是否把容器编排逻辑写进 `app/` 业务代码
+3. 是否让业务层依赖容器名称或 compose 结构
+4. 是否把“本地联调方式”误写成“业务层默认逻辑”
+
+### 20.2 配置与运行方式检查
+1. app 与 redis 的容器职责是否清晰
+2. 环境变量来源是否明确
+3. compose 中的端口、卷、网络、依赖关系是否清晰
+4. 是否提供最小可用的根目录 `.env.example`（如有 compose 专属变量，是否单独使用 `infra/.env.compose.example`）
+5. 是否有健康检查或最小可观测启动方式
+
+### 20.3 直接拒绝条件
+以下实现应直接拒绝：
+- 在业务代码里硬编码 Docker 容器名
+- 为了容器化而改坏本地非容器运行能力
+- 在 `infra/` 中堆业务脚本
+- 没有文档说明的 Docker / compose 改动
