@@ -363,5 +363,5 @@ def _load_dotenv(dotenv_path: str | None) -> None:
             "'pip install -r requirements.txt'。"
         ) from exc
 
-    # 保持真实环境变量优先级高于本地 .env.example 值。
-    load_dotenv(dotenv_path=dotenv_file, override=False)
+    # 当前阶段统一从 .env.example 加载运行配置，不再使用 .env 双轨模式。
+    load_dotenv(dotenv_path=dotenv_file, override=True)

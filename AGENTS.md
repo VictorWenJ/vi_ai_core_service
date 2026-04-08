@@ -171,10 +171,12 @@
 
 - Dockerfile
 - compose 文件
-- 根目录 `.env.example`（项目级模板，唯一标准来源）
-- 可选 `infra/.env.compose.example`（仅 compose 专属变量）
+- 根目录 `.env.example`（当前阶段唯一配置文件）
 - 本地依赖服务编排
 - 基础运行说明
+- 当前阶段代码与 compose 均直接读取根目录 `.env.example`
+- 当前阶段不再使用 `.env`
+- 当前阶段不处理 API key 安全治理，后续以独立阶段推进
 
 但不应包含：
 

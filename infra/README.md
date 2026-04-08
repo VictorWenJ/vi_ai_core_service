@@ -7,7 +7,7 @@
 
 - `Dockerfile`：构建 app 运行镜像
 - `compose.yaml`：编排 app + redis
-- 根目录 `.env.example`：项目级环境变量模板（单一事实来源）
+- 根目录 `.env.example`：当前阶段唯一配置文件（单一事实来源）
 
 ## 1. 前置条件
 
@@ -16,10 +16,10 @@
 
 ## 2. 启动步骤
 
-1. 在仓库根目录复制环境变量样例：
+1. 在仓库根目录确认并按需编辑 `.env.example`（当前直接作为运行配置）：
 
 ```powershell
-# 直接编辑根目录 .env.example 即可，无需再复制出 .env
+# 当前阶段直接使用根目录 .env.example，不再复制 .env
 ```
 
 2. 启动 app + redis：
@@ -85,4 +85,5 @@ docker compose -f infra/compose.yaml down --rmi local --volumes
 1. 当前方案仅用于本地开发/联调/演示
 2. 不代表生产部署方案
 3. 不包含 Kubernetes、Helm、生产高可用 Redis 编排
-4. `infra/` 不再维护独立的项目级 `.env.example`，项目模板以根目录 `.env.example` 为准
+4. `infra/` 不再维护独立的项目级 `.env.example`，配置以根目录 `.env.example` 为准
+5. 当前阶段不处理 API key 安全治理，安全治理将在后续独立阶段处理

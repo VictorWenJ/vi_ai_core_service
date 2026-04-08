@@ -219,11 +219,11 @@
 
 - `infra/Dockerfile`
 - `infra/compose.yaml`
-- 根目录 `.env.example`（项目级统一模板）
-- `infra/.env.compose.example`（仅在存在 compose 专属变量时可选）
+- 根目录 `.env.example`（当前阶段唯一配置文件）
 - `infra/README.md`
 
 用于本地一键启动 app + redis 并联调 Phase 3 持久化短期记忆路径。
+当前阶段代码与 compose 均直接读取根目录 `.env.example`，不再使用 `.env`，且本轮不处理 API key 安全治理。
 
 ---
 

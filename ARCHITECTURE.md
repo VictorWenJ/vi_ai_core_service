@@ -339,3 +339,13 @@ Phase 2 已完成 token-aware 上下文主链路；Phase 3 已把 `app/context/`
 4. 最后补说明文档与 review 约束
 
 不允许先把 Redis/Docker 细节散落写进业务代码，再反推架构边界。
+
+---
+
+## 15. Phase 3 配置收尾约束（2026-04-08）
+
+1. 根目录 `.env.example` 是当前阶段唯一配置文件。
+2. 代码默认直接读取根目录 `.env.example`。
+3. `infra/compose.yaml` 直接读取根目录 `.env.example`。
+4. 当前阶段不再使用 `.env`。
+5. 当前阶段不处理 API key 安全治理；密钥治理与生产配置分层后续独立阶段处理。

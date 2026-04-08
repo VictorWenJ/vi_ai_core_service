@@ -17,7 +17,7 @@
 2. app + redis 本地编排（`infra/compose.yaml`）
 3. 本地运行说明（`infra/README.md`）
 
-项目级环境变量模板由根目录 `.env.example` 统一提供；`infra/` 不再维护重复模板。
+项目级配置由根目录 `.env.example` 统一提供；`infra/` 不再维护重复模板。
 
 ---
 
@@ -39,10 +39,11 @@
 
 ## 4. 配置治理原则
 
-1. 根目录 `.env.example` 是项目配置模板唯一事实来源
+1. 根目录 `.env.example` 是当前阶段唯一配置文件
 2. 根目录 `.env.example` 是当前阶段本地与容器统一配置文件
 3. `infra/compose.yaml` 读取根目录 `.env.example`，不依赖重复模板文件
-4. 若未来确实需要 Docker 专属变量，使用 `infra/.env.compose.example`，不得再创建 `infra/.env.example`
+4. 当前阶段不再使用 `.env`
+5. 当前阶段不处理 API key 安全治理，后续以独立阶段推进
 
 ---
 
@@ -51,7 +52,7 @@
 1. `infra/Dockerfile`
 2. `infra/compose.yaml`
 3. `infra/README.md`
-4. 根目录 `.env.example`（项目级统一模板）
+4. 根目录 `.env.example`（当前阶段唯一配置文件）
 
 ---
 
@@ -74,9 +75,10 @@
 2. Compose 配置必须与 `app/config.py` 环境变量命名一致
 3. 不得在 `app/` 业务代码中硬编码容器编排细节
 4. README 必须明确 `.env.example` 与 compose 的关系
+5. 不得恢复 `.env` 或引入第二套 env 文件
 
 ---
 
 ## 8. 一句话总结
 
-`infra/` 负责“如何运行 app + redis”，不负责“如何实现业务”；配置模板以根目录 `.env.example` 为唯一标准来源。
+`infra/` 负责“如何运行 app + redis”，不负责“如何实现业务”；当前阶段配置统一以根目录 `.env.example` 为唯一来源。

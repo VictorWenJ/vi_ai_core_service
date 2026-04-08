@@ -112,7 +112,7 @@ class ConfigTests(unittest.TestCase):
             "deepseek-chat",
         )
 
-    def test_environment_variables_override_dotenv(self) -> None:
+    def test_dotenv_overrides_environment_variables(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             dotenv_path = os.path.join(temp_dir, ".env.example")
             with open(dotenv_path, "w", encoding="utf-8") as file:
@@ -123,5 +123,5 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(
             config.get_provider_config("deepseek").default_model,
-            "env-model",
+            "dotenv-model",
         )
