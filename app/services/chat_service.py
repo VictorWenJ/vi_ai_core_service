@@ -35,24 +35,24 @@ class ChatService:
 
     def __init__(
             self,
-            config: AppConfig,
+            app_config: AppConfig,
             registry: ProviderRegistry | None = None,
             prompt_service: PromptService | None = None,
             context_manager: ContextManager | None = None,
             request_assembler: ChatRequestAssembler | None = None,
     ) -> None:
-        self._config = config
-        self._registry = registry or ProviderRegistry(config)
+        self._app_config = app_config
+        self._registry = registry or ProviderRegistry(app_config)
         self._prompt_service = prompt_service or PromptService()
-        self._context_manager = context_manager or ContextManager.from_app_config(config)
+        self._context_manager = context_manager or ContextManager.from_app_config(app_config)
         self._request_assembler = request_assembler or ChatRequestAssembler(
-            app_config=config,
+            app_config=app_config,
             prompt_service=self._prompt_service,
         )
 
     def chat(self, llm_request: LLMRequest) -> LLMResponse:
         started_at = perf_counter()
-        provider_for_log = llm_request.provider or self._config.default_provider
+        provider_for_log = llm_request.provider or self._app_config.default_provider
         model_for_log = llm_request.model
 
         try:
@@ -128,11 +128,16 @@ class ChatService:
         llm_response = self.chat(llm_request)
         log_report("ChatService.chat_from_user_prompt.llm_response", llm_response)
 
-        self.append_message(llm_request, chat_request, llm_response)
+        self._write_context_after_response(llm_request, chat_request, llm_response)
 
         return llm_response
 
-    def append_message(self, llm_request:LLMRequest, chat_request:ChatRequest, llm_response:LLMResponse):
+    def _write_context_after_response(
+            self,
+            llm_request: LLMRequest,
+            chat_request: ChatRequest,
+            llm_response: LLMResponse,
+    ) -> None:
         if llm_request.session_id:
             context_metadata = {
                 "conversation_id": llm_request.conversation_id,
@@ -140,17 +145,16 @@ class ChatService:
                 "provider": llm_response.provider,
                 "model": llm_response.model,
             }
-            self._context_manager.append_user_message(
-                llm_request.session_id,
-                chat_request.user_prompt,
+
+            updated_context_window = self._context_manager.update_after_chat_turn(
+                session_id=llm_request.session_id,
+                conversation_id=llm_request.conversation_id,
+                user_content=chat_request.user_prompt,
+                assistant_content=llm_response.content,
                 metadata=context_metadata,
+                memory_config=self._app_config.context_memory_config,
             )
-            self._context_manager.append_assistant_message(
-                llm_request.session_id,
-                llm_response.content,
-                metadata=context_metadata,
-            )
-        log_report("ChatService.append_message.context_manager", self._context_manager)
+            log_report("ChatService._write_context_after_response.updated_context_window", updated_context_window)
 
     def reset_context(
             self,

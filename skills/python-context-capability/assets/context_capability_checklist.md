@@ -1,67 +1,60 @@
 # Context 能力检查清单
-
-> 更新日期：2026-04-08
+> 更新日期：2026-04-09
 
 ## 目录与落位
-
-- [ ] Context 相关代码位于 `app/context/`，未越层散落
-- [ ] `request_assembler.py` 作为上下文装配入口，未反向下沉到 API / chat_service
+- [ ] 上下文核心实现只落在 `app/context/`（models / stores / manager / policies / reducer / rendering）
+- [ ] `request_assembler.py` 作为请求组装入口，未在 API 或 chat service 中重复实现上下文策略
 - [ ] 未新增与当前阶段无关的新系统层
 
-## 基础结构
+## 作用域与模型（Phase 4）
+- [ ] 上下文主作用域统一为 `(session_id, conversation_id)`
+- [ ] 同一 `session_id` 下不同 `conversation_id` 完全隔离
+- [ ] `ContextWindow.messages` 语义已收敛为 `recent raw messages`
+- [ ] `ContextWindow` 包含 `rolling_summary`、`working_memory`、`runtime_meta`
 
-- [ ] `models.py` 定义 canonical message/window 与策略结果模型
-- [ ] `stores/base.py` 契约清晰，包含 get / append / replace / reset 能力
-- [ ] `stores/in_memory.py` 行为与 store 契约一致
-- [ ] `manager.py` 仅做 façade，不承担业务编排
+## 策略链路
+- [ ] 默认顺序固定：`selection -> truncation -> summary -> serialization`
+- [ ] selection/truncation 为 token-aware，未退回全量原样拼接
+- [ ] summary 保持确定性实现（不引入外部 LLM 二次调用）
+- [ ] serialization 输出 provider-agnostic 的 `role/content` 结构
 
-## 策略链路（Phase 2 既有能力）
+## 读链路（request-time）
+- [ ] request 组装顺序固定：`system -> working_memory -> rolling_summary -> recent_raw -> user`
+- [ ] working memory 为空时可优雅跳过
+- [ ] rolling summary 为空时可优雅跳过
+- [ ] context trace 包含 scope、分层状态与策略信息
 
-- [ ] 默认顺序固定：selection -> truncation -> summary -> serialization
-- [ ] 默认 selection 为 token-aware
-- [ ] 默认 truncation 为 token-aware
-- [ ] 默认 summary 为 deterministic，不调用外部 LLM
-- [ ] Phase 3 改动未破坏 Phase 2 默认主链路
+## 写链路（response-time）
+- [ ] 先写入本轮 user/assistant recent raw
+- [ ] 超预算触发 recent raw compact，优先压缩最旧片段
+- [ ] compact 片段进入 rolling summary（而不是直接丢弃）
+- [ ] working memory 通过 reducer 更新，具备去重、限长、空值保护
+- [ ] 最终持久化完整 conversation-scoped `ContextWindow`
 
-## Phase 3：持久化短期记忆
+## Store / TTL / Reset
+- [ ] `BaseContextStore` 接口显式支持 `session_id + conversation_id`
+- [ ] In-memory 与 Redis store 对外语义一致
+- [ ] Redis key schema 使用 conversation scope，支持 session 级索引
+- [ ] `reset_conversation` 仅清目标 conversation scope
+- [ ] `reset_session` 清目标 session 下所有 conversation scope
+- [ ] TTL 行为与配置一致，写入时刷新
 
-- [ ] store backend 可配置（至少 `memory` / `redis`）
-- [ ] `RedisContextStore`（或等价持久化 store）位于 `app/context/stores/`
-- [ ] Redis/持久化细节未泄漏到 API / service 层
-- [ ] `ContextStorageConfig`（或等价配置）与 `ContextPolicyConfig` 职责分离
-- [ ] `CONTEXT_STORE_BACKEND` / `CONTEXT_REDIS_URL` / `CONTEXT_SESSION_TTL_SECONDS` / `CONTEXT_STORE_KEY_PREFIX` / `CONTEXT_ALLOW_MEMORY_FALLBACK` 已接入并可测试
-- [ ] session TTL / key prefix / namespace 有明确配置
-- [ ] `ContextManager` 继续是统一 façade，不被上层绕过
-- [ ] request-time 能读取持久化 session history
-- [ ] response-time 能稳定写回 user / assistant 历史
-- [ ] `reset_session` 与 `reset_conversation` 在持久化 store 上行为正确
-- [ ] dev/test 可使用 `InMemoryContextStore` 作为 fallback
+## 配置边界
+- [ ] `ContextPolicyConfig`、`ContextStorageConfig`、`ContextMemoryConfig` 职责分离
+- [ ] memory 配置覆盖 recent raw / rolling summary / working memory 开关与预算
+- [ ] 未把 store 配置、policy 配置、memory 配置混写
 
-## Token 与 Trace 语义
+## 测试与回归
+- [ ] conversation 作用域隔离测试通过
+- [ ] recent raw compaction 测试通过
+- [ ] rolling summary 合并与持久化测试通过
+- [ ] working memory reducer 规则测试通过
+- [ ] assembler 顺序与 metadata/trace 测试通过
+- [ ] in-memory / redis backend parity 测试通过
+- [ ] `/chat` 与 `/chat/reset` 回归通过
 
-- [ ] token 计数保持 provider-agnostic
-- [ ] `message_overhead_tokens` 可解释、可配置或可覆写
-- [ ] trace 中能看到 token counter 类型与关键预算字段
-- [ ] trace 字段区分 selection / truncation / summary 三阶段语义
-- [ ] 文档明确当前 token accounting 仍是工程近似，不是精确计费
-
-## Reset 与生命周期
-
-- [ ] `/chat/reset` 通过 service 调用 manager，不直接操作 store 私有状态
-- [ ] conversation 级 reset 不误删其他 conversation
-- [ ] session TTL 行为清晰、可测试
-- [ ] reset / replace / append 语义未互相冲突
-
-## 当前阶段约束
-
-- [ ] 未引入 Redis 以外的复杂持久化平台
-- [ ] 未引入 RAG / 语义检索 / 长期记忆系统
-- [ ] 未引入 streaming / tools / multimodal 的真实链路
-
-## 验证与测试
-
-- [ ] context policy 核心行为测试已覆盖
-- [ ] request assembler trace / 顺序测试已覆盖
-- [ ] Redis store 基本读写测试已覆盖
-- [ ] reset session / conversation 测试已覆盖
-- [ ] 主链路回归测试通过
+## 当前阶段禁止项
+- [ ] 未引入向量检索、RAG、embedding
+- [ ] 未引入长期记忆平台
+- [ ] 未引入外部 LLM 二次摘要链路
+- [ ] 未把 provider 细节泄漏到 context 层

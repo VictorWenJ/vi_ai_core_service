@@ -30,7 +30,7 @@ class ContextPoliciesTests(unittest.TestCase):
             ],
         )
         policy = TokenAwareWindowSelectionPolicy(
-            max_tokens=10,
+            window_max_tokens=10,
             token_counter=self.token_counter,
         )
 
@@ -47,7 +47,7 @@ class ContextPoliciesTests(unittest.TestCase):
 
     def test_token_aware_truncation_truncates_single_oversized_recent_message(self) -> None:
         selection_policy = TokenAwareWindowSelectionPolicy(
-            max_tokens=40,
+            window_max_tokens=40,
             token_counter=self.token_counter,
         )
         window = ContextWindow(
@@ -58,7 +58,7 @@ class ContextPoliciesTests(unittest.TestCase):
         )
         selection_result = selection_policy.select(window)
         truncation_policy = TokenAwareTruncationPolicy(
-            max_tokens=12,
+            truncation_max_tokens=12,
             token_counter=self.token_counter,
         )
 
@@ -75,6 +75,7 @@ class ContextPoliciesTests(unittest.TestCase):
         window = ContextWindow(session_id="session-1", messages=older_dropped + [latest_raw])
         selection_result = ContextSelectionResult(
             session_id="session-1",
+            conversation_id="conversation-1",
             source_message_count=2,
             source_token_count=self.token_counter.count_messages_tokens(window.messages),
             token_budget=32,
@@ -85,11 +86,12 @@ class ContextPoliciesTests(unittest.TestCase):
         )
         truncation_result = ContextTruncationResult(
             session_id="session-1",
+            conversation_id="conversation-1",
             source_message_count=2,
             source_token_count=selection_result.source_token_count,
             input_message_count=1,
             input_token_count=selection_result.selected_token_count,
-            token_budget=selection_result.selected_token_count,
+            truncation_token_budget=selection_result.selected_token_count,
             messages=[latest_raw],
             dropped_messages=[],
             final_token_count=selection_result.selected_token_count,
@@ -104,8 +106,8 @@ class ContextPoliciesTests(unittest.TestCase):
 
         summary_result = summary_policy.summarize(
             window=window,
-            selection_result=selection_result,
-            truncation_result=truncation_result,
+            selection=selection_result,
+            truncation=truncation_result,
         )
 
         self.assertTrue(summary_result.messages)
@@ -122,6 +124,7 @@ class ContextPoliciesTests(unittest.TestCase):
         )
         selection_result = ContextSelectionResult(
             session_id="session-1",
+            conversation_id="conversation-1",
             source_message_count=3,
             source_token_count=self.token_counter.count_messages_tokens(window.messages),
             token_budget=30,
@@ -132,11 +135,12 @@ class ContextPoliciesTests(unittest.TestCase):
         )
         truncation_result = ContextTruncationResult(
             session_id="session-1",
+            conversation_id="conversation-1",
             source_message_count=3,
             source_token_count=selection_result.source_token_count,
             input_message_count=2,
             input_token_count=selection_result.selected_token_count,
-            token_budget=20,
+            truncation_token_budget=20,
             messages=[raw_old, raw_latest],
             dropped_messages=[],
             final_token_count=selection_result.selected_token_count,
@@ -150,8 +154,8 @@ class ContextPoliciesTests(unittest.TestCase):
             token_counter=self.token_counter,
         ).summarize(
             window=window,
-            selection_result=selection_result,
-            truncation_result=truncation_result,
+            selection=selection_result,
+            truncation=truncation_result,
         )
         drop_oldest = DeterministicSummaryPolicy(
             enabled=True,
@@ -160,8 +164,8 @@ class ContextPoliciesTests(unittest.TestCase):
             token_counter=self.token_counter,
         ).summarize(
             window=window,
-            selection_result=selection_result,
-            truncation_result=truncation_result,
+            selection=selection_result,
+            truncation=truncation_result,
         )
 
         self.assertTrue(summary_then_drop_oldest.messages[0].metadata.get("summary", False))
@@ -178,6 +182,7 @@ class ContextPoliciesTests(unittest.TestCase):
         window = ContextWindow(session_id="session-1", messages=messages)
         selection_result = ContextSelectionResult(
             session_id="session-1",
+            conversation_id="conversation-1",
             source_message_count=1,
             source_token_count=self.token_counter.count_messages_tokens(messages),
             token_budget=20,
@@ -188,11 +193,12 @@ class ContextPoliciesTests(unittest.TestCase):
         )
         truncation_result = ContextTruncationResult(
             session_id="session-1",
+            conversation_id="conversation-1",
             source_message_count=1,
             source_token_count=selection_result.source_token_count,
             input_message_count=1,
             input_token_count=selection_result.selected_token_count,
-            token_budget=20,
+            truncation_token_budget=20,
             messages=list(messages),
             dropped_messages=[],
             final_token_count=selection_result.selected_token_count,
@@ -205,8 +211,8 @@ class ContextPoliciesTests(unittest.TestCase):
             token_counter=self.token_counter,
         ).summarize(
             window=window,
-            selection_result=selection_result,
-            truncation_result=truncation_result,
+            selection=selection_result,
+            truncation=truncation_result,
         )
 
         self.assertFalse(summary_result.summary_applied)
@@ -215,6 +221,7 @@ class ContextPoliciesTests(unittest.TestCase):
     def test_default_history_serialization_preserves_order(self) -> None:
         summary_result = ContextSummaryResult(
             session_id="session-1",
+            conversation_id="conversation-1",
             source_message_count=2,
             source_token_count=20,
             input_message_count=2,

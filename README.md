@@ -113,7 +113,7 @@ curl -X POST "http://127.0.0.1:8000/chat/reset" \
 | `LLM_TIMEOUT_SECONDS` | 全局调用超时（秒） | `60` |
 | `CONTEXT_STORE_BACKEND` | Context store backend | `redis` / `memory` |
 | `CONTEXT_REDIS_URL` | Redis 连接地址 | `redis://redis:6379/0` |
-| `CONTEXT_SESSION_TTL_SECONDS` | session TTL（秒） | `86400` |
+| `CONTEXT_SESSION_TTL_SECONDS` | session TTL（秒） | `3600` |
 | `CONTEXT_STORE_KEY_PREFIX` | Redis key 前缀 | `vi_ai_core_service:context` |
 | `CONTEXT_ALLOW_MEMORY_FALLBACK` | Redis 不可用时是否回退内存 | `false` |
 | `CONTEXT_MAX_TOKEN_BUDGET` | token-aware 选窗预算 | `1200` |

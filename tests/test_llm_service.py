@@ -57,35 +57,40 @@ class FakeGeminiProvider(FakeProvider):
 class FakeContextManager:
     def __init__(self) -> None:
         self.last_get_session_id: str | None = None
-        self.user_appends: list[tuple[str, str]] = []
-        self.assistant_appends: list[tuple[str, str]] = []
+        self.last_get_conversation_id: str | None = None
+        self.last_update_payload: dict[str, object] | None = None
         self._window = ContextWindow(
             session_id="session-1",
             messages=[ContextMessage(role="assistant", content="history")],
         )
 
-    def get_context(self, session_id: str) -> ContextWindow:
+    def get_context(
+        self,
+        session_id: str,
+        conversation_id: str | None = None,
+    ) -> ContextWindow:
         self.last_get_session_id = session_id
+        self.last_get_conversation_id = conversation_id
         return self._window
 
-    def append_user_message(
+    def update_after_chat_turn(
         self,
+        *,
         session_id: str,
-        content: str,
-        metadata: dict | None = None,
+        conversation_id: str | None,
+        user_content: str,
+        assistant_content: str,
+        metadata: dict | None,
+        memory_config,
     ) -> ContextWindow:
-        del metadata
-        self.user_appends.append((session_id, content))
-        return self._window
-
-    def append_assistant_message(
-        self,
-        session_id: str,
-        content: str,
-        metadata: dict | None = None,
-    ) -> ContextWindow:
-        del metadata
-        self.assistant_appends.append((session_id, content))
+        del memory_config
+        self.last_update_payload = {
+            "session_id": session_id,
+            "conversation_id": conversation_id,
+            "user_content": user_content,
+            "assistant_content": assistant_content,
+            "metadata": dict(metadata or {}),
+        }
         return self._window
 
     def reset_session(self, session_id: str) -> ContextWindow:
@@ -130,7 +135,7 @@ class LLMServiceTests(unittest.TestCase):
             config=self.config,
             provider_overrides=self.providers,
         )
-        self.service = LLMService(config=self.config, registry=self.registry)
+        self.service = LLMService(app_config=self.config, registry=self.registry)
 
     def test_chat_uses_default_provider_and_default_model(self) -> None:
         response = self.service.chat(
@@ -219,7 +224,7 @@ class LLMServiceTests(unittest.TestCase):
             config=config,
             provider_overrides={"openai": FakeOpenAIProvider(providers["openai"])},
         )
-        service = LLMService(config=config, registry=registry)
+        service = LLMService(app_config=config, registry=registry)
 
         response = service.chat(
             LLMRequest(messages=[LLMMessage(role="user", content="hello")])
@@ -230,7 +235,7 @@ class LLMServiceTests(unittest.TestCase):
     def test_chat_from_user_prompt_uses_context_and_persists_turns(self) -> None:
         fake_context_manager = FakeContextManager()
         service = LLMService(
-            config=self.config,
+            app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
             context_manager=fake_context_manager,
@@ -249,8 +254,13 @@ class LLMServiceTests(unittest.TestCase):
 
         self.assertEqual(response.provider, "openai")
         self.assertEqual(fake_context_manager.last_get_session_id, "session-1")
-        self.assertEqual(fake_context_manager.user_appends, [("session-1", "new question")])
-        self.assertEqual(len(fake_context_manager.assistant_appends), 1)
+        self.assertEqual(fake_context_manager.last_get_conversation_id, None)
+        self.assertIsNotNone(fake_context_manager.last_update_payload)
+        assert fake_context_manager.last_update_payload is not None
+        self.assertEqual(fake_context_manager.last_update_payload["session_id"], "session-1")
+        self.assertEqual(fake_context_manager.last_update_payload["conversation_id"], None)
+        self.assertEqual(fake_context_manager.last_update_payload["user_content"], "new question")
+        self.assertIn("assistant_content", fake_context_manager.last_update_payload)
 
         sent_messages = self.providers["openai"].last_request.messages
         sent_roles = [message.role for message in sent_messages]
@@ -269,7 +279,7 @@ class LLMServiceTests(unittest.TestCase):
     def test_chat_from_user_prompt_without_session_does_not_access_context(self) -> None:
         fake_context_manager = FakeContextManager()
         service = LLMService(
-            config=self.config,
+            app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
             context_manager=fake_context_manager,
@@ -285,13 +295,12 @@ class LLMServiceTests(unittest.TestCase):
 
         self.assertEqual(response.provider, "openai")
         self.assertIsNone(fake_context_manager.last_get_session_id)
-        self.assertEqual(fake_context_manager.user_appends, [])
-        self.assertEqual(fake_context_manager.assistant_appends, [])
+        self.assertIsNone(fake_context_manager.last_update_payload)
 
     def test_reset_context_clears_session_window(self) -> None:
         fake_context_manager = FakeContextManager()
         service = LLMService(
-            config=self.config,
+            app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
             context_manager=fake_context_manager,
@@ -306,7 +315,7 @@ class LLMServiceTests(unittest.TestCase):
     def test_reset_context_by_conversation_keeps_scope(self) -> None:
         fake_context_manager = FakeContextManager()
         service = LLMService(
-            config=self.config,
+            app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
             context_manager=fake_context_manager,
@@ -333,7 +342,7 @@ class LLMServiceTests(unittest.TestCase):
             )
         )
         service = LLMService(
-            config=self.config,
+            app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
             context_manager=redis_context_manager,
@@ -349,7 +358,7 @@ class LLMServiceTests(unittest.TestCase):
             )
         )
         self.assertEqual(response.provider, "openai")
-        window = redis_context_manager.get_context("session-redis")
+        window = redis_context_manager.get_context("session-redis", "conversation-redis")
         self.assertEqual(window.message_count, 2)
         self.assertEqual(window.messages[0].role, "user")
         self.assertEqual(window.messages[1].role, "assistant")
@@ -358,5 +367,5 @@ class LLMServiceTests(unittest.TestCase):
             session_id="session-redis",
             conversation_id="conversation-redis",
         )
-        cleared = redis_context_manager.get_context("session-redis")
+        cleared = redis_context_manager.get_context("session-redis", "conversation-redis")
         self.assertEqual(cleared.message_count, 0)

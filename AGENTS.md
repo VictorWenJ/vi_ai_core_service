@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> 更新日期：2026-04-08
+> 更新日期：2026-04-09
 
 ## 1. 文档定位
 
@@ -226,6 +226,7 @@
 - Provider 归一化行为
 - Context 基础行为与短期记忆行为
 - Redis 持久化短期记忆行为
+- 分层短期记忆（recent raw / rolling summary / working memory）行为
 - Observability 基础行为
 - 核心数据契约稳定性
 - Docker/compose 本地联调方式可运行
@@ -234,15 +235,24 @@
 
 ## 11. 当前阶段能力声明（强约束）
 
-当前阶段已实现并要求稳定：
+当前阶段**已实现并要求稳定**：
 
 - HTTP 服务化调用方式（`app/server.py`）为唯一运行入口
-- LLM API 单轮会话
 - 非流式输出（`stream=False`）
 - API -> services -> prompts/context/providers 主链路
 - Phase 2 的 token-aware context 主链路与 reset 能力
 - Phase 3 的持久化短期记忆（Redis backend / fallback / TTL / reset）
 - 工程级 `infra/` 目录，用于 app + redis 的 Docker 化本地运行与联调
+
+当前阶段**已落地能力补充**：
+
+- 推进 **Context Engineering Phase 4：分层短期记忆（Layered Short-Term Memory）**
+- 将上下文主作用域从“偏 session 级读取”校正为 **`(session_id, conversation_id)` conversation-scoped state**
+- 在 `app/context/` 中引入：
+  - recent raw messages
+  - rolling summary
+  - structured working memory
+- 在不引入外部 LLM 二次摘要和不引入 RAG 的前提下，完成 request-time 读取、response-time 更新、持久化与 trace 追踪闭环
 
 当前明确范围外（仍不做）：
 
@@ -254,13 +264,14 @@
 - 用户长期画像记忆
 - 长期记忆平台
 - 多区域分布式状态协调
+- 基于第二次 LLM 调用的 memory extraction / semantic summarization worker
 
 ---
 
 ## 12. 一句话总结
 
 本仓库采用“项目总纲 + 模块细则 + skill 执行约束 + 工程基础设施治理”的方式。  
-当前项目已完成 Phase 2 主链路，并进入 **Phase 3：持久化短期记忆**。同时，`infra/` 被正式纳入治理，用于统一 Docker 与本地依赖服务管理，但它不是业务系统分层的一部分。
+当前项目已完成 Phase 3 的持久化短期记忆，并进入 **Context Engineering Phase 4：分层短期记忆**；`infra/` 继续只承担本地运行与交付支撑，不属于业务系统分层。
 
 ---
 
@@ -306,6 +317,7 @@
 - 全局审查门禁变化
 - 新增 `app/` 一级能力目录
 - 新增项目级工程基础设施治理域（如 `infra/`）
+- 上下文主作用域、记忆模型或 request assembly 总体顺序发生变化
 
 ### 必须更新模块 `AGENTS.md` 的场景
 
@@ -314,6 +326,7 @@
 - 模块调用入口/出口变化
 - 模块内 review 重点变化
 - 工程基础设施目录职责变化
+- context / service / api / tests 的 Phase 4 事实变化
 
 ### 新增能力的先后顺序
 

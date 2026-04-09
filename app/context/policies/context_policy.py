@@ -45,8 +45,8 @@ class ContextPolicyPipeline:
 
         summary = self.summary_policy.summarize(
             window=window,
-            selection_result=selection,
-            truncation_result=truncation,
+            selection=selection,
+            truncation=truncation,
         )
         log_report("ContextPolicyPipeline.run.summary", summary)
 

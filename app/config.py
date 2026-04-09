@@ -15,23 +15,57 @@ SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS = (
 )
 SUPPORTED_CONTEXT_STORE_BACKENDS = ("memory", "redis")
 
+# Provider 默认超时时间（秒），用于未单独覆盖时的统一超时配置。
 DEFAULT_TIMEOUT_SECONDS = 60.0
+# 是否默认启用结构化日志输出。
 DEFAULT_LOG_ENABLED = True
+# 默认日志级别。
 DEFAULT_LOG_LEVEL = "INFO"
+# 默认日志格式（当前阶段仅支持 json）。
 DEFAULT_LOG_FORMAT = "json"
+# 是否默认记录 API 层详细 payload。
 DEFAULT_LOG_API_PAYLOAD = True
+# 是否默认记录 Provider 层详细 payload。
 DEFAULT_LOG_PROVIDER_PAYLOAD = True
+# 上下文窗口选择阶段的默认 token 预算上限。
 DEFAULT_CONTEXT_MAX_TOKEN_BUDGET = 1200
+# 上下文截断阶段的默认 token 预算上限（需 <= 最大预算）。
 DEFAULT_CONTEXT_TRUNCATION_TOKEN_BUDGET = 900
+# 是否默认启用确定性 summary/compaction。
 DEFAULT_CONTEXT_SUMMARY_ENABLED = True
+# summary 文本默认最大字符数。
 DEFAULT_CONTEXT_SUMMARY_MAX_CHARS = 320
+# summary 后仍超预算时的默认回退策略。
 DEFAULT_CONTEXT_FALLBACK_BEHAVIOR = "summary_then_drop_oldest"
+# token 估算时每条消息的默认固定开销（工程近似）。
 DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS = 4
+# 是否默认启用 Phase 4 分层短期记忆总开关。
+DEFAULT_CONTEXT_LAYERED_MEMORY_ENABLED = True
+# recent raw 层默认 token 预算上限。
+DEFAULT_CONTEXT_RECENT_RAW_MAX_TOKEN_BUDGET = 900
+# recent raw 层触发压缩后默认至少保留的最近消息条数。
+DEFAULT_CONTEXT_RECENT_RAW_MIN_KEEP_MESSAGES = 2
+# 是否默认启用 rolling summary 层。
+DEFAULT_CONTEXT_ROLLING_SUMMARY_ENABLED = True
+# rolling summary 默认最大字符数。
+DEFAULT_CONTEXT_ROLLING_SUMMARY_MAX_CHARS = 1200
+# 是否默认启用 working memory 层。
+DEFAULT_CONTEXT_WORKING_MEMORY_ENABLED = True
+# working memory 每个分区默认最多保留条目数。
+DEFAULT_CONTEXT_WORKING_MEMORY_MAX_ITEMS_PER_SECTION = 5
+# working memory 单条内容默认最大字符数。
+DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS = 160
+# 上下文存储后端默认值（memory/redis）。
 DEFAULT_CONTEXT_STORE_BACKEND = "memory"
+# Redis 上下文存储默认连接地址。
 DEFAULT_CONTEXT_REDIS_URL = "redis://localhost:6379/0"
+# Redis 上下文存储默认 key 前缀。
 DEFAULT_CONTEXT_STORE_KEY_PREFIX = "vi_ai_core_service:context"
-DEFAULT_CONTEXT_SESSION_TTL_SECONDS = 86400
+# 会话上下文默认 TTL（秒）。
+DEFAULT_CONTEXT_SESSION_TTL_SECONDS = 3600
+# Redis 不可用时是否默认允许回退到内存存储。
 DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK = True
+# 各 Provider 默认 base_url（None 表示使用 SDK/厂商默认地址）。
 DEFAULT_BASE_URLS: dict[str, str | None] = {
     "openai": None,
     "deepseek": "https://api.deepseek.com",
@@ -72,7 +106,7 @@ class ContextPolicyConfig:
     """上下文策略管线行为配置。"""
 
     # 上下文选窗阶段的最大 token 预算。
-    max_token_budget: int = DEFAULT_CONTEXT_MAX_TOKEN_BUDGET
+    windows_token_budget: int = DEFAULT_CONTEXT_MAX_TOKEN_BUDGET
     # 上下文截断阶段的 token 预算（需小于等于 max_token_budget）。
     truncation_token_budget: int = DEFAULT_CONTEXT_TRUNCATION_TOKEN_BUDGET
     # 是否启用确定性 summary/compaction 策略。
@@ -102,6 +136,30 @@ class ContextStorageConfig:
 
 
 @dataclass(frozen=True)
+class ContextMemoryConfig:
+    """分层短期记忆配置。"""
+
+    # Phase 4 分层短期记忆总开关。
+    layered_memory_enabled: bool = DEFAULT_CONTEXT_LAYERED_MEMORY_ENABLED
+    # recent raw 层最大 token 预算。
+    recent_raw_max_token_budget: int = DEFAULT_CONTEXT_RECENT_RAW_MAX_TOKEN_BUDGET
+    # recent raw 压缩后至少保留的最近消息条数。
+    recent_raw_min_keep_messages: int = DEFAULT_CONTEXT_RECENT_RAW_MIN_KEEP_MESSAGES
+    # 是否启用 rolling summary 层。
+    rolling_summary_enabled: bool = DEFAULT_CONTEXT_ROLLING_SUMMARY_ENABLED
+    # rolling summary 最大字符数。
+    rolling_summary_max_chars: int = DEFAULT_CONTEXT_ROLLING_SUMMARY_MAX_CHARS
+    # 是否启用 working memory 层。
+    working_memory_enabled: bool = DEFAULT_CONTEXT_WORKING_MEMORY_ENABLED
+    # 每个 working memory 分区最多保留条目数。
+    working_memory_max_items_per_section: int = (
+        DEFAULT_CONTEXT_WORKING_MEMORY_MAX_ITEMS_PER_SECTION
+    )
+    # working memory 单条值最大字符数。
+    working_memory_max_value_chars: int = DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS
+
+
+@dataclass(frozen=True)
 class AppConfig:
     """应用顶层配置。"""
 
@@ -117,6 +175,8 @@ class AppConfig:
     context_policy_config: ContextPolicyConfig = field(default_factory=ContextPolicyConfig)
     # 上下文存储配置（backend、TTL、key 前缀与回退策略）。
     context_storage_config: ContextStorageConfig = field(default_factory=ContextStorageConfig)
+    # 分层短期记忆配置（recent raw / rolling summary / working memory）。
+    context_memory_config: ContextMemoryConfig = field(default_factory=ContextMemoryConfig)
 
     @classmethod
     def from_env(
@@ -180,7 +240,7 @@ class AppConfig:
             )
 
         context = ContextPolicyConfig(
-            max_token_budget=max_token_budget,
+            windows_token_budget=max_token_budget,
             truncation_token_budget=truncation_token_budget,
             summary_enabled=_read_bool(
                 "CONTEXT_SUMMARY_ENABLED",
@@ -222,6 +282,40 @@ class AppConfig:
                 DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK,
             ),
         )
+        context_memory = ContextMemoryConfig(
+            layered_memory_enabled=_read_bool(
+                "CONTEXT_LAYERED_MEMORY_ENABLED",
+                DEFAULT_CONTEXT_LAYERED_MEMORY_ENABLED,
+            ),
+            recent_raw_max_token_budget=_read_int(
+                "CONTEXT_RECENT_RAW_MAX_TOKEN_BUDGET",
+                DEFAULT_CONTEXT_RECENT_RAW_MAX_TOKEN_BUDGET,
+            ),
+            recent_raw_min_keep_messages=_read_int(
+                "CONTEXT_RECENT_RAW_MIN_KEEP_MESSAGES",
+                DEFAULT_CONTEXT_RECENT_RAW_MIN_KEEP_MESSAGES,
+            ),
+            rolling_summary_enabled=_read_bool(
+                "CONTEXT_ROLLING_SUMMARY_ENABLED",
+                DEFAULT_CONTEXT_ROLLING_SUMMARY_ENABLED,
+            ),
+            rolling_summary_max_chars=_read_int(
+                "CONTEXT_ROLLING_SUMMARY_MAX_CHARS",
+                DEFAULT_CONTEXT_ROLLING_SUMMARY_MAX_CHARS,
+            ),
+            working_memory_enabled=_read_bool(
+                "CONTEXT_WORKING_MEMORY_ENABLED",
+                DEFAULT_CONTEXT_WORKING_MEMORY_ENABLED,
+            ),
+            working_memory_max_items_per_section=_read_int(
+                "CONTEXT_WORKING_MEMORY_MAX_ITEMS_PER_SECTION",
+                DEFAULT_CONTEXT_WORKING_MEMORY_MAX_ITEMS_PER_SECTION,
+            ),
+            working_memory_max_value_chars=_read_int(
+                "CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS",
+                DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS,
+            ),
+        )
 
         return cls(
             default_provider=default_provider,
@@ -230,6 +324,7 @@ class AppConfig:
             observability=observability,
             context_policy_config=context,
             context_storage_config=context_storage,
+            context_memory_config=context_memory,
         )
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig:

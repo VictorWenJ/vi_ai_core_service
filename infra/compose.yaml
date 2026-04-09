@@ -19,8 +19,15 @@ services:
     container_name: vi_ai_core_app
     env_file:
       - ../.env.example
+    environment:
+      # Windows / macOS 下文件监听在容器内可能漏事件，强制轮询可提升热更新稳定性
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "8000:8000"
+    volumes:
+      # 本地代码热挂载：宿主机 app 目录变更后，容器内 uvicorn --reload 自动重载
+      - ../app:/workspace/app
+    command: ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     depends_on:
       redis:
         condition: service_healthy

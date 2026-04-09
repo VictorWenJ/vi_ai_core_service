@@ -43,7 +43,7 @@ class ConfigTests(unittest.TestCase):
             config.get_provider_config("deepseek").default_model,
             "deepseek-chat",
         )
-        self.assertEqual(config.context_policy_config.max_token_budget, 1500)
+        self.assertEqual(config.context_policy_config.windows_token_budget, 1500)
         self.assertEqual(config.context_policy_config.truncation_token_budget, 1200)
         self.assertTrue(config.context_policy_config.summary_enabled)
         self.assertEqual(config.context_policy_config.summary_max_chars, 280)

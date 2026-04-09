@@ -1,7 +1,7 @@
 ---
 name: python-api-capability
 description: 用于为 vi_ai_core_service 搭建和标准化面向 C 端 AI 应用的 Python API 接入层骨架。重点关注薄路由、service 委托、会话标识、流式输出预留、多模态输入、稳定响应契约与 API 边界。
-last_updated: 2026-04-06
+last_updated: 2026-04-09
 ---
 
 # 目的
@@ -41,9 +41,11 @@ last_updated: 2026-04-06
 
 在 `vi_ai_core_service` 当前阶段，执行本 skill 时必须默认遵守以下范围：
 
-- 只交付单轮非流式 chat 主链路与基础 health 路由。
+- `/chat` 仍是非流式主路径。
+- API 层当前只需要稳定承接 `session_id` / `conversation_id` 并委托给 service。
 - `streaming`、多模态、tools、结构化输出 仅允许预留字段或预留接口，不做真实功能落地。
 - API 层必须保持薄路由，只依赖 service-facing contract 与 service-facing errors。
+- 不为 Phase 4 的 layered memory 引入新的 admin/debug memory API。
 - 不为未来能力引入超出当前阶段的大型抽象或平台化改造。
 
 ---
@@ -72,6 +74,7 @@ last_updated: 2026-04-06
 - 在 API 模块中实现数据库、队列、分布式状态核心逻辑
 - 在 API 模块中直接实现复杂 context policy
 - 在 API 模块中直接拼 prompt 模板
+- 在 API 模块中直接实现 layered memory store 细节
 
 ---
 
@@ -81,7 +84,7 @@ API 层负责：
 
 - HTTP/协议接入
 - 请求解析与校验
-- conversation_id / session_id / request_id 等标识承接
+- `conversation_id` / `session_id` / `request_id` 等标识承接
 - 用户输入与附件输入入口承接
 - 同步 / 流式响应模式选择
 - 调用 `app/services/` 完成业务编排
@@ -93,9 +96,9 @@ API 层不负责：
 - provider SDK 调用
 - prompt 模板读取与渲染
 - context store 底层读写
+- working memory / rolling summary / reducer 实现
 - 业务主流程编排
 - 厂商特定协议适配
-- 复杂记忆策略
 - 返回原始厂商对象
 
 ---
@@ -191,11 +194,15 @@ API 层应允许未来同时支持：
 
 请求、响应、错误语义必须清晰，不能暴露厂商私有结构。
 
-## 6. 为流式和实时能力预留接口思维
+## 6. 不泄漏 layered memory 实现细节
+
+Phase 4 中 API 层最多承接 `session_id` / `conversation_id`，不得把 store key、默认 scope、working memory schema 等内部实现细节泄漏到外部协议层。
+
+## 7. 为流式和实时能力预留接口思维
 
 即使当前先不完整实现，也不能把 API 结构写死成只支持同步短文本返回。
 
-## 7. 当前阶段避免过度建设
+## 8. 当前阶段避免过度建设
 
 当前不提前实现完整 auth / quota / billing / realtime infra，但要为这些能力预留清晰边界。
 
@@ -247,10 +254,10 @@ API 层应允许未来同时支持：
 
 开始编码前，必须先输出：
 
-1. 任务理解与范围边界（明确当前阶段只做单轮非流式）
+1. 任务理解与范围边界（明确当前阶段 `/chat` 仍为非流式主路径）
 2. 文件级改动计划（包含新增/修改/不改）
 3. 风险与假设
-4. 验证计划（至少包含路由与错误映射验证）
+4. 验证计划（至少包含路由、错误映射与标识透传验证）
 
 ---
 
@@ -259,29 +266,7 @@ API 层应允许未来同时支持：
 完成编码后，必须输出：
 
 1. 文件级变更清单与原因
-2. 行为变化说明（保持或调整了什么）
+2. 接口契约变化说明（若无变化也要明确说明）
 3. 测试与验证结果
 4. 文档回写说明
-
----
-
-# 资产与验证索引
-
-1. 检查清单：`assets/api_capability_checklist.md`
-2. 测试矩阵：`assets/api_test_matrix.md`
-3. 参考文档：`references/api_boundaries_and_antipatterns.md`
-
----
-
-# 治理联动
-
-执行本 skill 时必须遵循统一闭环：
-
-`根目录文档 -> app/api/AGENTS.md -> 本 skill -> 代码实现 -> review -> 文档回写`
-
-强制要求：
-
-1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
-2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist 联合自审。
-3. 若接口契约、边界或测试事实变化，必须同步更新对应文档与测试。
-
+5. 未做项与后续 API 能力建议

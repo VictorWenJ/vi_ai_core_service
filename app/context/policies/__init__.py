@@ -12,7 +12,7 @@ from app.context.policies.context_policy import (
 )
 from app.context.policies.defaults import (
     DEFAULT_HISTORY_FALLBACK_BEHAVIOR,
-    DEFAULT_HISTORY_MAX_TOKEN_BUDGET,
+    DEFAULT_HISTORY_WINDOW_TOKEN_BUDGET,
     DEFAULT_HISTORY_MESSAGE_OVERHEAD_TOKENS,
     DEFAULT_HISTORY_SUMMARY_ENABLED,
     DEFAULT_HISTORY_SUMMARY_MAX_CHARS,
@@ -44,7 +44,7 @@ __all__ = [
     "HistorySerializationPolicy",
     "ContextPolicyExecutionResult",
     "ContextPolicyPipeline",
-    "DEFAULT_HISTORY_MAX_TOKEN_BUDGET",
+    "DEFAULT_HISTORY_WINDOW_TOKEN_BUDGET",
     "DEFAULT_HISTORY_TRUNCATION_TOKEN_BUDGET",
     "DEFAULT_HISTORY_SUMMARY_ENABLED",
     "DEFAULT_HISTORY_SUMMARY_MAX_CHARS",

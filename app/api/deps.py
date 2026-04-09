@@ -12,11 +12,11 @@ from app.services.prompt_service import PromptService
 
 @lru_cache(maxsize=1)
 def get_chat_service() -> LLMService:
-    config = AppConfig.from_env()
+    app_config = AppConfig.from_env()
     prompt_service = PromptService()
-    context_manager = ContextManager.from_app_config(config)
+    context_manager = ContextManager.from_app_config(app_config)
     return LLMService(
-        config=config,
+        app_config=app_config,
         prompt_service=prompt_service,
         context_manager=context_manager,
     )

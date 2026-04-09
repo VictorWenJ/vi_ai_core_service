@@ -42,8 +42,8 @@ class SummaryPolicy(ABC):
         self,
         *,
         window: ContextWindow,
-        selection_result: ContextSelectionResult,
-        truncation_result: ContextTruncationResult,
+        selection: ContextSelectionResult,
+        truncation: ContextTruncationResult,
     ) -> ContextSummaryResult:
         raise NotImplementedError
 

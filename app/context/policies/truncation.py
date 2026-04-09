@@ -20,11 +20,12 @@ class NoOpTruncationPolicy(TruncationPolicy):
     def truncate(self, selection_result: ContextSelectionResult) -> ContextTruncationResult:
         return ContextTruncationResult(
             session_id=selection_result.session_id,
+            conversation_id=selection_result.conversation_id,
             source_message_count=selection_result.source_message_count,
             source_token_count=selection_result.source_token_count,
             input_message_count=selection_result.selected_message_count,
             input_token_count=selection_result.selected_token_count,
-            token_budget=selection_result.selected_token_count,
+            truncation_token_budget=selection_result.selected_token_count,
             messages=list(selection_result.selected_messages),
             final_token_count=selection_result.selected_token_count,
             truncation_policy=self.name,
@@ -57,11 +58,12 @@ class CharacterBudgetTruncationPolicy(TruncationPolicy):
         dropped_messages = list(reversed(dropped_reversed))
         return ContextTruncationResult(
             session_id=selection_result.session_id,
+            conversation_id=selection_result.conversation_id,
             source_message_count=selection_result.source_message_count,
             source_token_count=selection_result.source_token_count,
             input_message_count=selection_result.selected_message_count,
             input_token_count=selection_result.selected_token_count,
-            token_budget=self._max_characters,
+            truncation_token_budget=self._max_characters,
             messages=kept_messages,
             dropped_messages=dropped_messages,
             final_token_count=budget_used,
@@ -76,23 +78,24 @@ class TokenAwareTruncationPolicy(TruncationPolicy):
 
     def __init__(
         self,
-        max_tokens: int,
+        truncation_max_tokens: int,
         token_counter: BaseTokenCounter | None = None,
     ) -> None:
-        if max_tokens <= 0:
+        if truncation_max_tokens <= 0:
             raise ValueError("max_tokens 必须大于 0。")
-        self._max_tokens = max_tokens
+        self._truncation_max_tokens = truncation_max_tokens
         self._token_counter = token_counter or build_default_token_counter()
 
     def truncate(self, selection_result: ContextSelectionResult) -> ContextTruncationResult:
-        if selection_result.selected_token_count <= self._max_tokens:
+        if selection_result.selected_token_count <= self._truncation_max_tokens:
             return ContextTruncationResult(
                 session_id=selection_result.session_id,
+                conversation_id=selection_result.conversation_id,
                 source_message_count=selection_result.source_message_count,
                 source_token_count=selection_result.source_token_count,
                 input_message_count=selection_result.selected_message_count,
                 input_token_count=selection_result.selected_token_count,
-                token_budget=self._max_tokens,
+                truncation_token_budget=self._truncation_max_tokens,
                 messages=list(selection_result.selected_messages),
                 final_token_count=selection_result.selected_token_count,
                 truncation_policy=self.name,
@@ -103,29 +106,37 @@ class TokenAwareTruncationPolicy(TruncationPolicy):
         # 被丢弃的消息
         dropped_reversed = []
         # 剩余 token 预算
-        remaining_budget = self._max_tokens
+        remaining_budget = self._truncation_max_tokens
 
         # 优先保留最近历史。
         # 如果整条消息放不下，尝试将其内容截断到剩余预算。
         for message in reversed(selection_result.selected_messages):
+            # 计算单条消息在当前计数器下的 token 成本（正文 + 消息开销）。
             message_tokens = self._token_counter.count_message_tokens(message)
+
+            # 分支 1：整条消息可以放入剩余预算，直接保留。
             if message_tokens <= remaining_budget:
                 kept_reversed.append(message)
                 remaining_budget -= message_tokens
                 continue
 
+            # 分支 2：预算已经为 0（或负数），无法再保留任何消息，直接丢弃。
             if remaining_budget <= 0:
                 dropped_reversed.append(message)
                 continue
 
+            # 分支 3：预算还有剩余，但整条放不下，尝试把正文截断到可容纳的大小。
             truncated_content = self._token_counter.truncate_message_content_to_fit(
                 message=message,
                 max_message_tokens=remaining_budget,
             )
+
+            # 截断后正文为空，说明这条消息即使截断也无法有效保留，直接丢弃。
             if not truncated_content:
                 dropped_reversed.append(message)
                 continue
 
+            # 生成“截断版消息”，并写入截断标记，便于后续 trace / 调试。
             truncated_message = replace(
                 message,
                 content=truncated_content,
@@ -135,13 +146,17 @@ class TokenAwareTruncationPolicy(TruncationPolicy):
                     "original_content_length": len(message.content),
                 },
             )
+            # 重新计算截断版消息成本，确保不会出现预算计算偏差。
             truncated_message_tokens = self._token_counter.count_message_tokens(
                 truncated_message
             )
+
+            # 安全兜底：截断后成本异常（<=0）时，按不可用消息处理。
             if truncated_message_tokens <= 0:
                 dropped_reversed.append(message)
                 continue
 
+            # 截断版消息可用，保留并扣减剩余预算。
             kept_reversed.append(truncated_message)
             remaining_budget -= truncated_message_tokens
 
@@ -151,11 +166,12 @@ class TokenAwareTruncationPolicy(TruncationPolicy):
 
         return ContextTruncationResult(
             session_id=selection_result.session_id,
+            conversation_id=selection_result.conversation_id,
             source_message_count=selection_result.source_message_count,
             source_token_count=selection_result.source_token_count,
             input_message_count=selection_result.selected_message_count,
             input_token_count=selection_result.selected_token_count,
-            token_budget=self._max_tokens,
+            truncation_token_budget=self._truncation_max_tokens,
             messages=kept_messages,
             dropped_messages=dropped_messages,
             final_token_count=final_token_count,

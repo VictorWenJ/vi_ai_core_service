@@ -1,6 +1,6 @@
 # tests/AGENTS.md
 
-> 更新日期：2026-04-08
+> 更新日期：2026-04-09
 
 ## 1. 文档定位
 
@@ -20,7 +20,7 @@
 1. 覆盖主链路成功/失败路径
 2. 覆盖配置、API、service、provider、prompt、context 的最小事实
 3. 及时暴露文档与代码、接口与调用方之间的漂移
-4. 在 Phase 3 中新增持久化短期记忆相关测试与回归保护
+4. 在 Phase 4 中新增分层短期记忆相关测试与回归保护
 
 ---
 
@@ -32,7 +32,7 @@
 
 ---
 
-## 5. 当前阶段能力声明（与代码一致）
+## 5. 当前阶段能力声明（与代码/计划一致）
 
 已有测试文件包括：
 
@@ -48,12 +48,13 @@
 - `test_context_redis_store.py`
 - `integration/test_http_smoke.py`
 
-Phase 3 已补齐并应持续维护：
+Phase 4 需要补齐并持续维护：
 
-- store contract 测试
-- Redis store 测试
-- TTL / reset / fallback 测试
-- 持久化读写主链路回归测试
+- conversation scope 隔离测试
+- rolling summary 测试
+- working memory reducer 测试
+- request assembly 顺序测试
+- layered memory 持久化主链路回归测试
 
 ---
 
@@ -63,7 +64,7 @@ Phase 3 已补齐并应持续维护：
 2. 测试断言必须对齐当前接口契约
 3. 改动主链路代码时，必须同步更新对应测试
 4. 不允许通过放宽断言掩盖真实回归
-5. 持久化短期记忆改动必须覆盖配置、store、service、API 至少一层回归
+5. 分层短期记忆改动必须覆盖 context、service、API 至少一层回归
 
 ---
 
@@ -74,7 +75,7 @@ Phase 3 已补齐并应持续维护：
 3. mock 是否必要且不过度
 4. 是否验证了错误映射与边界语义
 5. 是否出现“测试与真实接口契约不一致”
-6. 是否只测 happy path 而漏掉 reset / TTL / fallback / Redis 不可用场景
+6. 是否只测 happy path 而漏掉 scope isolation / compaction / reducer / reset 场景
 
 ---
 
@@ -93,5 +94,5 @@ Phase 3 已补齐并应持续维护：
 1. 主链路改动未补测试，不视为完成
 2. 测试与当前接口契约不一致，不视为完成
 3. 只改代码不改测试，或只改测试不核对代码事实，不视为完成
-4. 持久化 store contract 改动未覆盖 get/append/reset/replace，不视为完成
-5. TTL / reset 语义改动未覆盖测试，不视为完成
+4. layered memory contract 改动未覆盖 get/append/reset/replace/update_state，不视为完成
+5. scope / reset / compaction / reducer 语义改动未覆盖测试，不视为完成

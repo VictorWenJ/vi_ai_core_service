@@ -1,6 +1,6 @@
 # CODE_REVIEW.md
 
-> 更新日期：2026-04-08
+> 更新日期：2026-04-09
 
 ## 1. 文档定位
 
@@ -95,7 +95,7 @@
 - Schema 是否仍然是契约层
 - 是否把流程逻辑或临时厂商特例塞进 schema
 
-### Infra 边界（新增）
+### Infra 边界
 - Docker / compose / env 样例是否收敛在 `infra/`
 - 是否把容器编排细节写进 `app/` 业务代码
 - 是否把 Redis 连接细节散落到 API / service 层
@@ -186,6 +186,7 @@
 3. 是否留下不合理硬编码
 4. 是否会让后续新增模块变得困难
 5. 是否把本应属于 `infra/` 的运行配置混进业务配置语义中
+6. `ContextPolicyConfig`、`ContextStorageConfig`、`ContextMemoryConfig` 是否职责分离
 
 ---
 
@@ -208,6 +209,7 @@
 - Schema 契约改动
 - 配置加载改动
 - Docker / compose 运行方式改动（至少做最小联调验证）
+- 分层短期记忆的 scope / reducer / compaction / request assembly 顺序改动
 
 ---
 
@@ -222,6 +224,7 @@
 5. 某模块复杂度显著上升
 6. 文档已无法准确描述当前代码结构
 7. 新增或修改 `infra/` 这类项目级工程基础设施治理域
+8. 修改了上下文主作用域、记忆层次、request assembly 顺序或配置职责边界
 
 ---
 
@@ -239,6 +242,7 @@
 8. 没有文档更新、没有测试补充的大改动
 9. 在 `app/` 内部散落 Docker / compose / 容器编排逻辑
 10. 用 `infra/` 脚本替代业务层契约与配置治理
+11. 以 Phase 4 为名偷偷引入向量检索、长期记忆或外部 LLM 二次摘要平台
 
 ---
 
@@ -290,7 +294,7 @@ Phase 2 已完成主链路，当前应继续保持以下约束：
 
 ## 19. Context Engineering Phase 3 专项审查门禁
 
-在推进 **持久化短期记忆（Persistent Session Memory）** 时，必须额外检查：
+在已落地的**持久化短期记忆（Persistent Session Memory）**上，仍必须持续检查：
 
 ### 19.1 边界检查
 1. Redis/持久化逻辑是否仅存在于 `app/context/stores/` 内
@@ -300,16 +304,10 @@ Phase 2 已完成主链路，当前应继续保持以下约束：
 
 ### 19.2 契约与配置检查
 1. 是否定义了独立的 `ContextStorageConfig`
-2. 是否正确解析并使用以下配置：
-   - `CONTEXT_STORE_BACKEND`
-   - `CONTEXT_REDIS_URL`
-   - `CONTEXT_SESSION_TTL_SECONDS`
-   - `CONTEXT_STORE_KEY_PREFIX`
-   - `CONTEXT_ALLOW_MEMORY_FALLBACK`
-3. backend=`redis` 时失败语义是否清晰
-4. store contract 是否仍稳定，支持 get / append / replace / reset
-5. session TTL / conversation reset / namespace 是否语义清晰
-6. 是否避免在多个层重复维护 key prefix / 序列化格式
+2. backend=`redis` 时失败语义是否清晰
+3. store contract 是否仍稳定，支持 get / append / replace / reset
+4. session TTL / conversation reset / namespace 是否语义清晰
+5. 是否避免在多个层重复维护 key prefix / 序列化格式
 
 ### 19.3 一致性与可恢复性检查
 1. response 后 user/assistant 历史写回是否通过统一 manager/store 完成
@@ -317,37 +315,85 @@ Phase 2 已完成主链路，当前应继续保持以下约束：
 3. store 序列化 / 反序列化是否稳定
 4. 持久化 store 不可用时是否有明确退化策略
 
-### 19.4 测试检查
-以下改动原则上必须补测试：
-- Redis store 基本读写
-- session history 持久化后再次读取
-- session TTL / key prefix 配置解析
-- reset_session / reset_conversation 在持久化 store 上行为正确
-- `request_assembler` 能读取持久化 history
-- `chat_service` 能在响应后正确写回持久化 history
-- 持久化 store 与 in-memory fallback 的行为差异与兼容性
+---
 
-### 19.5 直接拒绝条件
+## 20. Context Engineering Phase 4 专项审查门禁（新增）
+
+在推进 **分层短期记忆（Layered Short-Term Memory）** 时，必须额外检查：
+
+### 20.1 作用域与模型语义检查
+1. 上下文主作用域是否统一为 `(session_id, conversation_id)`
+2. 不同 `conversation_id` 是否在同一 `session_id` 下仍能保持严格隔离
+3. `ContextWindow.messages` 是否明确只表示 recent raw messages
+4. `rolling_summary` 与 `working_memory` 是否作为独立状态层管理，而不是塞回普通 message list
+
+### 20.2 链路与边界检查
+1. `request_assembler.py` 是否仍是最终 request assembly 顺序的唯一决定点
+2. `context/rendering.py` 是否只负责 provider-agnostic block 渲染，而不决定最终顺序
+3. `working_memory reducer` 是否留在 `app/context/`，而不是塞进 service / API 层
+4. Redis/store 私有细节是否仍未泄漏到 service / API
+5. 是否把 Phase 4 偷换成长期记忆 / semantic recall / RAG
+
+### 20.3 算法与实现范围检查
+1. rolling summary 是否仍保持确定性、可测试、无外部 LLM 二次调用
+2. working memory reducer 是否以高置信度规则为主，而不是不可控的隐式推理黑盒
+3. recent raw compaction 是否优先保留最近消息
+4. 是否保留最小可解释性，不引入过重策略引擎
+
+### 20.4 配置与契约检查
+1. 是否定义了独立的 `ContextMemoryConfig`
+2. `ContextMemoryConfig` 是否与 `ContextPolicyConfig` / `ContextStorageConfig` 清晰分离
+3. recent raw budget / rolling summary limit / working memory item limit 是否集中配置
+4. store 编解码版本与 schema 是否清晰、稳定、可迁移
+
+### 20.5 request assembly 检查
+必须检查最终顺序是否为：
+
+1. system prompt
+2. working memory block
+3. rolling summary block
+4. recent raw messages
+5. current user input
+
+若任一实现绕过该顺序，原则上应退回整改。
+
+### 20.6 trace / observability 检查
+1. 是否能从 trace 中定位当前 scope
+2. 是否能看到 recent raw 保留数、compaction 是否触发、summary 是否存在
+3. 是否能看到 working memory 的字段命中情况
+4. 是否保持日志语义可读且不泄漏敏感信息
+
+### 20.7 测试检查
+以下改动原则上必须补测试：
+- 同一 session 下不同 conversation 的隔离行为
+- reset_conversation / reset_session 的 Phase 4 语义
+- recent raw 超预算后的 compaction 行为
+- rolling summary 持久化与再次读取
+- working memory reducer 的去重、更新与空输入行为
+- `request_assembler` 的固定顺序与缺省层优雅跳过行为
+- in-memory / redis store 在 layered memory 上的一致性
+
+### 20.8 直接拒绝条件
 以下实现应直接拒绝：
 - 在 API/service 层直接访问 Redis
-- 把 TTL / key prefix 写死在多个文件中
-- 以“持久化”为名直接接入向量数据库或长期记忆
-- 未更新文档与 skill，就直接上线持久化短期记忆能力
-- 没有测试就修改 store contract
+- 把 TTL / key prefix / scope 规则写死在多个文件中
+- 以“working memory”为名直接接入向量数据库或长期记忆
+- 为 summary / memory extraction 新增外部 LLM 调用而无明确阶段批准
+- 没有测试就修改 `ContextWindow` / store contract / request assembly 顺序
 
 ---
 
-## 20. Infra / Docker / Compose 专项审查门禁（新增）
+## 21. Infra / Docker / Compose 专项审查门禁
 
 在推进 `infra/` 目录与 Docker / compose 本地联调能力时，必须额外检查：
 
-### 20.1 边界检查
+### 21.1 边界检查
 1. Dockerfile / compose / env 样例是否收敛在 `infra/`
 2. 是否把容器编排逻辑写进 `app/` 业务代码
 3. 是否让业务层依赖容器名称或 compose 结构
 4. 是否把“本地联调方式”误写成“业务层默认逻辑”
 
-### 20.2 配置与运行方式检查
+### 21.2 配置与运行方式检查
 1. app 与 redis 的容器职责是否清晰
 2. 环境变量来源是否明确
 3. compose 中的端口、卷、网络、依赖关系是否清晰
@@ -355,13 +401,13 @@ Phase 2 已完成主链路，当前应继续保持以下约束：
 5. 是否有健康检查或最小可观测启动方式
 6. 是否仍残留 `.env` 旧模式说明或双轨配置逻辑
 
-### 20.3 直接拒绝条件
+### 21.3 直接拒绝条件
 以下实现应直接拒绝：
 - 在业务代码里硬编码 Docker 容器名
 - 为了容器化而改坏本地非容器运行能力
 - 在 `infra/` 中堆业务脚本
 - 没有文档说明的 Docker / compose 改动
 
-### 20.4 本轮范围声明（Phase 3 收尾）
+### 21.4 当前范围声明
 1. 本轮仅审“配置统一、运行方式统一、文档与代码一致”。
 2. 本轮不处理 API key 安全治理，不在本轮引入密钥治理设计结论。

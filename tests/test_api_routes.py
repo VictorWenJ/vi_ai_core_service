@@ -245,7 +245,7 @@ class APIRouteTests(unittest.TestCase):
             )
         )
         llm_service = LLMService(
-            config=app_config,
+            app_config=app_config,
             registry=registry,
             context_manager=context_manager,
         )

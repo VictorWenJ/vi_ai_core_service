@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from setuptools.windows_support import windows_only
+from torch.signal.windows.windows import window_common_args
+
 from app.config import ContextPolicyConfig
 from app.context.policies.context_policy import ContextPolicyPipeline
 from app.context.policies.serialization import DefaultHistorySerializationPolicy
@@ -11,7 +14,7 @@ from app.context.policies.truncation import TokenAwareTruncationPolicy
 from app.context.policies.window_selection import TokenAwareWindowSelectionPolicy
 
 # 默认 token 预算：用于 token-aware 窗口选择。
-DEFAULT_HISTORY_MAX_TOKEN_BUDGET = 1200
+DEFAULT_HISTORY_WINDOW_TOKEN_BUDGET = 1200
 # 默认 token 预算：用于 token-aware 截断（需小于等于最大预算）。
 DEFAULT_HISTORY_TRUNCATION_TOKEN_BUDGET = 900
 # 是否默认启用确定性 summary/compaction 策略。
@@ -31,7 +34,7 @@ def build_default_context_policy_pipeline(
     """装配默认上下文策略配置"""
 
     resolved_context = context_config or ContextPolicyConfig(
-        max_token_budget=DEFAULT_HISTORY_MAX_TOKEN_BUDGET,
+        windows_token_budget=DEFAULT_HISTORY_WINDOW_TOKEN_BUDGET,
         truncation_token_budget=DEFAULT_HISTORY_TRUNCATION_TOKEN_BUDGET,
         summary_enabled=DEFAULT_HISTORY_SUMMARY_ENABLED,
         summary_max_chars=DEFAULT_HISTORY_SUMMARY_MAX_CHARS,
@@ -45,11 +48,11 @@ def build_default_context_policy_pipeline(
 
     return ContextPolicyPipeline(
         selection_policy=TokenAwareWindowSelectionPolicy(
-            max_tokens=resolved_context.max_token_budget,
+            window_max_tokens=resolved_context.windows_token_budget,
             token_counter=resolved_token_counter,
         ),
         truncation_policy=TokenAwareTruncationPolicy(
-            max_tokens=resolved_context.truncation_token_budget,
+            truncation_max_tokens=resolved_context.truncation_token_budget,
             token_counter=resolved_token_counter,
         ),
         summary_policy=DeterministicSummaryPolicy(

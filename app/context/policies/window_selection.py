@@ -32,6 +32,7 @@ class LastNMessagesSelectionPolicy(WindowSelectionPolicy):
         dropped_messages = list(window.messages[: max(window.message_count - len(selected_messages), 0)])
         return ContextSelectionResult(
             session_id=window.session_id,
+            conversation_id=window.conversation_id,
             source_message_count=window.message_count,
             source_token_count=source_token_count,
             token_budget=selected_token_count,
@@ -49,12 +50,12 @@ class TokenAwareWindowSelectionPolicy(WindowSelectionPolicy):
 
     def __init__(
         self,
-        max_tokens: int,
+        window_max_tokens: int,
         token_counter: BaseTokenCounter | None = None,
     ) -> None:
-        if max_tokens <= 0:
+        if window_max_tokens <= 0:
             raise ValueError("max_tokens 必须大于 0。")
-        self._max_tokens = max_tokens
+        self._window_max_tokens = window_max_tokens
         self._token_counter = token_counter or build_default_token_counter()
 
     def select(self, window: ContextWindow) -> ContextSelectionResult:
@@ -64,13 +65,13 @@ class TokenAwareWindowSelectionPolicy(WindowSelectionPolicy):
 
         for message in reversed(window.messages):
             message_tokens = self._token_counter.count_message_tokens(message)
-            if not selected_reversed and message_tokens > self._max_tokens:
-                # 保留最新且超预算的消息，交由截断策略压缩处理。
+            if not selected_reversed and message_tokens > self._window_max_tokens:
+                # 保留最新且超预算的消息，交由截断策略压缩处理。（selected_reversed 为空）
                 selected_reversed.append(message)
                 selected_tokens = message_tokens
                 continue
 
-            if selected_tokens + message_tokens <= self._max_tokens:
+            if selected_tokens + message_tokens <= self._window_max_tokens:
                 selected_reversed.append(message)
                 selected_tokens += message_tokens
                 continue
@@ -83,9 +84,10 @@ class TokenAwareWindowSelectionPolicy(WindowSelectionPolicy):
         selected_token_count = self._token_counter.count_messages_tokens(selected_messages)
         return ContextSelectionResult(
             session_id=window.session_id,
+            conversation_id=window.conversation_id,
             source_message_count=window.message_count,
             source_token_count=source_token_count,
-            token_budget=self._max_tokens,
+            token_budget=self._window_max_tokens,
             selected_messages=selected_messages,
             dropped_messages=dropped_messages,
             selected_token_count=selected_token_count,

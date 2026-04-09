@@ -5,7 +5,7 @@ import unittest
 from app.api.schemas import ChatRequest
 from app.config import AppConfig, ProviderConfig
 from app.context.manager import ContextManager
-from app.context.models import ContextMessage
+from app.context.models import ContextMessage, ContextWindow, RollingSummaryState, WorkingMemoryState
 from app.context.policies.context_policy import ContextPolicyPipeline
 from app.context.policies.serialization import DefaultHistorySerializationPolicy
 from app.context.policies.summary import DeterministicSummaryPolicy
@@ -44,11 +44,11 @@ class RequestAssemblerTests(unittest.TestCase):
         token_counter = CharacterTokenCounter()
         self.pipeline = ContextPolicyPipeline(
             selection_policy=TokenAwareWindowSelectionPolicy(
-                max_tokens=24,
+                window_max_tokens=24,
                 token_counter=token_counter,
             ),
             truncation_policy=TokenAwareTruncationPolicy(
-                max_tokens=18,
+                truncation_max_tokens=18,
                 token_counter=token_counter,
             ),
             summary_policy=DeterministicSummaryPolicy(
@@ -95,6 +95,7 @@ class RequestAssemblerTests(unittest.TestCase):
                 ContextMessage(role="assistant", content="old-assistant-1"),
                 ContextMessage(role="user", content="latest-user"),
             ],
+            conversation_id="conversation-1",
         )
         assembler = ChatRequestAssembler(
             app_config=self.config,
@@ -128,6 +129,54 @@ class RequestAssemblerTests(unittest.TestCase):
         self.assertEqual(trace["summary_policy"], "summary.deterministic_compaction")
         self.assertEqual(trace["serialization_policy"], "serialization.default_history")
         self.assertEqual(request.metadata["used_context_history"], trace)
+
+    def test_assemble_layered_memory_order_is_system_then_layers_then_recent_then_user(self) -> None:
+        manager = ContextManager(store=InMemoryContextStore())
+        manager.update_context_window(
+            ContextWindow(
+                session_id="session-1",
+                conversation_id="conversation-1",
+                messages=[ContextMessage(role="assistant", content="recent-raw-1")],
+                rolling_summary=RollingSummaryState(
+                    text="[history_compacted] old messages",
+                    updated_at="2026-04-09T00:00:00+00:00",
+                    source_message_count=4,
+                ),
+                working_memory=WorkingMemoryState(
+                    active_goal="完成 Phase 4",
+                    constraints=["只做短期记忆"],
+                ),
+                runtime_meta={"compaction_applied": True, "compacted_message_count": 3},
+            )
+        )
+        assembler = ChatRequestAssembler(
+            app_config=self.config,
+            prompt_service=StubPromptService(),
+            context_policy_pipeline=self.pipeline,
+        )
+
+        request = assembler.assemble_from_user_prompt(
+            ChatRequest(
+                user_prompt="new-input",
+                provider="openai",
+                stream=False,
+                session_id="session-1",
+                conversation_id="conversation-1",
+            ),
+            context_manager=manager,
+        )
+
+        self.assertEqual(request.messages[0].role, "system")
+        self.assertEqual(request.messages[1].role, "system")
+        self.assertIn("[working_memory]", request.messages[1].content)
+        self.assertEqual(request.messages[2].role, "system")
+        self.assertIn("[rolling_summary]", request.messages[2].content)
+        self.assertEqual(request.messages[3].role, "assistant")
+        self.assertEqual(request.messages[-1].role, "user")
+        trace = request.metadata["context_assembly"]
+        self.assertTrue(trace["rolling_summary_present"])
+        self.assertIn("active_goal", trace["working_memory_fields_present"])
+        self.assertTrue(trace["compaction_applied"])
 
     def test_assemble_does_not_keep_full_raw_history_metadata(self) -> None:
         manager = ContextManager(store=InMemoryContextStore())
@@ -183,6 +232,7 @@ class RequestAssemblerTests(unittest.TestCase):
                 ContextMessage(role="user", content="redis-user-1"),
                 ContextMessage(role="assistant", content="redis-assistant-1"),
             ],
+            conversation_id="conversation-redis",
         )
         assembler = ChatRequestAssembler(
             app_config=self.config,

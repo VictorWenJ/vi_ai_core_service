@@ -1,6 +1,6 @@
 # app/services/AGENTS.md
 
-> 更新日期：2026-04-08
+> 更新日期：2026-04-09
 
 ## 1. 文档定位
 
@@ -30,7 +30,7 @@
 3. 协调 `app/context/`、`app/prompts/`、`app/providers/`
 4. 将底层能力拼装为可用业务流程
 5. 做跨模块的流程控制、失败传播与结果封装
-6. 在 Phase 3 中承接持久化短期记忆的读写编排
+6. 在 Phase 4 中承接分层短期记忆的读写编排
 
 ---
 
@@ -41,7 +41,8 @@
 3. 不负责 Prompt 模板文件资产管理细节
 4. 不负责 context store 的底层存储实现
 5. 不负责定义基础数据模型契约本身
-6. 不负责在 service 内部直接写 Redis / key prefix / TTL 细节
+6. 不负责在 service 内部直接写 Redis / key prefix / TTL / scope 细节
+7. 不负责把 working memory reducer 变成业务规则中心
 
 ---
 
@@ -71,10 +72,10 @@
 - `chat_service.py`
   - 主 LLM chat 编排入口
   - 协调 context / prompt / provider 主链路
-  - 在响应后通过 manager/store 回写历史
+  - 在响应后通过 manager/store 回写 layered memory state
 - `request_assembler.py`
   - 承载请求装配与规范化
-  - 是 Phase 2/3 的正式上下文装配入口
+  - 是 Phase 2/3/4 的正式上下文装配入口
 - `llm_service.py`
   - 兼容导出入口
 - `prompt_service.py`
@@ -90,34 +91,45 @@ services 负责“编排”，不负责“底层实现”。
 
 ### 7.2 request_assembler 是上下文装配中枢
 
-- `request_assembler.py` 负责读取并治理历史
+- `request_assembler.py` 负责读取并治理 layered memory
 - `chat_service.py` 负责主流程协调与结果回写
-- `app/context/` 负责 history representation、policy execution 与 store lifecycle
+- `app/context/` 负责 state representation、policy execution、reducer、rendering 与 store lifecycle
 
-### 7.3 Phase 3 持久化读写由 service 统一调度
+### 7.3 Phase 4 的固定装配顺序必须收敛在 assembler
 
-在 Phase 3 中：
+assembler 是唯一允许决定以下顺序的地方：
+
+1. system prompt
+2. working memory block
+3. rolling summary block
+4. recent raw messages
+5. current user input
+
+### 7.4 Phase 4 的持久化读写由 service 统一调度
+
+在 Phase 4 中：
 
 - 读路径：service -> request_assembler -> context manager -> persistent store
-- 写路径：service -> context manager -> persistent store
+- 写路径：service -> context manager / reducer -> persistent store
 - reset 路径：service -> context manager -> persistent store
 
-但 service 不直接接触 Redis client 或 key 细节。
+但 service 不直接接触 Redis client、key 细节或 store codec。
 
 ---
 
 ## 8. 当前阶段能力声明（强约束）
 
 - 已实现并验收：
-  - 单轮非流式 LLM 主链路编排
+  - 非流式 LLM 主链路编排
   - Prompt / Context / Provider 的最小协作
   - `request_assembler.py` 的上下文装配中枢职责
   - token-aware 历史治理与 reset 流程
-- 当前已落地：
   - 持久化短期记忆读写编排
-  - response 后统一写回 session history
-  - reset / replace / append 与持久化 store 的一致性
-  - `ContextManager.from_app_config` + `ContextStorageConfig` 的 backend 装配链路
+- 当前本轮要落地：
+  - conversation-scoped layered memory 读取与回写编排
+  - request assembly 中 working memory / rolling summary / recent raw 的固定顺序
+  - response 后统一更新 recent raw、rolling summary 与 working memory
+  - `ContextManager.from_app_config` + `ContextPolicyConfig` + `ContextStorageConfig` + `ContextMemoryConfig` 的装配链路
 - 仍不要求落地：
   - streaming
   - 多模态
@@ -129,10 +141,11 @@ services 负责“编排”，不负责“底层实现”。
 ## 9. 修改规则
 
 1. 不允许在 service 层直接调用 Redis client
-2. 不允许在 service 层手写 key prefix / TTL 逻辑
+2. 不允许在 service 层手写 key prefix / TTL / scope 逻辑
 3. 不允许把上下文治理细节重新塞回 `chat_service.py`
 4. 不允许让 `request_assembler.py` 直接依赖 store 私有实现
-5. 改动主链路时必须同步更新测试与文档
+5. 不允许在 service 层自己决定 summary merge 或 reducer 的底层算法
+6. 改动主链路时必须同步更新测试与文档
 
 ---
 
@@ -141,9 +154,10 @@ services 负责“编排”，不负责“底层实现”。
 1. service 是否仍然是编排层，而非存储实现层？
 2. 是否绕过 `ContextManager` 直接操作 store？
 3. request-time 读路径与 response-time 写路径是否一致且清晰？
-4. 是否存在直接拼接 Redis key、手写 TTL 等越界实现？
-5. 错误传播与 observability 是否保持稳定？
-6. reset / append / replace 语义是否通过 service 正确协调？
+4. 是否存在直接拼接 Redis key、手写 TTL / scope 等越界实现？
+5. request assembly 顺序是否仍固定为 `system -> working_memory -> rolling_summary -> recent_raw -> user`？
+6. 错误传播与 observability 是否保持稳定？
+7. reset / append / replace / update_state 语义是否通过 service 正确协调？
 
 ---
 
@@ -152,16 +166,18 @@ services 负责“编排”，不负责“底层实现”。
 至少覆盖：
 
 1. `chat_from_user_prompt` 主链路成功路径
-2. `request_assembler` 读取持久化 session history
-3. 响应后 user / assistant 历史写回
-4. `reset_context` session / conversation 两条路径
-5. Redis store 不可用时的预期行为（若实现了 fallback）
+2. `request_assembler` 读取 layered memory 并按固定顺序装配
+3. 响应后 user / assistant recent raw 历史写回
+4. recent raw 超预算时 rolling summary 触发更新
+5. working memory reducer 更新后的持久化写回
+6. `reset_context` session / conversation 两条路径
+7. Redis store 不可用时的预期行为（若实现了 fallback）
 
 ---
 
 ## 12. 一句话总结
 
-`app/services/` 在 Phase 3 中的职责不是“实现持久化”，而是**把持久化短期记忆读写路径稳定地编排进现有主链路**。  
+`app/services/` 在 Phase 4 中的职责不是“实现 layered memory 算法”，而是**把 conversation-scoped layered short-term memory 稳定地编排进现有主链路**。  
 服务层只调度，不持有存储细节。
 
 ---
@@ -180,4 +196,5 @@ services 负责“编排”，不负责“底层实现”。
 
 - 发现 service 直连 Redis/store 私有实现，必须先整改
 - 主链路改动未补测试，不视为完成
-- 未明确读路径 / 写路径 / reset 路径，不允许合并 Phase 3 代码
+- 未明确读路径 / 写路径 / reset 路径，不允许合并 Phase 4 代码
+- 未保持 assembler 顺序中枢职责，不允许合并

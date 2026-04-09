@@ -24,7 +24,11 @@ class ChatRequest(BaseModel):
     )
     system_prompt: str | None = Field(default=None, description="可选的系统提示词。")
     stream: bool = Field(default=False, description="流式响应开关（预留）。")
+
+    # 用户会话容器
     session_id: str | None = Field(default=None, description="可选的有状态会话 ID。")
+
+    # 当前对话线程
     conversation_id: str | None = Field(
         default=None,
         description="可选的会话轮次 ID，用于跨请求连续性。",

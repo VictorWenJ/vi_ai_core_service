@@ -58,6 +58,7 @@ class BaseTokenCounter(ABC):
         *,
         keep_tail: bool = True,
     ) -> str:
+        """按单条消息预算截断正文内容，返回可落入 token 上限的 content 字符串。"""
         content_budget = max(
             max_message_tokens - self.message_overhead_tokens(message.role),
             0,

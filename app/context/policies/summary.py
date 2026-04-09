@@ -27,23 +27,24 @@ class NoOpSummaryPolicy(SummaryPolicy):
         self,
         *,
         window: ContextWindow,
-        selection_result: ContextSelectionResult,
-        truncation_result: ContextTruncationResult,
+        selection: ContextSelectionResult,
+        truncation: ContextTruncationResult,
     ) -> ContextSummaryResult:
-        del window, selection_result
+        del window, selection
         return ContextSummaryResult(
-            session_id=truncation_result.session_id,
-            source_message_count=truncation_result.source_message_count,
-            source_token_count=truncation_result.source_token_count,
-            input_message_count=truncation_result.final_message_count,
-            input_token_count=truncation_result.final_token_count,
-            token_budget=truncation_result.token_budget,
-            messages=list(truncation_result.messages),
+            session_id=truncation.session_id,
+            conversation_id=truncation.conversation_id,
+            source_message_count=truncation.source_message_count,
+            source_token_count=truncation.source_token_count,
+            input_message_count=truncation.final_message_count,
+            input_token_count=truncation.final_token_count,
+            token_budget=truncation.truncation_token_budget,
+            messages=list(truncation.messages),
             dropped_messages=[],
             summary_policy=self.name,
             summary_applied=False,
             summary_text=None,
-            final_token_count=truncation_result.final_token_count,
+            final_token_count=truncation.final_token_count,
         )
 
 
@@ -76,29 +77,37 @@ class DeterministicSummaryPolicy(SummaryPolicy):
         self,
         *,
         window: ContextWindow,
-        selection_result: ContextSelectionResult,
-        truncation_result: ContextTruncationResult,
+        selection: ContextSelectionResult,
+        truncation: ContextTruncationResult,
     ) -> ContextSummaryResult:
+        # 1. 开关关闭时，直接走 no-op，保持截断结果不变。
+        # 这是 summary 阶段的最小短路路径，不引入额外行为。
 
         # 开关控制不做总结
         if not self._enabled:
             return NoOpSummaryPolicy().summarize(
                 window=window,
-                selection_result=selection_result,
-                truncation_result=truncation_result,
+                selection=selection,
+                truncation=truncation,
             )
 
+        # 2. 收集“在 selection 和 truncation 阶段被移出的历史消息”。
+        # 只有这部分历史才是 summary 需要压缩承接的对象。
         dropped_messages = (
-            list(selection_result.dropped_messages) + list(truncation_result.dropped_messages)
+                list(selection.dropped_messages) + list(truncation.dropped_messages)
         )
+
+        # 3. 没有被移出的历史时，不需要做 summary，直接返回 no-op。
         # 只有真的有“被丢掉的历史”时，才会做 summary
         if not dropped_messages:
             return NoOpSummaryPolicy().summarize(
                 window=window,
-                selection_result=selection_result,
-                truncation_result=truncation_result,
+                selection=selection,
+                truncation=truncation,
             )
 
+        # 4. 基于被移出历史构建确定性摘要文本，并封装成一条 summary 消息。
+        # 该消息会放在消息列表头部，用于承接旧历史语义。
         # 规则化压缩 + 最近几条 preview
         summary_text = self._build_summary_text(dropped_messages)
         summary_message = ContextMessage(
@@ -106,25 +115,37 @@ class DeterministicSummaryPolicy(SummaryPolicy):
             content=summary_text,
             metadata={"summary": True, "message_count": len(dropped_messages)},
         )
-        composed_messages = [summary_message] + list(truncation_result.messages)
 
+        # 5. 组合“summary + 当前截断后保留消息”，形成 summary 阶段输入。
+        composed_messages = [summary_message] + list(truncation.messages)
+
+        # 6. 再次按 truncation 预算做收敛（summary 也要受总预算约束）。
+        # 根据 fallback 行为，可能压缩 summary、丢最旧消息、或继续裁剪最新消息。
         bounded_messages, summary_dropped_messages = self._fit_to_budget(
             messages=composed_messages,
-            token_budget=truncation_result.token_budget,
+            token_budget=truncation.truncation_token_budget,
         )
+
+        # 7. 判断最终结果是否真的保留了 summary 头消息，并计算最终 token 成本。
+        # 如果 summary 头被预算淘汰，summary_text 应视为未生效。
         summary_applied = len(bounded_messages) > 0 and bounded_messages[0].metadata.get(
             "summary", False
         )
         final_token_count = self._token_counter.count_messages_tokens(bounded_messages)
         final_summary_text = bounded_messages[0].content if summary_applied else None
 
+        # 8. 输出标准化 summary 结果：
+        # - messages: summary 阶段最终保留消息
+        # - dropped_messages: summary 阶段额外淘汰消息
+        # - summary_applied/summary_text: summary 是否实际落地
         return ContextSummaryResult(
-            session_id=truncation_result.session_id,
-            source_message_count=selection_result.source_message_count,
-            source_token_count=selection_result.source_token_count,
-            input_message_count=truncation_result.final_message_count,
-            input_token_count=truncation_result.final_token_count,
-            token_budget=truncation_result.token_budget,
+            session_id=truncation.session_id,
+            conversation_id=truncation.conversation_id,
+            source_message_count=selection.source_message_count,
+            source_token_count=selection.source_token_count,
+            input_message_count=truncation.final_message_count,
+            input_token_count=truncation.final_token_count,
+            token_budget=truncation.truncation_token_budget,
             messages=bounded_messages,
             dropped_messages=summary_dropped_messages,
             summary_policy=self.name,
