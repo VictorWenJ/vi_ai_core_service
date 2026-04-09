@@ -218,7 +218,7 @@ class APIRouteTests(unittest.TestCase):
         fake_service = FakeChatService()
         with patch("app.api.chat._get_chat_service", return_value=fake_service):
             response = self.client.post(
-                "/chat/reset",
+                "/chat_reset",
                 json={
                     "session_id": "session-1",
                     "conversation_id": "conv-1",
@@ -236,7 +236,7 @@ class APIRouteTests(unittest.TestCase):
         fake_service = FakeChatService()
         with patch("app.api.chat._get_chat_service", return_value=fake_service):
             response = self.client.post(
-                "/chat/reset",
+                "/chat_reset",
                 json={"session_id": "session-1"},
             )
 
@@ -253,7 +253,7 @@ class APIRouteTests(unittest.TestCase):
             return_value=FakeStreamingChatService(),
         ):
             response = self.client.post(
-                "/api/v1/chat/stream",
+                "/chat_stream",
                 json={
                     "user_prompt": "hello",
                     "provider": "openai",
@@ -277,7 +277,7 @@ class APIRouteTests(unittest.TestCase):
             return_value=FakeStreamingChatService(),
         ):
             response = self.client.post(
-                "/api/v1/chat/cancel",
+                "/chat_stream_cancel",
                 json={
                     "request_id": "req-1",
                     "assistant_message_id": "am-1",
@@ -302,7 +302,7 @@ class APIRouteTests(unittest.TestCase):
             "app.api.chat._get_chat_service",
             return_value=ValidationErrorResetService(),
         ):
-            response = self.client.post("/chat/reset", json={"session_id": "session-1"})
+            response = self.client.post("/chat_reset", json={"session_id": "session-1"})
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("session_id required", response.json()["detail"])
@@ -350,7 +350,7 @@ class APIRouteTests(unittest.TestCase):
                 },
             )
             reset_response = self.client.post(
-                "/chat/reset",
+                "/chat_reset",
                 json={
                     "session_id": "session-redis",
                     "conversation_id": "conv-redis",

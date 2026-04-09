@@ -20,8 +20,8 @@ last_updated: 2026-04-09
 # 当前阶段约束（必须遵守）
 
 - `/chat` 必须继续可用
-- 新增 `/chat/stream`，协议固定为 **SSE**
-- 新增 `/chat/cancel`
+- 新增 `/chat_stream`，协议固定为 **SSE**
+- 新增 `/chat_stream_cancel`
 - API 层只负责接入、校验、转发、返回与 SSE 文本输出
 - API 层不负责业务状态机、provider chunk 归一化、context memory 更新
 - 不泄漏 default scope、Redis key、working memory schema 等内部实现细节
@@ -32,7 +32,7 @@ last_updated: 2026-04-09
 # 适用场景
 
 - 修改 `app/api/chat.py`
-- 新增或调整 `/chat/stream`、`/chat/cancel`
+- 新增或调整 `/chat_stream`、`/chat_stream_cancel`
 - 新增 SSE 序列化辅助模块
 - 修改 `app/api/schemas/chat.py`
 - 补充 API 层与 HTTP 集成测试
@@ -43,7 +43,7 @@ last_updated: 2026-04-09
 
 1. 薄路由优先
 2. SSE 是 API 协议，不是业务状态机
-3. `/chat` 与 `/chat/stream` 输入尽量复用
+3. `/chat` 与 `/chat_stream` 输入尽量复用
 4. 不泄漏 layered memory 实现细节
 5. 不提前做实时平台工程
 
@@ -54,8 +54,8 @@ last_updated: 2026-04-09
 至少满足：
 
 - `/chat` 继续可用
-- `/chat/stream` 返回 `text/event-stream`
+- `/chat_stream` 返回 `text/event-stream`
 - started -> delta -> completed 顺序稳定
 - error / cancelled 路径稳定
-- `/chat/cancel` 语义清晰
+- `/chat_stream_cancel` 语义清晰
 - 无 provider / Redis / context 私有逻辑泄漏到 route

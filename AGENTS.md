@@ -59,8 +59,8 @@
 ### 本轮必须完成
 
 - 保持同步 `/chat` 主链路可用
-- 新增 `/chat/stream`（SSE）
-- 新增 `/chat/cancel`
+- 新增 `/chat_stream`（SSE）
+- 新增 `/chat_stream_cancel`
 - assistant message 生命周期：
   - `created`
   - `streaming`

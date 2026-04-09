@@ -72,7 +72,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 必须检查：
 
-- `/chat` 与 `/chat/stream` 输入语义是否尽量一致
+- `/chat` 与 `/chat_stream` 输入语义是否尽量一致
 - SSE 事件类型与 payload 是否稳定
 - `request_id` / `assistant_message_id` / `finish_reason` / `usage` / `latency` / `error_code` 语义是否统一
 - default scope 等内部实现细节是否未泄漏到外部协议

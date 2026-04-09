@@ -1,4 +1,4 @@
-﻿"""流式聊天服务：负责 SSE 事件生命周期与会话收口。"""
+"""流式聊天服务：负责 SSE 事件生命周期与会话收口。"""
 
 from __future__ import annotations
 
@@ -137,7 +137,7 @@ class StreamingChatService:
             )
             log_report("StreamingChatService.stream_chat_from_user_prompt.context_window", context_window)
 
-        # 步骤 6：将本次流任务注册到取消注册表，支持 /chat/cancel 显式取消。
+        # 步骤 6：将本次流任务注册到取消注册表，支持 /chat_stream_cancel 显式取消。
         handle = self._cancellation_registry.register(
             request_id=request_id,
             assistant_message_id=assistant_message_id,
@@ -146,7 +146,19 @@ class StreamingChatService:
             provider=llm_request.provider,
             model=llm_request.model,
         )
-        log_report("StreamingChatService.stream_chat_from_user_prompt.handle", handle)
+        log_report(
+            "StreamingChatService.stream_chat_from_user_prompt.handle",
+            {
+                "request_id": handle.request_id,
+                "assistant_message_id": handle.assistant_message_id,
+                "session_id": handle.session_id,
+                "conversation_id": handle.conversation_id,
+                "provider": handle.provider,
+                "model": handle.model,
+                "started_at": handle.started_at,
+                "cancelled": handle.cancel_event.is_set(),
+            },
+        )
 
         # 步骤 7：先对外发 started 事件，声明流式生命周期开始。
         started_event = {

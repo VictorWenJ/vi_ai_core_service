@@ -51,7 +51,7 @@
 - [ ] working memory reducer 规则测试通过
 - [ ] assembler 顺序与 metadata/trace 测试通过
 - [ ] in-memory / redis backend parity 测试通过
-- [ ] `/chat` 与 `/chat/reset` 回归通过
+- [ ] `/chat` 与 `/chat_reset` 回归通过
 
 ## 当前阶段禁止项
 - [ ] 未引入向量检索、RAG、embedding

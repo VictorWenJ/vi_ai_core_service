@@ -110,7 +110,7 @@
 
 ### 6.2 流式聊天链路
 
-1. 请求进入 `/chat/stream`
+1. 请求进入 `/chat_stream`
 2. API 建立 SSE 响应
 3. service 生成 `request_id` 与 `assistant_message_id`
 4. service 写入 user message 与 assistant placeholder

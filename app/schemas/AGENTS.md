@@ -50,7 +50,7 @@
 - 契约稳定优先
 - 字段含义明确
 - 避免把业务逻辑塞进模型
-- `/chat` 与 `/chat/stream` 的输入字段应尽量对齐
+- `/chat` 与 `/chat_stream` 的输入字段应尽量对齐
 - stream event payload 与 lifecycle status 枚举必须统一
 
 ---

@@ -59,8 +59,8 @@
 
 ### 本轮必须完成
 
-- `/chat/stream`（SSE）
-- `/chat/cancel`
+- `/chat_stream`（SSE）
+- `/chat_stream_cancel`
 - assistant lifecycle 状态机
 - provider streaming 归一化
 - completed 才进入标准 memory update

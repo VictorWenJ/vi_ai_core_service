@@ -38,7 +38,7 @@
 1. 响应后 recent raw 写回成功
 2. 写回触发 compaction 时 runtime_meta 正确
 3. rolling summary 与 working memory 写回成功
-4. `/chat/reset` 通过 service->manager->store 路径执行
+4. `/chat_reset` 通过 service->manager->store 路径执行
 
 ### G. Store Backend 一致性
 1. In-memory / Redis 在 get/append/replace/reset 语义一致

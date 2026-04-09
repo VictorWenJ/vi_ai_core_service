@@ -18,9 +18,9 @@
 
 - `/health`
 - `/chat`
-- `/chat/stream`
-- `/chat/cancel`
-- `/chat/reset`
+- `/chat_stream`
+- `/chat_stream_cancel`
+- `/chat_reset`
 
 ---
 
@@ -81,7 +81,7 @@ API 层最多承接 `session_id` / `conversation_id`。
 不得把 store key、默认 scope、working memory schema 等内部实现细节暴露到外部协议层。
 
 ### 6.4 同步与流式输入尽量对齐
-`/chat` 与 `/chat/stream` 优先复用同一套请求结构。
+`/chat` 与 `/chat_stream` 优先复用同一套请求结构。
 
 ---
 
@@ -89,8 +89,8 @@ API 层最多承接 `session_id` / `conversation_id`。
 
 本轮必须新增并验收：
 
-- `/chat/stream`
-- `/chat/cancel`
+- `/chat_stream`
+- `/chat_stream_cancel`
 - 标准 SSE 输出
 - started / delta / completed / error / cancelled 事件对外协议
 
@@ -118,7 +118,7 @@ API 层最多承接 `session_id` / `conversation_id`。
 1. 路由层是否保持薄？
 2. SSE `Content-Type` 是否正确？
 3. `conversation_id` / `session_id` / `request_id` / `assistant_message_id` 是否正确透传？
-4. 是否破坏现有 `/chat` 与 `/chat/reset` 契约？
+4. 是否破坏现有 `/chat` 与 `/chat_reset` 契约？
 5. cancel 接口是否清晰、最小、无业务算法泄漏？
 
 ---
@@ -129,11 +129,11 @@ API 层最多承接 `session_id` / `conversation_id`。
 
 1. `/health` 成功路径
 2. `/chat` 成功路径
-3. `/chat/stream` 返回 `text/event-stream`
-4. `/chat/stream` 的 started -> delta -> completed 顺序
-5. `/chat/stream` 的 error / cancelled 路径
-6. `/chat/cancel` 成功路径
-7. `/chat/reset` session / conversation 路径
+3. `/chat_stream` 返回 `text/event-stream`
+4. `/chat_stream` 的 started -> delta -> completed 顺序
+5. `/chat_stream` 的 error / cancelled 路径
+6. `/chat_stream_cancel` 成功路径
+7. `/chat_reset` session / conversation 路径
 
 ---
 

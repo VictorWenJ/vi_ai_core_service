@@ -19,7 +19,7 @@
 
 ## 当前已实现能力
 
-- `/health`、`/chat`、`/chat/reset` 路由
+- `/health`、`/chat`、`/chat_reset` 路由
 - API -> services -> context/prompts/providers -> schemas 主链路
 - Context Phase 2 策略管线（token-aware 选窗与截断、确定性 summary、序列化、trace）
 - Context Phase 3 持久化短期记忆（RedisContextStore、backend factory、session TTL、reset_session / reset_conversation）
@@ -89,7 +89,7 @@ curl -X POST "http://127.0.0.1:8000/chat" \
 重置会话上下文：
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/chat/reset" \
+curl -X POST "http://127.0.0.1:8000/chat_reset" \
   -H "Content-Type: application/json" \
   -d '{
     "session_id": "S_001",

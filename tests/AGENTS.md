@@ -29,7 +29,7 @@
 
 Phase 5 需要补齐并持续维护：
 
-- `/chat/stream` SSE 输出测试
+- `/chat_stream` SSE 输出测试
 - stream event 顺序测试
 - assistant lifecycle 测试
 - cancel 路径测试

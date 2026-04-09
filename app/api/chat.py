@@ -51,8 +51,7 @@ def chat(chat_request: ChatRequest) -> LLMResponse:
     return chat_response
 
 
-@router.post("/chat/stream")
-@router.post("/api/v1/chat/stream")
+@router.post("/chat_stream")
 def stream_chat(chat_stream_request: ChatStreamRequest) -> StreamingResponse:
     started_at = perf_counter()
     streaming_service = _get_streaming_chat_service()
@@ -90,8 +89,7 @@ def stream_chat(chat_stream_request: ChatStreamRequest) -> StreamingResponse:
     )
 
 
-@router.post("/chat/cancel", response_model=ChatCancelResponse)
-@router.post("/api/v1/chat/cancel", response_model=ChatCancelResponse)
+@router.post("/chat_stream_cancel", response_model=ChatCancelResponse)
 def cancel_chat_stream(cancel_request: ChatCancelRequest) -> ChatCancelResponse:
     started_at = perf_counter()
     streaming_service = _get_streaming_chat_service()
@@ -117,7 +115,7 @@ def cancel_chat_stream(cancel_request: ChatCancelRequest) -> ChatCancelResponse:
     return ChatCancelResponse(**result)
 
 
-@router.post("/chat/reset", response_model=ChatResetResponse)
+@router.post("/chat_reset", response_model=ChatResetResponse)
 def reset_chat_context(reset_request: ChatResetRequest) -> ChatResetResponse:
     started_at = perf_counter()
     llm_service = _get_chat_service()
