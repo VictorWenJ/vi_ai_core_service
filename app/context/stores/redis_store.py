@@ -293,6 +293,11 @@ class RedisContextStore(BaseContextStore):
             "content": message.content,
             "metadata": dict(message.metadata),
             "created_at": message.created_at,
+            "message_id": message.message_id,
+            "status": message.status,
+            "updated_at": message.updated_at,
+            "finish_reason": message.finish_reason,
+            "error_code": message.error_code,
         }
 
     @staticmethod
@@ -312,6 +317,11 @@ class RedisContextStore(BaseContextStore):
             content=str(raw_message.get("content", "")),
             metadata=metadata,
             created_at=normalized_created_at,
+            message_id=_to_optional_text(raw_message.get("message_id")),
+            status=_to_optional_text(raw_message.get("status")) or "completed",
+            updated_at=_to_optional_text(raw_message.get("updated_at")) or normalized_created_at,
+            finish_reason=_to_optional_text(raw_message.get("finish_reason")),
+            error_code=_to_optional_text(raw_message.get("error_code")),
         )
 
     def _read_ttl_seconds(self, key: str) -> int | None:

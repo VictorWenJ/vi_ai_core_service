@@ -49,6 +49,38 @@ def build_vendor_response(model: str, content: str):
     )
 
 
+def build_vendor_stream_chunks():
+    return [
+        SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(content="你"),
+                    finish_reason=None,
+                )
+            ],
+            usage=None,
+        ),
+        SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(content="好"),
+                    finish_reason=None,
+                )
+            ],
+            usage=None,
+        ),
+        SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(content=""),
+                    finish_reason="stop",
+                )
+            ],
+            usage=SimpleNamespace(prompt_tokens=3, completion_tokens=2, total_tokens=5),
+        ),
+    ]
+
+
 class ProviderNormalizationTests(unittest.TestCase):
     def test_openai_provider_normalizes_request_and_response(self) -> None:
         fake_client = FakeOpenAIClient(build_vendor_response("gpt-test", "hello"))
@@ -110,3 +142,23 @@ class ProviderNormalizationTests(unittest.TestCase):
         self.assertEqual(response.provider, "deepseek")
         self.assertEqual(response.model, "deepseek-chat")
         self.assertEqual(response.content, "deepseek response")
+
+    def test_openai_provider_stream_chat_emits_normalized_chunks(self) -> None:
+        fake_client = FakeOpenAIClient(build_vendor_stream_chunks())
+        provider = OpenAIProvider(
+            provider_config=ProviderConfig(name="openai", api_key="key"),
+            client=fake_client,
+        )
+        request = LLMRequest(
+            provider="openai",
+            model="gpt-test",
+            messages=[LLMMessage(role="user", content="hello")],
+            stream=True,
+        )
+
+        chunks = list(provider.stream_chat(request))
+
+        self.assertEqual(fake_client.chat.completions.last_kwargs["stream"], True)
+        self.assertEqual("".join(chunk.delta for chunk in chunks), "你好")
+        self.assertTrue(chunks[-1].done)
+        self.assertEqual(chunks[-1].finish_reason, "stop")

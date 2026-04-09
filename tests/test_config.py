@@ -27,6 +27,12 @@ class ConfigTests(unittest.TestCase):
             "CONTEXT_SESSION_TTL_SECONDS": "7200",
             "CONTEXT_STORE_KEY_PREFIX": "test:context",
             "CONTEXT_ALLOW_MEMORY_FALLBACK": "false",
+            "STREAMING_ENABLED": "true",
+            "STREAM_HEARTBEAT_INTERVAL_SECONDS": "5",
+            "STREAM_REQUEST_TIMEOUT_SECONDS": "45",
+            "STREAM_EMIT_USAGE": "false",
+            "STREAM_EMIT_TRACE": "true",
+            "STREAM_CANCEL_ENABLED": "true",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -56,6 +62,12 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.context_storage_config.session_ttl_seconds, 7200)
         self.assertEqual(config.context_storage_config.key_prefix, "test:context")
         self.assertFalse(config.context_storage_config.allow_memory_fallback)
+        self.assertTrue(config.streaming_config.streaming_enabled)
+        self.assertEqual(config.streaming_config.stream_heartbeat_interval_seconds, 5.0)
+        self.assertEqual(config.streaming_config.stream_request_timeout_seconds, 45.0)
+        self.assertFalse(config.streaming_config.stream_emit_usage)
+        self.assertTrue(config.streaming_config.stream_emit_trace)
+        self.assertTrue(config.streaming_config.stream_cancel_enabled)
 
     def test_invalid_default_provider_raises(self) -> None:
         with patch.dict(os.environ, {"LLM_DEFAULT_PROVIDER": "unknown"}, clear=True):

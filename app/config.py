@@ -65,6 +65,18 @@ DEFAULT_CONTEXT_STORE_KEY_PREFIX = "vi_ai_core_service:context"
 DEFAULT_CONTEXT_SESSION_TTL_SECONDS = 3600
 # Redis 不可用时是否默认允许回退到内存存储。
 DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK = True
+# 是否默认开启流式聊天能力。
+DEFAULT_STREAMING_ENABLED = True
+# SSE 心跳事件的默认间隔（秒）。
+DEFAULT_STREAM_HEARTBEAT_INTERVAL_SECONDS = 15.0
+# 单次流式请求默认超时（秒）。
+DEFAULT_STREAM_REQUEST_TIMEOUT_SECONDS = 120.0
+# 是否在 completed 事件中默认输出 usage。
+DEFAULT_STREAM_EMIT_USAGE = True
+# 是否默认输出流式 trace 信息。
+DEFAULT_STREAM_EMIT_TRACE = True
+# 是否默认开启显式 cancel 能力。
+DEFAULT_STREAM_CANCEL_ENABLED = True
 # 各 Provider 默认 base_url（None 表示使用 SDK/厂商默认地址）。
 DEFAULT_BASE_URLS: dict[str, str | None] = {
     "openai": None,
@@ -160,6 +172,24 @@ class ContextMemoryConfig:
 
 
 @dataclass(frozen=True)
+class StreamingConfig:
+    """流式聊天交付层配置。"""
+
+    # 是否开启流式接口能力。
+    streaming_enabled: bool = DEFAULT_STREAMING_ENABLED
+    # SSE 心跳事件默认间隔（秒）。
+    stream_heartbeat_interval_seconds: float = DEFAULT_STREAM_HEARTBEAT_INTERVAL_SECONDS
+    # 流式请求超时阈值（秒）。
+    stream_request_timeout_seconds: float = DEFAULT_STREAM_REQUEST_TIMEOUT_SECONDS
+    # completed 事件是否输出 usage。
+    stream_emit_usage: bool = DEFAULT_STREAM_EMIT_USAGE
+    # completed/error/cancelled 事件是否输出 trace。
+    stream_emit_trace: bool = DEFAULT_STREAM_EMIT_TRACE
+    # 是否允许显式取消流式请求。
+    stream_cancel_enabled: bool = DEFAULT_STREAM_CANCEL_ENABLED
+
+
+@dataclass(frozen=True)
 class AppConfig:
     """应用顶层配置。"""
 
@@ -177,6 +207,8 @@ class AppConfig:
     context_storage_config: ContextStorageConfig = field(default_factory=ContextStorageConfig)
     # 分层短期记忆配置（recent raw / rolling summary / working memory）。
     context_memory_config: ContextMemoryConfig = field(default_factory=ContextMemoryConfig)
+    # 流式聊天交付层配置（SSE、超时、取消、trace）。
+    streaming_config: StreamingConfig = field(default_factory=StreamingConfig)
 
     @classmethod
     def from_env(
@@ -316,6 +348,36 @@ class AppConfig:
                 DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS,
             ),
         )
+        streaming = StreamingConfig(
+            streaming_enabled=_read_bool(
+                "STREAMING_ENABLED",
+                DEFAULT_STREAMING_ENABLED,
+            ),
+            stream_heartbeat_interval_seconds=_read_float(
+                "STREAM_HEARTBEAT_INTERVAL_SECONDS",
+                DEFAULT_STREAM_HEARTBEAT_INTERVAL_SECONDS,
+            ),
+            stream_request_timeout_seconds=_read_float(
+                "STREAM_REQUEST_TIMEOUT_SECONDS",
+                DEFAULT_STREAM_REQUEST_TIMEOUT_SECONDS,
+            ),
+            stream_emit_usage=_read_bool(
+                "STREAM_EMIT_USAGE",
+                DEFAULT_STREAM_EMIT_USAGE,
+            ),
+            stream_emit_trace=_read_bool(
+                "STREAM_EMIT_TRACE",
+                DEFAULT_STREAM_EMIT_TRACE,
+            ),
+            stream_cancel_enabled=_read_bool(
+                "STREAM_CANCEL_ENABLED",
+                DEFAULT_STREAM_CANCEL_ENABLED,
+            ),
+        )
+        if streaming.stream_heartbeat_interval_seconds <= 0:
+            raise ConfigError("STREAM_HEARTBEAT_INTERVAL_SECONDS 必须大于 0。")
+        if streaming.stream_request_timeout_seconds <= 0:
+            raise ConfigError("STREAM_REQUEST_TIMEOUT_SECONDS 必须大于 0。")
 
         return cls(
             default_provider=default_provider,
@@ -325,6 +387,7 @@ class AppConfig:
             context_policy_config=context,
             context_storage_config=context_storage,
             context_memory_config=context_memory,
+            streaming_config=streaming,
         )
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig:

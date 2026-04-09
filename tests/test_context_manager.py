@@ -104,3 +104,51 @@ class ContextManagerTests(unittest.TestCase):
         self.assertTrue(updated_window.working_memory.constraints)
         self.assertTrue(updated_window.working_memory.decisions)
         self.assertIsNotNone(updated_window.working_memory.next_step)
+
+    def test_update_after_stream_completion_only_on_completed_assistant(self) -> None:
+        user_id = "um-1"
+        assistant_id = "am-1"
+        self.manager.append_user_message(
+            session_id="session-1",
+            conversation_id="conversation-1",
+            content="你好",
+            message_id=user_id,
+        )
+        self.manager.create_assistant_placeholder(
+            session_id="session-1",
+            conversation_id="conversation-1",
+            assistant_message_id=assistant_id,
+        )
+        self.manager.finalize_assistant_message(
+            session_id="session-1",
+            conversation_id="conversation-1",
+            assistant_message_id=assistant_id,
+            status="cancelled",
+            content="partial",
+            error_code="cancelled",
+        )
+        window_after_cancel = self.manager.update_after_stream_completion(
+            session_id="session-1",
+            conversation_id="conversation-1",
+            user_message_id=user_id,
+            assistant_message_id=assistant_id,
+            memory_config=ContextMemoryConfig(),
+        )
+        self.assertEqual(window_after_cancel.messages[-1].status, "cancelled")
+
+        self.manager.finalize_assistant_message(
+            session_id="session-1",
+            conversation_id="conversation-1",
+            assistant_message_id=assistant_id,
+            status="completed",
+            content="最终回答",
+            finish_reason="stop",
+        )
+        window_after_completed = self.manager.update_after_stream_completion(
+            session_id="session-1",
+            conversation_id="conversation-1",
+            user_message_id=user_id,
+            assistant_message_id=assistant_id,
+            memory_config=ContextMemoryConfig(),
+        )
+        self.assertEqual(window_after_completed.messages[-1].status, "completed")

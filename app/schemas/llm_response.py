@@ -29,3 +29,15 @@ class LLMResponse:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass
+class LLMStreamChunk:
+    """Provider 流式输出的规范化增量片段。"""
+
+    delta: str = ""
+    sequence: int = 0
+    finish_reason: str | None = None
+    usage: LLMUsage | None = None
+    done: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)

@@ -1,12 +1,13 @@
-"""LLM Provider 的基础抽象与共享异常。"""
+﻿"""LLM Provider 的基础抽象与共享异常。"""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 
 from app.config import ProviderConfig
 from app.schemas.llm_request import LLMRequest
-from app.schemas.llm_response import LLMResponse
+from app.schemas.llm_response import LLMResponse, LLMStreamChunk
 
 
 class ProviderError(Exception):
@@ -26,7 +27,7 @@ class ProviderNotImplementedError(ProviderError):
 
 
 class StreamNotImplementedError(ProviderError):
-    """在功能未实现时请求流式能力会抛出。"""
+    """在能力未实现时请求流式能力会抛出。"""
 
 
 class BaseLLMProvider(ABC):
@@ -45,7 +46,8 @@ class BaseLLMProvider(ABC):
     def chat(self, request: LLMRequest) -> LLMResponse:
         """执行标准非流式聊天请求。"""
 
-    def stream_chat(self, request: LLMRequest) -> LLMResponse:
+    def stream_chat(self, request: LLMRequest) -> Iterator[LLMStreamChunk]:
+        del request
         raise StreamNotImplementedError(
             f"Provider '{self.provider_name}' 暂未实现流式能力。"
         )

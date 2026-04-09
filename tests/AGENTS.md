@@ -20,79 +20,36 @@
 1. 覆盖主链路成功/失败路径
 2. 覆盖配置、API、service、provider、prompt、context 的最小事实
 3. 及时暴露文档与代码、接口与调用方之间的漂移
-4. 在 Phase 4 中新增分层短期记忆相关测试与回归保护
+4. 维护 Phase 4 layered memory 回归保护
+5. 新增 Phase 5 的 streaming / lifecycle / cancel / timeout 回归保护
 
 ---
 
-## 4. 本层不负责什么
+## 4. 当前阶段测试重点
 
-1. 不负责实现业务逻辑
-2. 不负责替代模块边界治理
-3. 不为未实现能力编造“未来测试”
+Phase 5 需要补齐并持续维护：
 
----
-
-## 5. 当前阶段能力声明（与代码/计划一致）
-
-已有测试文件包括：
-
-- `test_api_routes.py`
-- `test_config.py`
-- `test_context_manager.py`
-- `test_context_policies.py`
-- `test_context_store_factory.py`
-- `test_llm_service.py`
-- `test_prompt_service.py`
-- `test_provider_normalization.py`
-- `test_request_assembler.py`
-- `test_context_redis_store.py`
-- `integration/test_http_smoke.py`
-
-Phase 4 需要补齐并持续维护：
-
-- conversation scope 隔离测试
-- rolling summary 测试
-- working memory reducer 测试
-- request assembly 顺序测试
-- layered memory 持久化主链路回归测试
+- `/chat/stream` SSE 输出测试
+- stream event 顺序测试
+- assistant lifecycle 测试
+- cancel 路径测试
+- failed / cancelled 不进入标准 memory update 的测试
+- provider streaming normalization 测试
 
 ---
 
-## 6. 修改规则
+## 5. 修改规则
 
 1. 先确认被测模块归属，再写测试
 2. 测试断言必须对齐当前接口契约
 3. 改动主链路代码时，必须同步更新对应测试
 4. 不允许通过放宽断言掩盖真实回归
-5. 分层短期记忆改动必须覆盖 context、service、API 至少一层回归
+5. streaming 改动必须覆盖 API、service、provider、context 至少两层回归
 
 ---
 
-## 7. Code Review 清单
-
-1. 是否覆盖关键成功与错误路径
-2. 测试命名是否准确表达行为语义
-3. mock 是否必要且不过度
-4. 是否验证了错误映射与边界语义
-5. 是否出现“测试与真实接口契约不一致”
-6. 是否只测 happy path 而漏掉 scope isolation / compaction / reducer / reset 场景
-
----
-
-## 8. 执行链路（强制）
-
-1. 根目录四文档
-2. 本文件
-3. 对应模块 AGENTS 与对应 skill
-4. 修改测试
-5. 自审与文档回写
-
----
-
-## 9. 交付门禁
+## 6. 交付门禁
 
 1. 主链路改动未补测试，不视为完成
-2. 测试与当前接口契约不一致，不视为完成
-3. 只改代码不改测试，或只改测试不核对代码事实，不视为完成
-4. layered memory contract 改动未覆盖 get/append/reset/replace/update_state，不视为完成
-5. scope / reset / compaction / reducer 语义改动未覆盖测试，不视为完成
+2. streaming contract 改动未覆盖 started / delta / completed / error / cancelled，不视为完成
+3. failed / cancelled assistant message 过滤规则未覆盖，不视为完成

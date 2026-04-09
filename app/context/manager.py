@@ -1,9 +1,10 @@
-"""上下文管理器骨架。"""
+﻿"""上下文管理器。"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
+from uuid import uuid4
 
 from app.config import AppConfig, ContextMemoryConfig
 from app.context.memory_reducer import BaseWorkingMemoryReducer, RuleBasedWorkingMemoryReducer
@@ -75,6 +76,11 @@ class ContextManager:
         content: str,
         metadata: dict[str, Any] | None = None,
         conversation_id: str | None = None,
+        *,
+        message_id: str | None = None,
+        status: str | None = None,
+        finish_reason: str | None = None,
+        error_code: str | None = None,
     ) -> ContextWindow:
         return self._store.append_message(
             session_id=session_id,
@@ -83,6 +89,11 @@ class ContextManager:
                 role=role,
                 content=content,
                 metadata=dict(metadata or {}),
+                message_id=message_id,
+                status=status or "completed",
+                finish_reason=finish_reason,
+                error_code=error_code,
+                updated_at=now_utc_iso(),
             ),
         )
 
@@ -92,6 +103,8 @@ class ContextManager:
         content: str,
         metadata: dict[str, Any] | None = None,
         conversation_id: str | None = None,
+        *,
+        message_id: str | None = None,
     ) -> ContextWindow:
         return self.append_message(
             session_id=session_id,
@@ -99,6 +112,8 @@ class ContextManager:
             content=content,
             metadata=metadata,
             conversation_id=conversation_id,
+            message_id=message_id,
+            status="completed",
         )
 
     def append_assistant_message(
@@ -107,6 +122,11 @@ class ContextManager:
         content: str,
         metadata: dict[str, Any] | None = None,
         conversation_id: str | None = None,
+        *,
+        message_id: str | None = None,
+        status: str = "completed",
+        finish_reason: str | None = None,
+        error_code: str | None = None,
     ) -> ContextWindow:
         return self.append_message(
             session_id=session_id,
@@ -114,6 +134,111 @@ class ContextManager:
             content=content,
             metadata=metadata,
             conversation_id=conversation_id,
+            message_id=message_id,
+            status=status,
+            finish_reason=finish_reason,
+            error_code=error_code,
+        )
+
+    def create_assistant_placeholder(
+        self,
+        *,
+        session_id: str,
+        conversation_id: str | None,
+        assistant_message_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> ContextWindow:
+        return self.append_assistant_message(
+            session_id=session_id,
+            conversation_id=conversation_id,
+            content="",
+            metadata=metadata,
+            message_id=assistant_message_id,
+            status="created",
+        )
+
+    def update_assistant_stream_delta(
+        self,
+        *,
+        session_id: str,
+        conversation_id: str | None,
+        assistant_message_id: str,
+        delta: str,
+    ) -> ContextWindow:
+        window = self.get_context(session_id, conversation_id)
+        index = self._find_message_index(window, assistant_message_id)
+        if index is None:
+            raise ValueError(f"未找到 assistant message_id='{assistant_message_id}'。")
+
+        target = window.messages[index]
+        window.messages[index] = replace(
+            target,
+            content=f"{target.content}{delta}",
+            status="streaming",
+            updated_at=now_utc_iso(),
+        )
+        return self.update_context_window(window)
+
+    def finalize_assistant_message(
+        self,
+        *,
+        session_id: str,
+        conversation_id: str | None,
+        assistant_message_id: str,
+        status: str,
+        content: str,
+        finish_reason: str | None = None,
+        error_code: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> ContextWindow:
+        window = self.get_context(session_id, conversation_id)
+        index = self._find_message_index(window, assistant_message_id)
+        if index is None:
+            raise ValueError(f"未找到 assistant message_id='{assistant_message_id}'。")
+
+        target = window.messages[index]
+        merged_metadata = {**target.metadata, **dict(metadata or {})}
+        window.messages[index] = replace(
+            target,
+            content=content,
+            status=status,
+            finish_reason=finish_reason,
+            error_code=error_code,
+            metadata=merged_metadata,
+            updated_at=now_utc_iso(),
+        )
+        return self.update_context_window(window)
+
+    def update_after_stream_completion(
+        self,
+        *,
+        session_id: str,
+        conversation_id: str | None,
+        user_message_id: str,
+        assistant_message_id: str,
+        memory_config: ContextMemoryConfig,
+    ) -> ContextWindow:
+        scope = normalize_conversation_scope(conversation_id)
+        window = self.get_context(session_id, scope)
+
+        user_message = self._find_message(window, user_message_id)
+        if user_message is None:
+            raise ValueError(f"未找到 user message_id='{user_message_id}'。")
+
+        assistant_message = self._find_message(window, assistant_message_id)
+        if assistant_message is None:
+            raise ValueError(f"未找到 assistant message_id='{assistant_message_id}'。")
+
+        if assistant_message.status != "completed":
+            return window
+
+        return self._apply_layered_memory_pipeline(
+            window=window,
+            session_id=session_id,
+            conversation_scope=scope,
+            latest_user_message=user_message,
+            latest_assistant_message=assistant_message,
+            memory_config=memory_config,
         )
 
     def clear_context(
@@ -173,15 +298,41 @@ class ContextManager:
             role="user",
             content=user_content,
             metadata=dict(metadata or {}),
+            message_id=f"um_{uuid4()}",
+            status="completed",
         )
         assistant_message = ContextMessage(
             role="assistant",
             content=assistant_content,
             metadata=dict(metadata or {}),
+            message_id=f"am_{uuid4()}",
+            status="completed",
         )
-        log_report("ContextManager.update_after_chat_turn.context_message", dict(user_message=user_message, assistant_message=assistant_message))
+        log_report(
+            "ContextManager.update_after_chat_turn.context_message",
+            {"user_message": user_message, "assistant_message": assistant_message},
+        )
         window.messages.extend([user_message, assistant_message])
 
+        return self._apply_layered_memory_pipeline(
+            window=window,
+            session_id=session_id,
+            conversation_scope=scope,
+            latest_user_message=user_message,
+            latest_assistant_message=assistant_message,
+            memory_config=memory_config,
+        )
+
+    def _apply_layered_memory_pipeline(
+        self,
+        *,
+        window: ContextWindow,
+        session_id: str,
+        conversation_scope: str,
+        latest_user_message: ContextMessage,
+        latest_assistant_message: ContextMessage,
+        memory_config: ContextMemoryConfig,
+    ) -> ContextWindow:
         # 3) 对 recent raw 层执行预算治理：
         # - 在 token 超预算时，从最旧消息开始压缩（移出 recent raw）；
         # - 至少保留 min_keep_messages 条最近消息；
@@ -192,7 +343,10 @@ class ContextManager:
             min_keep_messages=memory_config.recent_raw_min_keep_messages,
             enabled=memory_config.layered_memory_enabled,
         )
-        log_report("ContextManager.update_after_chat_turn.compaction_result", compaction_result)
+        log_report(
+            "ContextManager.update_after_chat_turn.compaction_result",
+            compaction_result,
+        )
         window.messages = compaction_result.recent_raw_messages
 
         # 4) 若开启 rolling summary，且本轮确实有被压出的旧消息，
@@ -205,27 +359,32 @@ class ContextManager:
                 max_chars=memory_config.rolling_summary_max_chars,
             )
             window.rolling_summary = rolling_summary_state
-        log_report("ContextManager.update_after_chat_turn.rolling_summary_state", rolling_summary_state)
+        log_report(
+            "ContextManager.update_after_chat_turn.rolling_summary_state",
+            rolling_summary_state,
+        )
 
-        # 5) 若开启 working memory，则用 reducer 结合“上一状态 + 本轮 user/assistant”
+        # 5) 若开启 working memory，则由 reducer 结合“上一状态 + 本轮 user/assistant”
         # 生成新的结构化工作记忆（去重、限长、空值保护由 reducer 负责）。
         working_memory_state = None
         if memory_config.working_memory_enabled:
             working_memory_state = self._memory_reducer.reduce(
                 previous=window.working_memory,
-                latest_user_message=user_message,
-                latest_assistant_message=assistant_message,
+                latest_user_message=latest_user_message,
+                latest_assistant_message=latest_assistant_message,
             )
             window.working_memory = working_memory_state
-        log_report("ContextManager.update_after_chat_turn.working_memory_state", working_memory_state)
+        log_report(
+            "ContextManager.update_after_chat_turn.working_memory_state",
+            working_memory_state,
+        )
 
-        # 6) 写入本轮 runtime trace，便于 request_assembler / 日志侧观察：
-        # scope、recent raw 规模、是否触发压缩、summary/working memory 是否生效等。
+        # 6) 写入本轮 runtime trace，便于 request_assembler / 日志侧观测。
         window.runtime_meta = {
             **window.runtime_meta,
             "scope": {
                 "session_id": session_id,
-                "conversation_id": scope,
+                "conversation_id": conversation_scope,
             },
             "recent_raw_message_count": len(window.messages),
             "recent_raw_token_count": compaction_result.recent_raw_token_count,
@@ -323,3 +482,18 @@ class ContextManager:
         if preview:
             base_text = f"{base_text} preview={preview}"
         return base_text
+
+    @staticmethod
+    def _find_message_index(window: ContextWindow, message_id: str) -> int | None:
+        for index in range(len(window.messages) - 1, -1, -1):
+            message = window.messages[index]
+            if message.message_id == message_id:
+                return index
+        return None
+
+    @staticmethod
+    def _find_message(window: ContextWindow, message_id: str) -> ContextMessage | None:
+        for message in reversed(window.messages):
+            if message.message_id == message_id:
+                return message
+        return None

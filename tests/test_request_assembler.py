@@ -215,6 +215,44 @@ class RequestAssemblerTests(unittest.TestCase):
             + trace["summary_dropped_message_count"],
         )
 
+    def test_assemble_filters_non_completed_assistant_messages(self) -> None:
+        manager = ContextManager(store=InMemoryContextStore())
+        manager.replace_context_messages(
+            "session-1",
+            [
+                ContextMessage(role="user", content="user-1"),
+                ContextMessage(role="assistant", content="assistant-ok", status="completed"),
+                ContextMessage(role="assistant", content="assistant-cancelled", status="cancelled"),
+                ContextMessage(role="assistant", content="assistant-failed", status="failed"),
+            ],
+            conversation_id="conversation-1",
+        )
+        assembler = ChatRequestAssembler(
+            app_config=self.config,
+            prompt_service=StubPromptService(),
+            context_policy_pipeline=self.pipeline,
+        )
+
+        request = assembler.assemble_from_user_prompt(
+            ChatRequest(
+                user_prompt="latest",
+                provider="openai",
+                stream=False,
+                session_id="session-1",
+                conversation_id="conversation-1",
+            ),
+            context_manager=manager,
+        )
+
+        serialized_text = "\n".join([message.content for message in request.messages])
+        self.assertIn("assistant-ok", serialized_text)
+        self.assertNotIn("assistant-cancelled", serialized_text)
+        self.assertNotIn("assistant-failed", serialized_text)
+        self.assertEqual(
+            request.metadata["context_assembly"]["ignored_non_completed_assistant_count"],
+            2,
+        )
+
     @unittest.skipIf(fakeredis is None, "未安装 fakeredis，跳过 Redis assembler 测试。")
     def test_assemble_can_read_history_from_redis_store(self) -> None:
         redis_client = fakeredis.FakeRedis(decode_responses=True)

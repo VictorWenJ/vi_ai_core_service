@@ -1,4 +1,4 @@
-"""用于短期历史治理的规范化上下文模型。"""
+﻿"""用于短期上下文治理的规范化上下文模型。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 DEFAULT_CONVERSATION_SCOPE = "__default__"
+DEFAULT_CONTEXT_MESSAGE_STATUS = "completed"
+ASSISTANT_MESSAGE_STATUSES = {"created", "streaming", "completed", "failed", "cancelled"}
 
 
 def now_utc_iso() -> str:
@@ -20,12 +22,48 @@ def normalize_conversation_scope(conversation_id: str | None) -> str:
     return normalized_value or DEFAULT_CONVERSATION_SCOPE
 
 
+def normalize_message_status(role: str, status: str | None) -> str:
+    normalized_role = role.strip().lower()
+    normalized_status = (status or DEFAULT_CONTEXT_MESSAGE_STATUS).strip().lower()
+    if normalized_role != "assistant":
+        return DEFAULT_CONTEXT_MESSAGE_STATUS
+    if normalized_status not in ASSISTANT_MESSAGE_STATUSES:
+        raise ValueError(
+            "assistant 消息状态不合法，支持的状态为："
+            f"{', '.join(sorted(ASSISTANT_MESSAGE_STATUSES))}。"
+        )
+    return normalized_status
+
+
 @dataclass
 class ContextMessage:
     role: str
     content: str
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=now_utc_iso)
+    message_id: str | None = None
+    status: str = DEFAULT_CONTEXT_MESSAGE_STATUS
+    updated_at: str = field(default_factory=now_utc_iso)
+    finish_reason: str | None = None
+    error_code: str | None = None
+
+    def __post_init__(self) -> None:
+        self.role = self.role.strip().lower()
+        self.content = str(self.content)
+        self.status = normalize_message_status(self.role, self.status)
+        self.metadata = dict(self.metadata)
+        if self.message_id is not None:
+            self.message_id = self.message_id.strip() or None
+        if self.finish_reason is not None:
+            self.finish_reason = self.finish_reason.strip() or None
+        if self.error_code is not None:
+            self.error_code = self.error_code.strip() or None
+        if not self.updated_at:
+            self.updated_at = self.created_at or now_utc_iso()
+
+    @property
+    def is_completed_assistant(self) -> bool:
+        return self.role == "assistant" and self.status == "completed"
 
 
 @dataclass

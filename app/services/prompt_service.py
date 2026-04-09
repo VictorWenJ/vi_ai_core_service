@@ -14,9 +14,9 @@ class PromptService:
     def get_default_system_prompt(self) -> str:
         return render_prompt(DEFAULT_CHAT_SYSTEM_TEMPLATE_ID).strip()
 
+    @staticmethod
     def build_messages(
-        self,
-        system_prompt: str | None = None,
+            system_prompt: str | None = None,
         user_prompt: str | None = None,
         messages: list[LLMMessage] | None = None,
     ) -> list[LLMMessage]:

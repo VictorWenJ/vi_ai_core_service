@@ -54,6 +54,50 @@ class FakeChatService:
         }
 
 
+class FakeStreamingChatService:
+    def stream_chat_from_user_prompt(self, chat_request):
+        del chat_request
+        yield {
+            "event": "response.started",
+            "data": {
+                "request_id": "req-1",
+                "conversation_id": "conv-1",
+                "assistant_message_id": "am-1",
+                "provider": "openai",
+                "model": "gpt-test",
+                "created_at": "2026-04-09T00:00:00+00:00",
+            },
+        }
+        yield {
+            "event": "response.delta",
+            "data": {
+                "assistant_message_id": "am-1",
+                "delta": "hello",
+                "sequence": 1,
+            },
+        }
+        yield {
+            "event": "response.completed",
+            "data": {
+                "assistant_message_id": "am-1",
+                "status": "completed",
+                "finish_reason": "stop",
+                "latency_ms": 12.3,
+            },
+        }
+
+    def cancel_stream(self, cancel_request):
+        return {
+            "found": True,
+            "cancelled": True,
+            "already_cancelled": False,
+            "request_id": cancel_request.request_id,
+            "assistant_message_id": cancel_request.assistant_message_id,
+            "session_id": cancel_request.session_id,
+            "conversation_id": cancel_request.conversation_id,
+        }
+
+
 class FakeOpenAIProvider(BaseLLMProvider):
     provider_name = "openai"
 
@@ -202,6 +246,51 @@ class APIRouteTests(unittest.TestCase):
             fake_service.last_reset_payload,
             {"session_id": "session-1", "conversation_id": None},
         )
+
+    def test_chat_stream_returns_sse(self) -> None:
+        with patch(
+            "app.api.chat._get_streaming_chat_service",
+            return_value=FakeStreamingChatService(),
+        ):
+            response = self.client.post(
+                "/api/v1/chat/stream",
+                json={
+                    "user_prompt": "hello",
+                    "provider": "openai",
+                    "model": "gpt-test",
+                    "session_id": "session-1",
+                    "conversation_id": "conv-1",
+                    "request_id": "req-1",
+                    "stream": True,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/event-stream", response.headers["content-type"])
+        self.assertIn("event: response.started", response.text)
+        self.assertIn("event: response.delta", response.text)
+        self.assertIn("event: response.completed", response.text)
+
+    def test_chat_cancel_delegates_to_streaming_service(self) -> None:
+        with patch(
+            "app.api.chat._get_streaming_chat_service",
+            return_value=FakeStreamingChatService(),
+        ):
+            response = self.client.post(
+                "/api/v1/chat/cancel",
+                json={
+                    "request_id": "req-1",
+                    "assistant_message_id": "am-1",
+                    "session_id": "session-1",
+                    "conversation_id": "conv-1",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["found"])
+        self.assertTrue(body["cancelled"])
+        self.assertEqual(body["request_id"], "req-1")
 
     def test_chat_reset_maps_service_validation_error_to_400(self) -> None:
         class ValidationErrorResetService:

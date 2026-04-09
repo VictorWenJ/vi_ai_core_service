@@ -1,4 +1,4 @@
-"""聊天编排的请求装配与规范化辅助。"""
+﻿"""聊天编排的请求装配与规范化辅助。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 from app.api.schemas import ChatRequest
 from app.config import AppConfig
 from app.context.manager import ContextManager
-from app.context.models import ContextWindow, normalize_conversation_scope
+from app.context.models import ContextMessage, ContextWindow, normalize_conversation_scope
 from app.context.policies.context_policy import (
     ContextPolicyExecutionResult,
     ContextPolicyPipeline,
@@ -29,16 +29,16 @@ class ChatRequestAssembler:
     """从 API 输入装配聊天请求并规范化标准请求。"""
 
     def __init__(
-            self,
-            app_config: AppConfig,
-            prompt_service: PromptService,
-            context_policy_pipeline: ContextPolicyPipeline | None = None,
+        self,
+        app_config: AppConfig,
+        prompt_service: PromptService,
+        context_policy_pipeline: ContextPolicyPipeline | None = None,
     ) -> None:
         self._config = app_config
         self._prompt_service = prompt_service
         self._context_policy_pipeline = (
-                context_policy_pipeline
-                or build_default_context_policy_pipeline(app_config.context_policy_config)
+            context_policy_pipeline
+            or build_default_context_policy_pipeline(app_config.context_policy_config)
         )
 
     def assemble_from_user_prompt(self, request: ChatRequest, context_manager: ContextManager) -> LLMRequest:
@@ -47,13 +47,22 @@ class ChatRequestAssembler:
         normalized_request_id = normalize_optional_text(request.request_id)
         use_server_history = bool(normalized_session_id)
 
-        log_report("ChatRequestAssembler.assemble_from_user_prompt.normalized_data",
-                   dict(normalized_session_id=normalized_session_id,
-                        normalized_conversation_id=normalized_conversation_id,
-                        normalized_request_id=normalized_request_id,
-                        use_server_history=use_server_history))
+        log_report(
+            "ChatRequestAssembler.assemble_from_user_prompt.normalized_data",
+            {
+                "normalized_session_id": normalized_session_id,
+                "normalized_conversation_id": normalized_conversation_id,
+                "normalized_request_id": normalized_request_id,
+                "use_server_history": use_server_history,
+            },
+        )
 
-        context_window = self.get_context_window(context_manager, normalized_conversation_id, normalized_session_id, use_server_history)
+        context_window, ignored_non_completed_assistant_count = self.get_context_window(
+            context_manager,
+            normalized_conversation_id,
+            normalized_session_id,
+            use_server_history,
+        )
         log_report("ChatRequestAssembler.assemble_from_user_prompt.context_window", context_window)
 
         policy_result = self._context_policy_pipeline.run(context_window)
@@ -83,13 +92,15 @@ class ChatRequestAssembler:
         log_report("ChatRequestAssembler.assemble_from_user_prompt.assembled_messages", assembled_messages)
 
         request_metadata = self.build_request_metadata(
-            context_window,
-            normalized_conversation_id,
-            normalized_request_id,
-            normalized_session_id,
-            policy_result,
-            request,
-            use_server_history)
+            context_window=context_window,
+            normalized_conversation_id=normalized_conversation_id,
+            normalized_request_id=normalized_request_id,
+            normalized_session_id=normalized_session_id,
+            policy_result=policy_result,
+            request=request,
+            use_server_history=use_server_history,
+            ignored_non_completed_assistant_count=ignored_non_completed_assistant_count,
+        )
 
         return LLMRequest(
             provider=request.provider,
@@ -105,13 +116,17 @@ class ChatRequestAssembler:
         )
 
     @staticmethod
-    def build_request_metadata(context_window: ContextWindow,
-                               normalized_conversation_id: str | None,
-                               normalized_request_id: str | None,
-                               normalized_session_id: str | None,
-                               policy_result: ContextPolicyExecutionResult,
-                               request: ChatRequest,
-                               use_server_history: bool) -> dict[str, Any]:
+    def build_request_metadata(
+        *,
+        context_window: ContextWindow,
+        normalized_conversation_id: str | None,
+        normalized_request_id: str | None,
+        normalized_session_id: str | None,
+        policy_result: ContextPolicyExecutionResult,
+        request: ChatRequest,
+        use_server_history: bool,
+        ignored_non_completed_assistant_count: int,
+    ) -> dict[str, Any]:
         request_metadata = dict(request.metadata or {})
         if normalized_conversation_id:
             request_metadata["conversation_id"] = normalized_conversation_id
@@ -125,6 +140,7 @@ class ChatRequestAssembler:
             conversation_id=normalized_conversation_id,
             context_window=context_window,
             policy_result=policy_result,
+            ignored_non_completed_assistant_count=ignored_non_completed_assistant_count,
         )
         request_metadata["context_assembly"] = context_trace
         request_metadata["used_context_history"] = context_trace
@@ -150,27 +166,43 @@ class ChatRequestAssembler:
         return layered_messages
 
     @staticmethod
-    def get_context_window(context_manager: ContextManager, normalized_conversation_id: str | None,
-                           normalized_session_id: str | None, use_server_history: bool) -> ContextWindow:
+    def get_context_window(
+        context_manager: ContextManager,
+        normalized_conversation_id: str | None,
+        normalized_session_id: str | None,
+        use_server_history: bool,
+    ) -> tuple[ContextWindow, int]:
         context_window = ContextWindow(
             session_id=normalized_session_id or "",
             conversation_id=normalize_conversation_scope(normalized_conversation_id),
             messages=[],
         )
+        ignored_non_completed_assistant_count = 0
         if use_server_history:
-            context_window = context_manager.get_context(
+            original_window = context_manager.get_context(
                 normalized_session_id or "",
                 normalized_conversation_id,
             )
-        return context_window
+            filtered_messages, ignored_non_completed_assistant_count = filter_messages_for_request_assembly(
+                original_window.messages
+            )
+            context_window = ContextWindow(
+                session_id=original_window.session_id,
+                conversation_id=original_window.conversation_id,
+                messages=filtered_messages,
+                rolling_summary=original_window.rolling_summary,
+                working_memory=original_window.working_memory,
+                runtime_meta=original_window.runtime_meta,
+            )
+        return context_window, ignored_non_completed_assistant_count
 
     def normalize_request(
-            self,
-            llm_request: LLMRequest,
-            *,
-            provider_registry: ProviderRegistry,
+        self,
+        llm_request: LLMRequest,
+        *,
+        provider_registry: ProviderRegistry,
+        allow_stream: bool = False,
     ) -> LLMRequest:
-
         provider_name = llm_request.provider or self._config.default_provider
         provider_config = provider_registry.get_provider_config(provider_name)
         model_name = llm_request.model or provider_config.default_model
@@ -182,9 +214,9 @@ class ChatRequestAssembler:
                 f"请在请求中提供，或配置 {env_var_name}。"
             )
 
-        if llm_request.stream:
+        if llm_request.stream and not allow_stream:
             raise ServiceNotImplementedError(
-                "当前基础阶段明确不支持流式能力。"
+                "当前同步 chat 链路不支持流式能力。"
             )
 
         normalized_messages = list(llm_request.messages)
@@ -212,13 +244,34 @@ def normalize_optional_text(value: str | None) -> str | None:
     return stripped_value or None
 
 
+def filter_messages_for_request_assembly(
+    messages: list[ContextMessage],
+) -> tuple[list[ContextMessage], int]:
+    filtered_messages: list[ContextMessage] = []
+    ignored_non_completed_assistant_count = 0
+
+    for message in messages:
+        if message.role != "assistant":
+            filtered_messages.append(message)
+            continue
+
+        if message.status in {"completed", ""}:
+            filtered_messages.append(message)
+            continue
+
+        ignored_non_completed_assistant_count += 1
+
+    return filtered_messages, ignored_non_completed_assistant_count
+
+
 def build_context_assembly_trace(
-        *,
-        use_server_history: bool,
-        session_id: str | None,
-        conversation_id: str | None,
-        context_window: ContextWindow,
-        policy_result: ContextPolicyExecutionResult,
+    *,
+    use_server_history: bool,
+    session_id: str | None,
+    conversation_id: str | None,
+    context_window: ContextWindow,
+    policy_result: ContextPolicyExecutionResult,
+    ignored_non_completed_assistant_count: int,
 ) -> dict[str, Any]:
     selection = policy_result.selection
     truncation = policy_result.truncation
@@ -228,9 +281,9 @@ def build_context_assembly_trace(
     truncation_dropped_message_count = len(truncation.dropped_messages)
     summary_dropped_message_count = summary.dropped_message_count
     total_dropped_message_count = (
-            selection_dropped_message_count
-            + truncation_dropped_message_count
-            + summary_dropped_message_count
+        selection_dropped_message_count
+        + truncation_dropped_message_count
+        + summary_dropped_message_count
     )
     runtime_meta = context_window.runtime_meta or {}
     return {
@@ -246,6 +299,7 @@ def build_context_assembly_trace(
         "working_memory_fields_present": context_window.working_memory.non_empty_fields(),
         "compaction_applied": bool(runtime_meta.get("compaction_applied", False)),
         "compacted_message_count": int(runtime_meta.get("compacted_message_count", 0)),
+        "ignored_non_completed_assistant_count": ignored_non_completed_assistant_count,
         "source_message_count": selection.source_message_count,
         "source_token_count": selection.source_token_count,
         "selection_selected_message_count": selection.selected_message_count,

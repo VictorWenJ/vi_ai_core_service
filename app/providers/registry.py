@@ -29,7 +29,7 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         maturity="implemented",
         capabilities={
             "chat_non_streaming": True,
-            "streaming": False,
+            "streaming": True,
             "multimodal": False,
             "tools": False,
             "structured_output": False,
@@ -40,7 +40,7 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         maturity="implemented",
         capabilities={
             "chat_non_streaming": True,
-            "streaming": False,
+            "streaming": True,
             "multimodal": False,
             "tools": False,
             "structured_output": False,

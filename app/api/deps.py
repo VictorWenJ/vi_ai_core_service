@@ -1,4 +1,4 @@
-"""API 路由依赖装配辅助。"""
+﻿"""API 路由依赖装配辅助。"""
 
 from __future__ import annotations
 
@@ -6,17 +6,65 @@ from functools import lru_cache
 
 from app.config import AppConfig
 from app.context.manager import ContextManager
+from app.providers.registry import ProviderRegistry
+from app.services.cancellation_registry import CancellationRegistry
 from app.services.llm_service import LLMService
 from app.services.prompt_service import PromptService
+from app.services.request_assembler import ChatRequestAssembler
+from app.services.streaming_chat_service import StreamingChatService
+
+
+@lru_cache(maxsize=1)
+def get_app_config() -> AppConfig:
+    return AppConfig.from_env()
+
+
+@lru_cache(maxsize=1)
+def get_prompt_service() -> PromptService:
+    return PromptService()
+
+
+@lru_cache(maxsize=1)
+def get_context_manager() -> ContextManager:
+    return ContextManager.from_app_config(get_app_config())
+
+
+@lru_cache(maxsize=1)
+def get_provider_registry() -> ProviderRegistry:
+    return ProviderRegistry(get_app_config())
+
+
+@lru_cache(maxsize=1)
+def get_request_assembler() -> ChatRequestAssembler:
+    return ChatRequestAssembler(
+        app_config=get_app_config(),
+        prompt_service=get_prompt_service(),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_cancellation_registry() -> CancellationRegistry:
+    return CancellationRegistry()
 
 
 @lru_cache(maxsize=1)
 def get_chat_service() -> LLMService:
-    app_config = AppConfig.from_env()
-    prompt_service = PromptService()
-    context_manager = ContextManager.from_app_config(app_config)
     return LLMService(
-        app_config=app_config,
-        prompt_service=prompt_service,
-        context_manager=context_manager,
+        app_config=get_app_config(),
+        registry=get_provider_registry(),
+        prompt_service=get_prompt_service(),
+        context_manager=get_context_manager(),
+        request_assembler=get_request_assembler(),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_streaming_chat_service() -> StreamingChatService:
+    return StreamingChatService(
+        app_config=get_app_config(),
+        registry=get_provider_registry(),
+        prompt_service=get_prompt_service(),
+        context_manager=get_context_manager(),
+        request_assembler=get_request_assembler(),
+        cancellation_registry=get_cancellation_registry(),
     )
