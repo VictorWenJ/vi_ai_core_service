@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from _typeshed import _VT_co
 from dataclasses import replace
 from typing import Any
 
 from app.api.schemas import ChatRequest
 from app.config import AppConfig
-from app.context import ContextManager, ContextWindow
 from app.context.manager import ContextManager
 from app.context.models import ContextWindow, normalize_conversation_scope
-from app.context.policies import ContextPolicyExecutionResult
 from app.context.policies.context_policy import (
     ContextPolicyExecutionResult,
     ContextPolicyPipeline,
@@ -23,7 +20,6 @@ from app.context.rendering import (
 )
 from app.observability.log_until import log_report
 from app.providers.registry import ProviderRegistry
-from app.schemas import LLMMessage
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.services.errors import ServiceNotImplementedError, ServiceValidationError
 from app.services.prompt_service import PromptService
@@ -115,7 +111,7 @@ class ChatRequestAssembler:
                                normalized_session_id: str | None,
                                policy_result: ContextPolicyExecutionResult,
                                request: ChatRequest,
-                               use_server_history: bool) -> dict[str, _VT_co]:
+                               use_server_history: bool) -> dict[str, Any]:
         request_metadata = dict(request.metadata or {})
         if normalized_conversation_id:
             request_metadata["conversation_id"] = normalized_conversation_id
