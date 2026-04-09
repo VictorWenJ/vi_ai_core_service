@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from setuptools.windows_support import windows_only
-from torch.signal.windows.windows import window_common_args
-
 from app.config import ContextPolicyConfig
 from app.context.policies.context_policy import ContextPolicyPipeline
 from app.context.policies.serialization import DefaultHistorySerializationPolicy
@@ -28,8 +25,8 @@ DEFAULT_HISTORY_MESSAGE_OVERHEAD_TOKENS = 4
 
 
 def build_default_context_policy_pipeline(
-    context_config: ContextPolicyConfig | None = None,
-    token_counter: BaseTokenCounter | None = None,
+        context_config: ContextPolicyConfig | None = None,
+        token_counter: BaseTokenCounter | None = None,
 ) -> ContextPolicyPipeline:
     """装配默认上下文策略配置"""
 
