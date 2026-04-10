@@ -36,4 +36,4 @@
 
 - 不直接透传厂商原始响应
 - 上层只消费 canonical contract
-- 当前不包含 embedding contract
+- embedding 通过独立 contract（`BaseEmbeddingProvider` / `EmbeddingResult`）表达

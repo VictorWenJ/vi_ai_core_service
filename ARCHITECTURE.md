@@ -43,7 +43,7 @@
 
 - 让不同能力在不同目录中各司其职
 - 让系统具备前端可接入的流式会话交付能力
-- 为基于受控知识源进行 grounding 与 citation 的能力预留清晰子域
+- 为基于受控知识源进行 grounding 与 citation 提供运行时子域
 - 为后续 Tool、Case Workspace、Agent 预留清晰边界
 
 ---
@@ -80,10 +80,9 @@
 
 ### 知识与检索子域（`app/rag/`）
 职责：
-- 当前代码基线下仅保留模块治理文档
-- 后续负责知识对象模型
-- 后续负责 ingest / parse / chunk / embed / index
-- 后续负责 retrieval service 与 citation 结构
+- 负责知识对象模型
+- 负责 ingest / parse / clean / chunk / embed / index
+- 负责 retrieval service、knowledge block 渲染与 citation 结构
 - 作为 Knowledge + Citation Layer 的内部实现域
 
 ### 模型 API 接入层（`app/providers/`）
@@ -91,7 +90,7 @@
 - 对接不同厂商
 - 归一化非流式结果
 - 归一化流式 chunk / finish / usage / error
-- 当前代码基线下不含 embedding provider 抽象
+- 通过独立 embedding provider 抽象承接文本 embedding 能力
 
 ### 可观测性基础设施层（`app/observability/`）
 职责：
@@ -117,8 +116,7 @@
 
 当前代码事实：
 
-- app + redis 本地联调已具备
-- qdrant 尚未接入当前运行链路
+- app + redis + qdrant 本地联调已具备
 
 `infra/` 不进入业务依赖链。
 它是工程基础设施平面，而不是业务层。
@@ -141,7 +139,7 @@
 
 当前代码事实补充：
 
-- 当前主链路尚未启用 `rag` 分支
+- 当前主链路已启用 `rag` 可降级分支
 - `services` 当前少量用户请求入口会消费 `app/api/schemas/` 中的 Pydantic 模型
 
 ### 依赖方向原则
@@ -163,6 +161,7 @@
 3. service 调用 `request_assembler`
 4. assembler 按固定顺序装配：
    - system prompt
+   - knowledge block
    - working memory block
    - rolling summary block
    - recent raw messages
@@ -174,7 +173,7 @@
 
 当前代码事实：
 
-- 当前同步链路没有 retrieval、knowledge block 或 citations
+- 当前同步链路已支持 retrieval、knowledge block 与 citations
 
 ### 6.2 流式聊天链路
 
@@ -191,7 +190,7 @@
    - service 写回 completed assistant message
    - service 执行 Phase 4 标准 context update
    - API 输出 `response.completed`
-- `response.completed` 当前可附带 usage / latency / trace
+- `response.completed` 当前可附带 usage / latency / trace / citations
 11. 异常或取消时：
    - service 写回 `failed` / `cancelled`
    - 不进入标准 memory update
@@ -199,12 +198,17 @@
 
 当前代码事实：
 
-- 当前流式链路没有 retrieval、knowledge block 或 citations
+- 当前流式链路在 completed 阶段返回 citations，delta 阶段不返回 citation 增量
 
 ### 6.3 知识导入链路
 
-当前代码尚未实现知识导入链路。
-`app/rag/` 目前仅保留模块治理文档占位，尚未创建 parser / chunker / embedding / index / retrieval 运行时代码。
+当前代码已实现知识导入最小链路：
+
+1. parser（raw text / `.txt` / `.md`）
+2. cleaner
+3. 结构感知 + token-aware + overlap chunking
+4. embedding provider 抽象调用
+5. vector index upsert（in-memory / qdrant 封装）
 
 ---
 
@@ -246,7 +250,7 @@
 
 当前代码事实：
 
-- `app/rag/` 当前尚未形成知识与检索实现代码
+- `app/rag/` 已形成知识与检索实现代码
 
 ### 8.2 相似度与索引约束
 - 默认向量库基线：Qdrant
@@ -254,12 +258,10 @@
 - 当前阶段不自研 ANN 算法
 - 当前阶段只做文本 embedding 主链路
 
-以上仍属于待落地技术基线，尚未接入当前运行链路。
-
 ### 8.3 Citation 约束
-- 当前代码基线中 citation 尚未进入对外响应契约
-- 后续若落地，`/chat` 返回完整 citations
-- 后续若落地，`/chat_stream` 仅在完成事件返回 citations
+- 当前代码基线中 citation 已进入对外响应契约
+- `/chat` 返回完整 citations（为空时返回空数组）
+- `/chat_stream` 仅在完成事件返回 citations
 - delta 阶段不返回 citation 增量
 
 ### 8.4 降级约束

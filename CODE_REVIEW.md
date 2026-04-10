@@ -90,19 +90,19 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - SSE 序列化是否留在 API 层
 - route 是否没有直接消费 provider 原始 chunk 或 vector index
 - 当前 `/chat` 与 `/chat_stream` 契约是否仍与 `app/api/schemas/chat.py` 一致
-- 若未来新增 citation，是否通过稳定 schema 返回，而不是随意拼接
+- citation 是否通过稳定 schema 返回，而不是随意拼接
 
 ### Services 层
 - 是否仍然是编排层
 - 生命周期状态机、取消协调、完成态收口是否由 services 统一调度
-- 当前 request assembly 顺序是否仍为 system -> working memory -> rolling summary -> recent raw -> user
-- 若未来新增 retrieval，是否由 services 编排，而不是散落到 api/provider/context
+- 当前 request assembly 顺序是否仍为 system -> knowledge -> working memory -> rolling summary -> recent raw -> user
+- retrieval 是否由 services 编排，而不是散落到 api/provider/context
 
 ### Context / Prompt / RAG / Provider
 - 四个专项能力模块是否职责分离
 - context 是否只在 completed 时执行标准 memory update
-- rag 当前是否仍保持“治理占位、无运行时代码”的代码事实
-- provider 是否只做 canonical response / stream chunk 归一化
+- rag 是否保持“内部子域 + 运行时代码实现”且不越界
+- provider 是否保持 chat/stream canonical 归一化与独立 embedding 抽象边界
 
 ### Observability
 - 是否仍是结构化日志基础设施，而不是业务状态机
@@ -125,9 +125,9 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 ### 当前阶段补充要求
 
-- 当前 `/chat` 与 `/chat_stream` 是否都还没有文档外漂移字段
-- 若未来新增 citations，是否为空时行为明确
-- 若未来新增 citations，delta 阶段是否没有混入 citation 增量
+- 当前 `/chat` 与 `/chat_stream` citation 字段是否与 schema 一致
+- citations 为空时行为是否明确（空数组）
+- delta 阶段是否没有混入 citation 增量
 
 ---
 
@@ -139,7 +139,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - provider timeout 与 request timeout 是否区分
 - `response.error` 与 `response.cancelled` 是否不混淆
 - failed / cancelled assistant message 是否没有进入标准 memory update
-- 若未来新增 retrieval / embedding / index，失败时是否可降级或可显式失败，而不是静默污染结果
+- retrieval / embedding / index 失败时是否可降级或可显式失败，而不是静默污染结果
 
 ### 当前阶段补充要求
 
@@ -171,8 +171,6 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - request assembly 顺序与过滤测试
 - provider normalization 与 registry 测试
 
-若后续真实落地 Phase 6，再追加：
-
 - parser / chunker / embedding / index / retrieval 测试
 - citation 格式化测试
 - `/chat` citation 输出测试
@@ -185,7 +183,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 ### 9.1 RAG 边界
 - `app/rag/` 是否保持为内部子域，而不是无计划扩展成新平台
-- 当前代码是否仍如实反映“RAG 尚未落地运行时代码”
+- 当前代码是否如实反映已落地的 `models / ingestion / retrieval / citation / runtime`
 - 若开始新增 RAG 代码，retrieval 是否没有入侵 context 语义
 - knowledge retrieval 是否没有替代 working memory / rolling summary
 
@@ -195,31 +193,31 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 若开始新增 `KnowledgeDocument` / `KnowledgeChunk` / `RetrievedChunk` / `Citation`，是否职责清晰
 
 ### 9.3 Chunking 与 Ingest
-- 当前代码是否仍未宣称已实现 chunking / ingest
-- 若开始新增实现，是否已从“按字符切分”升级为结构感知 + token-aware + overlap
-- 若开始新增实现，parser / chunker / embedding / index 是否链路清晰
+- chunking / ingest 实现是否与代码一致
+- 是否采用结构感知 + token-aware + overlap
+- parser / cleaner / chunker / embedding / index 链路是否清晰
 
 ### 9.4 Retrieval 与 Assembly
 - request assembly 顺序是否为：
   - system
+  - knowledge
   - working memory
   - rolling summary
   - recent raw
   - user
-- 当前代码是否仍未注入 knowledge block
-- 若开始新增 retrieval，结果是否通过统一 knowledge block 渲染
-- 若开始新增 citation，是否来自 retrieved chunks，而不是模型自由生成
+- knowledge block 是否通过统一渲染注入
+- citation 是否来自 retrieved chunks，而不是模型自由生成
 
 ### 9.5 流式与同步契约
-- 当前 `/chat` 是否仍未返回 citation 列表
-- 当前 `/chat_stream` completed 是否仍未返回 citations
+- `/chat` 是否返回 citation 列表且契约稳定
+- `/chat_stream` completed 是否返回 citations 且契约稳定
 - delta 阶段是否保持轻量且没有额外业务字段漂移
 
 ### 9.6 降级与鲁棒性
 - 当前流式取消 / 失败 / 完成路径是否仍可运行
 - 当前同步 provider / config 错误路径是否稳定
-- 若未来新增 retrieval，失败时 chat 是否仍可运行
-- 若未来新增 embedding / index / ingest，异常是否可定位
+- retrieval 失败时 chat / stream 是否仍可运行
+- embedding / index / ingest 异常是否可定位
 
 ---
 
@@ -233,7 +231,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 把 citation 做成模型随意输出的字符串
 - 继续使用按字符硬切分作为正式 chunking 主策略
 - 在没有抽象边界的前提下直接把 Qdrant/embedding 细节写死进业务层
-- 在未落地代码时把 Phase 6 能力写进文档、skill 或测试完成态
+- 把尚未落地能力写进文档、skill 或测试完成态
 
 ### 当前阶段补充拒绝项
 

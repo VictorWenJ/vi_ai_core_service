@@ -31,5 +31,5 @@
 ## 4. 原则
 
 - 不直接记录不可序列化复杂运行时对象
-- 不承诺当前不存在的 retrieval / citation 字段
+- retrieval / citation 字段必须与代码实现同步
 - 契约变更必须同步补测试

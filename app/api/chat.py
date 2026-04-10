@@ -1,4 +1,4 @@
-﻿"""最小化聊天 API 路由。"""
+"""最小化聊天 API 路由。"""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from app.api.error_mapping import build_chat_http_exception, build_service_http_
 from app.api.schemas.chat import (
     ChatCancelRequest,
     ChatCancelResponse,
+    ChatCitation,
     ChatRequest,
     ChatResetRequest,
     ChatResetResponse,
@@ -22,6 +23,7 @@ from app.api.schemas.chat import (
 from app.api.sse import format_sse_event
 from app.observability.log_until import log_report
 from app.schemas import LLMResponse
+from app.services.chat_result import ChatServiceResult
 
 router = APIRouter(tags=["chat"])
 # 供现有 API 测试使用的向后兼容别名。
@@ -30,14 +32,17 @@ _get_streaming_chat_service = get_streaming_chat_service
 
 
 @router.post("/chat", response_model=ChatResponse)
-def chat(chat_request: ChatRequest) -> LLMResponse:
+def chat(chat_request: ChatRequest) -> ChatResponse:
     started_at = perf_counter()
     llm_service = _get_chat_service()
 
     log_report("Chat.chat.chat_request", chat_request)
 
     try:
-        chat_response = llm_service.chat_from_user_prompt(chat_request)
+        if hasattr(llm_service, "chat_with_citations_from_user_prompt"):
+            service_result = llm_service.chat_with_citations_from_user_prompt(chat_request)
+        else:
+            service_result = llm_service.chat_from_user_prompt(chat_request)
     except Exception as exc:
         raise build_chat_http_exception(
             exc,
@@ -45,6 +50,7 @@ def chat(chat_request: ChatRequest) -> LLMResponse:
             started_at=started_at,
         ) from exc
 
+    chat_response = _to_chat_response(service_result)
     log_report("Chat.chat.chat_response", chat_response)
     log_report("Chat.chat.latency_ms", {"latency_ms": (perf_counter() - started_at) * 1000})
 
@@ -149,3 +155,40 @@ def reset_chat_context(reset_request: ChatResetRequest) -> ChatResetResponse:
 
 def _remove_none_fields(data: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in data.items() if value is not None}
+
+
+def _to_chat_response(result: ChatServiceResult | LLMResponse) -> ChatResponse:
+    if isinstance(result, LLMResponse):
+        return ChatResponse(
+            content=result.content,
+            provider=result.provider,
+            model=result.model,
+            usage=_usage_to_dict(result.usage),
+            finish_reason=result.finish_reason,
+            metadata=result.metadata,
+            raw_response=result.raw_response,
+            citations=[],
+        )
+
+    llm_response = result.llm_response
+    citations = [ChatCitation(**citation.to_dict()) for citation in result.citations]
+    return ChatResponse(
+        content=llm_response.content,
+        provider=llm_response.provider,
+        model=llm_response.model,
+        usage=_usage_to_dict(llm_response.usage),
+        finish_reason=llm_response.finish_reason,
+        metadata=llm_response.metadata,
+        raw_response=llm_response.raw_response,
+        citations=citations,
+    )
+
+
+def _usage_to_dict(usage: Any | None) -> dict[str, Any] | None:
+    if usage is None:
+        return None
+    if hasattr(usage, "__dict__"):
+        return dict(usage.__dict__)
+    if isinstance(usage, dict):
+        return dict(usage)
+    return None

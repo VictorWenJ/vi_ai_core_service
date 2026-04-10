@@ -1,4 +1,4 @@
-"""集中式应用与 Provider 配置。"""
+"""Application and provider configuration."""
 
 from __future__ import annotations
 
@@ -14,70 +14,51 @@ SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS = (
     "drop_oldest",
 )
 SUPPORTED_CONTEXT_STORE_BACKENDS = ("memory", "redis")
+SUPPORTED_RAG_EMBEDDING_PROVIDERS = ("deterministic", "openai")
 
-# Provider 默认超时时间（秒），用于未单独覆盖时的统一超时配置。
 DEFAULT_TIMEOUT_SECONDS = 60.0
-# 是否默认启用结构化日志输出。
 DEFAULT_LOG_ENABLED = True
-# 默认日志级别。
 DEFAULT_LOG_LEVEL = "INFO"
-# 默认日志格式（当前阶段仅支持 json）。
 DEFAULT_LOG_FORMAT = "json"
-# 是否默认记录 API 层详细 payload。
 DEFAULT_LOG_API_PAYLOAD = True
-# 是否默认记录 Provider 层详细 payload。
 DEFAULT_LOG_PROVIDER_PAYLOAD = True
-# 上下文窗口选择阶段的默认 token 预算上限。
 DEFAULT_CONTEXT_MAX_TOKEN_BUDGET = 1200
-# 上下文截断阶段的默认 token 预算上限（需 <= 最大预算）。
 DEFAULT_CONTEXT_TRUNCATION_TOKEN_BUDGET = 900
-# 是否默认启用确定性 summary/compaction。
 DEFAULT_CONTEXT_SUMMARY_ENABLED = True
-# summary 文本默认最大字符数。
 DEFAULT_CONTEXT_SUMMARY_MAX_CHARS = 320
-# summary 后仍超预算时的默认回退策略。
 DEFAULT_CONTEXT_FALLBACK_BEHAVIOR = "summary_then_drop_oldest"
-# token 估算时每条消息的默认固定开销（工程近似）。
 DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS = 4
-# 是否默认启用 Phase 4 分层短期记忆总开关。
 DEFAULT_CONTEXT_LAYERED_MEMORY_ENABLED = True
-# recent raw 层默认 token 预算上限。
 DEFAULT_CONTEXT_RECENT_RAW_MAX_TOKEN_BUDGET = 900
-# recent raw 层触发压缩后默认至少保留的最近消息条数。
 DEFAULT_CONTEXT_RECENT_RAW_MIN_KEEP_MESSAGES = 2
-# 是否默认启用 rolling summary 层。
 DEFAULT_CONTEXT_ROLLING_SUMMARY_ENABLED = True
-# rolling summary 默认最大字符数。
 DEFAULT_CONTEXT_ROLLING_SUMMARY_MAX_CHARS = 1200
-# 是否默认启用 working memory 层。
 DEFAULT_CONTEXT_WORKING_MEMORY_ENABLED = True
-# working memory 每个分区默认最多保留条目数。
 DEFAULT_CONTEXT_WORKING_MEMORY_MAX_ITEMS_PER_SECTION = 5
-# working memory 单条内容默认最大字符数。
 DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS = 160
-# 上下文存储后端默认值（memory/redis）。
 DEFAULT_CONTEXT_STORE_BACKEND = "memory"
-# Redis 上下文存储默认连接地址。
 DEFAULT_CONTEXT_REDIS_URL = "redis://localhost:6379/0"
-# Redis 上下文存储默认 key 前缀。
 DEFAULT_CONTEXT_STORE_KEY_PREFIX = "vi_ai_core_service:context"
-# 会话上下文默认 TTL（秒）。
 DEFAULT_CONTEXT_SESSION_TTL_SECONDS = 3600
-# Redis 不可用时是否默认允许回退到内存存储。
 DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK = True
-# 是否默认开启流式聊天能力。
 DEFAULT_STREAMING_ENABLED = True
-# SSE 心跳事件的默认间隔（秒）。
 DEFAULT_STREAM_HEARTBEAT_INTERVAL_SECONDS = 15.0
-# 单次流式请求默认超时（秒）。
 DEFAULT_STREAM_REQUEST_TIMEOUT_SECONDS = 120.0
-# 是否在 completed 事件中默认输出 usage。
 DEFAULT_STREAM_EMIT_USAGE = True
-# 是否默认输出流式 trace 信息。
 DEFAULT_STREAM_EMIT_TRACE = True
-# 是否默认开启显式 cancel 能力。
 DEFAULT_STREAM_CANCEL_ENABLED = True
-# 各 Provider 默认 base_url（None 表示使用 SDK/厂商默认地址）。
+
+DEFAULT_RAG_ENABLED = False
+DEFAULT_RAG_QDRANT_URL = "http://localhost:6333"
+DEFAULT_RAG_QDRANT_COLLECTION = "vi_ai_knowledge_chunks"
+DEFAULT_RAG_RETRIEVAL_TOP_K = 4
+DEFAULT_RAG_SCORE_THRESHOLD: float | None = None
+DEFAULT_RAG_CHUNK_TOKEN_SIZE = 300
+DEFAULT_RAG_CHUNK_OVERLAP_TOKEN_SIZE = 50
+DEFAULT_RAG_EMBEDDING_PROVIDER = "deterministic"
+DEFAULT_RAG_EMBEDDING_MODEL = "deterministic-text-v1"
+DEFAULT_RAG_EMBEDDING_DIMENSION = 64
+
 DEFAULT_BASE_URLS: dict[str, str | None] = {
     "openai": None,
     "deepseek": "https://api.deepseek.com",
@@ -88,13 +69,11 @@ DEFAULT_BASE_URLS: dict[str, str | None] = {
 
 
 class ConfigError(ValueError):
-    """当应用配置无效时抛出。"""
+    """Raised when app configuration is invalid."""
 
 
 @dataclass(frozen=True)
 class ProviderConfig:
-    """单个 Provider 的配置。"""
-
     name: str
     api_key: str | None = None
     base_url: str | None = None
@@ -104,8 +83,6 @@ class ProviderConfig:
 
 @dataclass(frozen=True)
 class ObservabilityConfig:
-    """可观测性与日志行为配置。"""
-
     log_enabled: bool = DEFAULT_LOG_ENABLED
     log_level: str = DEFAULT_LOG_LEVEL
     log_format: str = DEFAULT_LOG_FORMAT
@@ -115,100 +92,73 @@ class ObservabilityConfig:
 
 @dataclass(frozen=True)
 class ContextPolicyConfig:
-    """上下文策略管线行为配置。"""
-
-    # 上下文选窗阶段的最大 token 预算。
     windows_token_budget: int = DEFAULT_CONTEXT_MAX_TOKEN_BUDGET
-    # 上下文截断阶段的 token 预算（需小于等于 max_token_budget）。
     truncation_token_budget: int = DEFAULT_CONTEXT_TRUNCATION_TOKEN_BUDGET
-    # 是否启用确定性 summary/compaction 策略。
     summary_enabled: bool = DEFAULT_CONTEXT_SUMMARY_ENABLED
-    # 摘要文本最大字符数，用于限制 summary 消息长度。
     summary_max_chars: int = DEFAULT_CONTEXT_SUMMARY_MAX_CHARS
-    # 当摘要后仍超预算时的回退策略。
     fallback_behavior: str = DEFAULT_CONTEXT_FALLBACK_BEHAVIOR
-    # 估算消息 token 时每条消息的固定开销（工程近似值，可配置）。
     message_overhead_tokens: int = DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS
 
 
 @dataclass(frozen=True)
 class ContextStorageConfig:
-    """上下文存储后端与生命周期治理配置。"""
-
-    # 上下文存储后端：memory/redis。
     backend: str = DEFAULT_CONTEXT_STORE_BACKEND
-    # Redis 连接地址；当 backend=redis 时生效。
     redis_url: str = DEFAULT_CONTEXT_REDIS_URL
-    # 会话窗口 TTL（秒）；写入时刷新，用于短期记忆生命周期治理。
     session_ttl_seconds: int = DEFAULT_CONTEXT_SESSION_TTL_SECONDS
-    # Redis key 前缀，用于隔离命名空间。
     key_prefix: str = DEFAULT_CONTEXT_STORE_KEY_PREFIX
-    # 当 Redis 不可用时是否允许回退到内存存储（建议仅 dev/test 开启）。
     allow_memory_fallback: bool = DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK
 
 
 @dataclass(frozen=True)
 class ContextMemoryConfig:
-    """分层短期记忆配置。"""
-
-    # Phase 4 分层短期记忆总开关。
     layered_memory_enabled: bool = DEFAULT_CONTEXT_LAYERED_MEMORY_ENABLED
-    # recent raw 层最大 token 预算。
     recent_raw_max_token_budget: int = DEFAULT_CONTEXT_RECENT_RAW_MAX_TOKEN_BUDGET
-    # recent raw 压缩后至少保留的最近消息条数。
     recent_raw_min_keep_messages: int = DEFAULT_CONTEXT_RECENT_RAW_MIN_KEEP_MESSAGES
-    # 是否启用 rolling summary 层。
     rolling_summary_enabled: bool = DEFAULT_CONTEXT_ROLLING_SUMMARY_ENABLED
-    # rolling summary 最大字符数。
     rolling_summary_max_chars: int = DEFAULT_CONTEXT_ROLLING_SUMMARY_MAX_CHARS
-    # 是否启用 working memory 层。
     working_memory_enabled: bool = DEFAULT_CONTEXT_WORKING_MEMORY_ENABLED
-    # 每个 working memory 分区最多保留条目数。
     working_memory_max_items_per_section: int = (
         DEFAULT_CONTEXT_WORKING_MEMORY_MAX_ITEMS_PER_SECTION
     )
-    # working memory 单条值最大字符数。
     working_memory_max_value_chars: int = DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS
 
 
 @dataclass(frozen=True)
 class StreamingConfig:
-    """流式聊天交付层配置。"""
-
-    # 是否开启流式接口能力。
     streaming_enabled: bool = DEFAULT_STREAMING_ENABLED
-    # SSE 心跳事件默认间隔（秒）。
     stream_heartbeat_interval_seconds: float = DEFAULT_STREAM_HEARTBEAT_INTERVAL_SECONDS
-    # 流式请求超时阈值（秒）。
     stream_request_timeout_seconds: float = DEFAULT_STREAM_REQUEST_TIMEOUT_SECONDS
-    # completed 事件是否输出 usage。
     stream_emit_usage: bool = DEFAULT_STREAM_EMIT_USAGE
-    # completed/error/cancelled 事件是否输出 trace。
     stream_emit_trace: bool = DEFAULT_STREAM_EMIT_TRACE
-    # 是否允许显式取消流式请求。
     stream_cancel_enabled: bool = DEFAULT_STREAM_CANCEL_ENABLED
 
 
 @dataclass(frozen=True)
-class AppConfig:
-    """应用顶层配置。"""
+class RAGConfig:
+    enabled: bool = DEFAULT_RAG_ENABLED
+    qdrant_url: str = DEFAULT_RAG_QDRANT_URL
+    qdrant_api_key: str | None = None
+    qdrant_collection: str = DEFAULT_RAG_QDRANT_COLLECTION
+    retrieval_top_k: int = DEFAULT_RAG_RETRIEVAL_TOP_K
+    score_threshold: float | None = DEFAULT_RAG_SCORE_THRESHOLD
+    chunk_token_size: int = DEFAULT_RAG_CHUNK_TOKEN_SIZE
+    chunk_overlap_token_size: int = DEFAULT_RAG_CHUNK_OVERLAP_TOKEN_SIZE
+    embedding_provider: str = DEFAULT_RAG_EMBEDDING_PROVIDER
+    embedding_model: str = DEFAULT_RAG_EMBEDDING_MODEL
+    embedding_dimension: int = DEFAULT_RAG_EMBEDDING_DIMENSION
 
-    # 默认 provider 名称；当请求未显式指定 provider 时使用。
+
+@dataclass(frozen=True)
+class AppConfig:
     default_provider: str = "openai"
-    # 全局超时时间（秒）；作为各 provider 的默认超时来源。
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
-    # provider 配置表，key 为 provider 名称（如 openai/deepseek）。
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
-    # 可观测性配置（日志开关、级别、格式等）。
     observability: ObservabilityConfig = field(default_factory=ObservabilityConfig)
-    # 上下文策略配置（token 预算、summary 开关、回退策略等）。
     context_policy_config: ContextPolicyConfig = field(default_factory=ContextPolicyConfig)
-    # 上下文存储配置（backend、TTL、key 前缀与回退策略）。
     context_storage_config: ContextStorageConfig = field(default_factory=ContextStorageConfig)
-    # 分层短期记忆配置（recent raw / rolling summary / working memory）。
     context_memory_config: ContextMemoryConfig = field(default_factory=ContextMemoryConfig)
-    # 流式聊天交付层配置（SSE、超时、取消、trace）。
     streaming_config: StreamingConfig = field(default_factory=StreamingConfig)
+    rag_config: RAGConfig = field(default_factory=RAGConfig)
 
     @classmethod
     def from_env(
@@ -221,11 +171,10 @@ class AppConfig:
 
         timeout_seconds = _read_float("LLM_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS)
         default_provider = os.getenv("LLM_DEFAULT_PROVIDER", "openai").strip().lower()
-
         if default_provider not in SUPPORTED_PROVIDER_NAMES:
             raise ConfigError(
-                f"不支持的默认 Provider '{default_provider}'。 "
-                f"支持的 Provider：{', '.join(SUPPORTED_PROVIDER_NAMES)}。"
+                f"Unsupported default provider '{default_provider}'. "
+                f"Supported: {', '.join(SUPPORTED_PROVIDER_NAMES)}."
             )
 
         providers = {
@@ -261,14 +210,9 @@ class AppConfig:
             "CONTEXT_TRUNCATION_TOKEN_BUDGET",
             DEFAULT_CONTEXT_TRUNCATION_TOKEN_BUDGET,
         )
-        summary_max_chars = _read_int(
-            "CONTEXT_SUMMARY_MAX_CHARS",
-            DEFAULT_CONTEXT_SUMMARY_MAX_CHARS,
-        )
         if truncation_token_budget > max_token_budget:
             raise ConfigError(
-                "CONTEXT_TRUNCATION_TOKEN_BUDGET 必须小于或等于 "
-                "CONTEXT_MAX_TOKEN_BUDGET。"
+                "CONTEXT_TRUNCATION_TOKEN_BUDGET must be <= CONTEXT_MAX_TOKEN_BUDGET."
             )
 
         context = ContextPolicyConfig(
@@ -278,7 +222,10 @@ class AppConfig:
                 "CONTEXT_SUMMARY_ENABLED",
                 DEFAULT_CONTEXT_SUMMARY_ENABLED,
             ),
-            summary_max_chars=summary_max_chars,
+            summary_max_chars=_read_int(
+                "CONTEXT_SUMMARY_MAX_CHARS",
+                DEFAULT_CONTEXT_SUMMARY_MAX_CHARS,
+            ),
             fallback_behavior=_read_context_fallback_behavior(
                 "CONTEXT_FALLBACK_BEHAVIOR",
                 DEFAULT_CONTEXT_FALLBACK_BEHAVIOR,
@@ -294,7 +241,7 @@ class AppConfig:
             default=DEFAULT_CONTEXT_STORE_KEY_PREFIX,
         )
         if not context_store_key_prefix:
-            raise ConfigError("环境变量 'CONTEXT_STORE_KEY_PREFIX' 不能为空。")
+            raise ConfigError("CONTEXT_STORE_KEY_PREFIX cannot be empty.")
         context_storage = ContextStorageConfig(
             backend=_read_context_store_backend(
                 "CONTEXT_STORE_BACKEND",
@@ -303,7 +250,8 @@ class AppConfig:
             redis_url=_read_optional(
                 "CONTEXT_REDIS_URL",
                 default=DEFAULT_CONTEXT_REDIS_URL,
-            ) or DEFAULT_CONTEXT_REDIS_URL,
+            )
+            or DEFAULT_CONTEXT_REDIS_URL,
             session_ttl_seconds=_read_int(
                 "CONTEXT_SESSION_TTL_SECONDS",
                 DEFAULT_CONTEXT_SESSION_TTL_SECONDS,
@@ -314,6 +262,7 @@ class AppConfig:
                 DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK,
             ),
         )
+
         context_memory = ContextMemoryConfig(
             layered_memory_enabled=_read_bool(
                 "CONTEXT_LAYERED_MEMORY_ENABLED",
@@ -348,11 +297,9 @@ class AppConfig:
                 DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS,
             ),
         )
+
         streaming = StreamingConfig(
-            streaming_enabled=_read_bool(
-                "STREAMING_ENABLED",
-                DEFAULT_STREAMING_ENABLED,
-            ),
+            streaming_enabled=_read_bool("STREAMING_ENABLED", DEFAULT_STREAMING_ENABLED),
             stream_heartbeat_interval_seconds=_read_float(
                 "STREAM_HEARTBEAT_INTERVAL_SECONDS",
                 DEFAULT_STREAM_HEARTBEAT_INTERVAL_SECONDS,
@@ -361,23 +308,54 @@ class AppConfig:
                 "STREAM_REQUEST_TIMEOUT_SECONDS",
                 DEFAULT_STREAM_REQUEST_TIMEOUT_SECONDS,
             ),
-            stream_emit_usage=_read_bool(
-                "STREAM_EMIT_USAGE",
-                DEFAULT_STREAM_EMIT_USAGE,
-            ),
-            stream_emit_trace=_read_bool(
-                "STREAM_EMIT_TRACE",
-                DEFAULT_STREAM_EMIT_TRACE,
-            ),
+            stream_emit_usage=_read_bool("STREAM_EMIT_USAGE", DEFAULT_STREAM_EMIT_USAGE),
+            stream_emit_trace=_read_bool("STREAM_EMIT_TRACE", DEFAULT_STREAM_EMIT_TRACE),
             stream_cancel_enabled=_read_bool(
                 "STREAM_CANCEL_ENABLED",
                 DEFAULT_STREAM_CANCEL_ENABLED,
             ),
         )
         if streaming.stream_heartbeat_interval_seconds <= 0:
-            raise ConfigError("STREAM_HEARTBEAT_INTERVAL_SECONDS 必须大于 0。")
+            raise ConfigError("STREAM_HEARTBEAT_INTERVAL_SECONDS must be greater than 0.")
         if streaming.stream_request_timeout_seconds <= 0:
-            raise ConfigError("STREAM_REQUEST_TIMEOUT_SECONDS 必须大于 0。")
+            raise ConfigError("STREAM_REQUEST_TIMEOUT_SECONDS must be greater than 0.")
+
+        rag_config = RAGConfig(
+            enabled=_read_bool("RAG_ENABLED", DEFAULT_RAG_ENABLED),
+            qdrant_url=_read_optional("RAG_QDRANT_URL", DEFAULT_RAG_QDRANT_URL)
+            or DEFAULT_RAG_QDRANT_URL,
+            qdrant_api_key=_read_optional("RAG_QDRANT_API_KEY"),
+            qdrant_collection=_read_optional(
+                "RAG_QDRANT_COLLECTION",
+                DEFAULT_RAG_QDRANT_COLLECTION,
+            )
+            or DEFAULT_RAG_QDRANT_COLLECTION,
+            retrieval_top_k=_read_int("RAG_RETRIEVAL_TOP_K", DEFAULT_RAG_RETRIEVAL_TOP_K),
+            score_threshold=_read_optional_float(
+                "RAG_SCORE_THRESHOLD",
+                DEFAULT_RAG_SCORE_THRESHOLD,
+            ),
+            chunk_token_size=_read_int("RAG_CHUNK_TOKEN_SIZE", DEFAULT_RAG_CHUNK_TOKEN_SIZE),
+            chunk_overlap_token_size=_read_int(
+                "RAG_CHUNK_OVERLAP_TOKEN_SIZE",
+                DEFAULT_RAG_CHUNK_OVERLAP_TOKEN_SIZE,
+            ),
+            embedding_provider=_read_rag_embedding_provider(
+                "RAG_EMBEDDING_PROVIDER",
+                DEFAULT_RAG_EMBEDDING_PROVIDER,
+            ),
+            embedding_model=_read_optional(
+                "RAG_EMBEDDING_MODEL",
+                DEFAULT_RAG_EMBEDDING_MODEL,
+            )
+            or DEFAULT_RAG_EMBEDDING_MODEL,
+            embedding_dimension=_read_int(
+                "RAG_EMBEDDING_DIMENSION",
+                DEFAULT_RAG_EMBEDDING_DIMENSION,
+            ),
+        )
+        if rag_config.chunk_overlap_token_size >= rag_config.chunk_token_size:
+            raise ConfigError("RAG_CHUNK_OVERLAP_TOKEN_SIZE must be < RAG_CHUNK_TOKEN_SIZE.")
 
         return cls(
             default_provider=default_provider,
@@ -388,6 +366,7 @@ class AppConfig:
             context_storage_config=context_storage,
             context_memory_config=context_memory,
             streaming_config=streaming,
+            rag_config=rag_config,
         )
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig:
@@ -396,8 +375,8 @@ class AppConfig:
             return self.providers[normalized_name]
         except KeyError as exc:
             raise ConfigError(
-                f"不支持的 Provider '{provider_name}'。 "
-                f"支持的 Provider：{', '.join(self.providers.keys())}。"
+                f"Unsupported provider '{provider_name}'. "
+                f"Supported: {', '.join(self.providers.keys())}."
             ) from exc
 
 
@@ -405,7 +384,6 @@ def _read_optional(name: str, default: str | None = None) -> str | None:
     value = os.getenv(name)
     if value is None:
         return default
-
     stripped_value = value.strip()
     return stripped_value or default
 
@@ -414,25 +392,35 @@ def _read_float(name: str, default: float) -> float:
     raw_value = os.getenv(name)
     if raw_value is None:
         return default
-
     try:
         return float(raw_value)
     except ValueError as exc:
-        raise ConfigError(f"环境变量 '{name}' 必须是数字。") from exc
+        raise ConfigError(f"Environment variable '{name}' must be numeric.") from exc
+
+
+def _read_optional_float(name: str, default: float | None = None) -> float | None:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    stripped_value = raw_value.strip()
+    if not stripped_value:
+        return default
+    try:
+        return float(stripped_value)
+    except ValueError as exc:
+        raise ConfigError(f"Environment variable '{name}' must be numeric.") from exc
 
 
 def _read_int(name: str, default: int) -> int:
     raw_value = os.getenv(name)
     if raw_value is None:
         return default
-
     try:
         parsed = int(raw_value)
     except ValueError as exc:
-        raise ConfigError(f"环境变量 '{name}' 必须是整数。") from exc
-
+        raise ConfigError(f"Environment variable '{name}' must be integer.") from exc
     if parsed <= 0:
-        raise ConfigError(f"环境变量 '{name}' 必须大于 0。")
+        raise ConfigError(f"Environment variable '{name}' must be greater than 0.")
     return parsed
 
 
@@ -440,15 +428,14 @@ def _read_bool(name: str, default: bool) -> bool:
     raw_value = os.getenv(name)
     if raw_value is None:
         return default
-
     normalized_value = raw_value.strip().lower()
     if normalized_value in {"1", "true", "yes", "on"}:
         return True
     if normalized_value in {"0", "false", "no", "off"}:
         return False
     raise ConfigError(
-        f"环境变量 '{name}' 必须是布尔值 "
-        "（true/false/1/0/yes/no/on/off）。"
+        f"Environment variable '{name}' must be boolean "
+        "(true/false/1/0/yes/no/on/off)."
     )
 
 
@@ -456,12 +443,11 @@ def _read_log_level(name: str, default: str) -> str:
     raw_value = os.getenv(name)
     if raw_value is None:
         return default
-
     normalized_value = raw_value.strip().upper()
     if normalized_value not in SUPPORTED_LOG_LEVELS:
         raise ConfigError(
-            f"环境变量 '{name}' 必须是以下之一："
-            f"{', '.join(SUPPORTED_LOG_LEVELS)}。"
+            f"Environment variable '{name}' must be one of: "
+            f"{', '.join(SUPPORTED_LOG_LEVELS)}."
         )
     return normalized_value
 
@@ -470,12 +456,11 @@ def _read_log_format(name: str, default: str) -> str:
     raw_value = os.getenv(name)
     if raw_value is None:
         return default
-
     normalized_value = raw_value.strip().lower()
     if normalized_value not in SUPPORTED_LOG_FORMATS:
         raise ConfigError(
-            f"环境变量 '{name}' 必须是以下之一："
-            f"{', '.join(SUPPORTED_LOG_FORMATS)}。"
+            f"Environment variable '{name}' must be one of: "
+            f"{', '.join(SUPPORTED_LOG_FORMATS)}."
         )
     return normalized_value
 
@@ -484,12 +469,11 @@ def _read_context_fallback_behavior(name: str, default: str) -> str:
     raw_value = os.getenv(name)
     if raw_value is None:
         return default
-
     normalized_value = raw_value.strip().lower()
     if normalized_value not in SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS:
         raise ConfigError(
-            f"环境变量 '{name}' 必须是以下之一："
-            f"{', '.join(SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS)}。"
+            f"Environment variable '{name}' must be one of: "
+            f"{', '.join(SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS)}."
         )
     return normalized_value
 
@@ -498,12 +482,24 @@ def _read_context_store_backend(name: str, default: str) -> str:
     raw_value = os.getenv(name)
     if raw_value is None:
         return default
-
     normalized_value = raw_value.strip().lower()
     if normalized_value not in SUPPORTED_CONTEXT_STORE_BACKENDS:
         raise ConfigError(
-            f"环境变量 '{name}' 必须是以下之一："
-            f"{', '.join(SUPPORTED_CONTEXT_STORE_BACKENDS)}。"
+            f"Environment variable '{name}' must be one of: "
+            f"{', '.join(SUPPORTED_CONTEXT_STORE_BACKENDS)}."
+        )
+    return normalized_value
+
+
+def _read_rag_embedding_provider(name: str, default: str) -> str:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    normalized_value = raw_value.strip().lower()
+    if normalized_value not in SUPPORTED_RAG_EMBEDDING_PROVIDERS:
+        raise ConfigError(
+            f"Environment variable '{name}' must be one of: "
+            f"{', '.join(SUPPORTED_RAG_EMBEDDING_PROVIDERS)}."
         )
     return normalized_value
 
@@ -512,14 +508,10 @@ def _load_dotenv(dotenv_path: str | None) -> None:
     dotenv_file = Path(dotenv_path) if dotenv_path else Path(".env.example")
     if not dotenv_file.exists():
         return
-
     try:
         from dotenv import load_dotenv
     except ImportError as exc:
         raise ConfigError(
-            "缺少依赖 'python-dotenv'。请先安装："
-            "'pip install -r requirements.txt'。"
+            "Missing dependency 'python-dotenv'. Run 'pip install -r requirements.txt'."
         ) from exc
-
-    # 当前阶段统一从 .env.example 加载运行配置，不再使用 .env 双轨模式。
     load_dotenv(dotenv_path=dotenv_file, override=True)

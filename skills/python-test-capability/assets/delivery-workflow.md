@@ -16,6 +16,7 @@
 - lifecycle test
 - request assembly test
 - provider / prompt / config test
+- rag test
 
 ### 步骤 2：阅读治理文档
 至少阅读：
@@ -43,7 +44,7 @@
 至少回答：
 - 是否保护了关键主链路？
 - 是否覆盖了 assembly 顺序？
-- 是否没有把未落地 retrieval / citation 写成现有覆盖？
+- retrieval / citation / degrade 是否有对应覆盖？
 - 是否仍符合模块边界？
 
 ---

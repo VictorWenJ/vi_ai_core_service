@@ -29,7 +29,7 @@
 要求：
 - 不推倒重来
 - 不越界改动
-- 不把未落地 citations 写成已实现字段
+- 不把未落地字段写成已实现字段
 
 ### 步骤 4：实现
 要求：
@@ -46,7 +46,7 @@
 - API 是否仍保持薄路由？
 - 是否仍与 `app/api/schemas/chat.py` 一致？
 - 是否没有混入 retrieval / context / provider 逻辑？
-- 是否没有凭空声明 citations？
+- citations 是否只做契约透传？
 
 ---
 

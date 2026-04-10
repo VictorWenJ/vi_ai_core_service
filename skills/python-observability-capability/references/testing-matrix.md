@@ -20,8 +20,9 @@
 - 不可序列化输入不崩溃
 - 流式场景不崩溃
 
-### D. future Phase 6
-- 若后续新增 retrieval / citation 观测，再补对应测试
+### D. Phase 6
+- retrieval disabled / succeeded / degraded / failed 观测测试
+- ingestion/retrieval 关键字段观测测试
 
 ---
 
@@ -29,4 +30,4 @@
 
 - 以确定性测试为主
 - 先保护当前已落地的结构化日志能力
-- 不把未落地字段写进现有测试完成态
+- 字段变更必须同步测试

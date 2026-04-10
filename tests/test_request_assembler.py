@@ -178,6 +178,48 @@ class RequestAssemblerTests(unittest.TestCase):
         self.assertIn("active_goal", trace["working_memory_fields_present"])
         self.assertTrue(trace["compaction_applied"])
 
+    def test_assemble_with_knowledge_block_places_knowledge_before_memory_layers(self) -> None:
+        manager = ContextManager(store=InMemoryContextStore())
+        manager.update_context_window(
+            ContextWindow(
+                session_id="session-knowledge",
+                conversation_id="conversation-knowledge",
+                messages=[ContextMessage(role="assistant", content="recent-raw")],
+                rolling_summary=RollingSummaryState(
+                    text="[history_compacted] summarized",
+                    updated_at="2026-04-09T00:00:00+00:00",
+                    source_message_count=3,
+                ),
+                working_memory=WorkingMemoryState(active_goal="finish phase 6"),
+            )
+        )
+        assembler = ChatRequestAssembler(
+            app_config=self.config,
+            prompt_service=StubPromptService(),
+            context_policy_pipeline=self.pipeline,
+        )
+
+        request = assembler.assemble_from_user_prompt(
+            ChatRequest(
+                user_prompt="new-input",
+                provider="openai",
+                stream=False,
+                session_id="session-knowledge",
+                conversation_id="conversation-knowledge",
+            ),
+            context_manager=manager,
+            knowledge_block="[knowledge_block]\n1. doc=demo",
+        )
+
+        self.assertEqual(request.messages[0].role, "system")
+        self.assertEqual(request.messages[1].role, "system")
+        self.assertIn("[knowledge_block]", request.messages[1].content)
+        self.assertEqual(request.messages[2].role, "system")
+        self.assertIn("[working_memory]", request.messages[2].content)
+        self.assertEqual(request.messages[3].role, "system")
+        self.assertIn("[rolling_summary]", request.messages[3].content)
+        self.assertEqual(request.messages[-1].role, "user")
+
     def test_assemble_does_not_keep_full_raw_history_metadata(self) -> None:
         manager = ContextManager(store=InMemoryContextStore())
         manager.replace_context_messages(

@@ -16,6 +16,7 @@
 - lifecycle tests
 - request assembly tests
 - provider / prompt / config tests
+- rag ingestion / retrieval / citation / degrade tests
 
 ---
 
@@ -33,9 +34,9 @@
 
 ## 4. 当前默认技术基线
 
-- 保护已落地的 Phase 2~5 主链路
+- 保护已落地的 Phase 2~6 主链路
 - 主回归优先 fake / in-memory
-- 当前不包含 retrieval / citation 测试面
+- 包含 retrieval / citation 测试面
 
 ---
 

@@ -108,13 +108,13 @@
 - provider / prompt / context 的关键协作面
 
 ### 6.4 当前代码中的回归重点
-当前代码尚未实现 retrieval / citation，因此主回归重点仍是：
+当前代码已实现 retrieval / citation，主回归重点包括：
 - started / delta / heartbeat / completed / error / cancelled
 - request assembly 顺序与过滤
 - context 持久化与 lifecycle
 - provider canonical contract
-
-若后续开始落地 Phase 6，再把 retrieval / citation 纳入主回归面。
+- rag ingestion / retrieval / citation
+- retrieval failure degrade
 
 ### 6.5 测试不能掩盖架构问题
 如果实现层边界已经错了，不能靠写更多测试来掩盖。
@@ -136,9 +136,9 @@
 
 当前代码事实补充：
 
-- 当前仓库没有 retrieval / citation 测试对象
-- request assembly 当前测试的是：system -> working memory -> rolling summary -> recent raw -> user
-- 流式测试当前覆盖 completed / cancelled 路径与上下文更新
+- 当前仓库已包含 retrieval / citation 测试对象
+- request assembly 当前测试的是：system -> knowledge -> working memory -> rolling summary -> recent raw -> user
+- 流式测试当前覆盖 completed / cancelled 路径、completed citations 与降级行为
 
 当前本轮不要求：
 
@@ -196,7 +196,7 @@
 1. 不允许只写 happy path 测试
 2. 不允许把所有测试都绑定真实外部依赖
 3. 不允许用 fixture / mock 掩盖错误架构边界
-4. 不允许把尚未存在的 Phase 6 测试写成已覆盖事实
+4. 不允许把尚未存在的下一阶段测试写成已覆盖事实
 5. 不允许忽略 failed / cancelled / timeout / empty result / downgrade 等路径
 6. 不允许让 tests 成为项目中最难维护、最不可信的目录
 
@@ -229,10 +229,10 @@
 7. provider canonical contract 路径
 8. Prompt registry / renderer 基础路径
 9. config 与 HTTP smoke 基础路径
-10. 若未来进入 Phase 6，再补 retrieval / citation 路径
+10. retrieval / citation / degrade 路径
 
 ---
 
 ## 12. 一句话总结
 
-`tests/` 在当前代码基线中是系统的项目级回归保护层，负责以稳定、可重复、可演进的方式验证同步聊天、流式聊天、context lifecycle、API 契约、provider 归一化与 request assembly 没有被改坏，而当前尚未包含 RAG / citation 回归面，并在后续更新中严格遵守模块文档的模板冻结规则。
+`tests/` 在当前代码基线中是系统的项目级回归保护层，负责以稳定、可重复、可演进的方式验证同步聊天、流式聊天、context lifecycle、API 契约、provider 归一化、request assembly 与 RAG/citation 主链路没有被改坏，并在后续更新中严格遵守模块文档的模板冻结规则。

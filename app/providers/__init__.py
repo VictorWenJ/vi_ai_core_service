@@ -8,6 +8,16 @@ from app.providers.base import (
     ProviderNotImplementedError,
     StreamNotImplementedError,
 )
+from app.providers.embedding_base import (
+    BaseEmbeddingProvider,
+    EmbeddingProviderConfigurationError,
+    EmbeddingProviderError,
+    EmbeddingProviderInvocationError,
+    EmbeddingResult,
+)
+from app.providers.embedding_registry import build_embedding_provider
+from app.providers.deterministic_embedding_provider import DeterministicEmbeddingProvider
+from app.providers.openai_embedding_provider import OpenAIEmbeddingProvider
 from app.providers.deepseek_provider import DeepSeekProvider
 from app.providers.doubao_provider import DoubaoProvider
 from app.providers.gemini_provider import GeminiProvider
@@ -23,6 +33,14 @@ __all__ = [
     "ProviderInvocationError",
     "ProviderNotImplementedError",
     "StreamNotImplementedError",
+    "BaseEmbeddingProvider",
+    "EmbeddingResult",
+    "EmbeddingProviderError",
+    "EmbeddingProviderConfigurationError",
+    "EmbeddingProviderInvocationError",
+    "build_embedding_provider",
+    "DeterministicEmbeddingProvider",
+    "OpenAIEmbeddingProvider",
     "OpenAICompatibleBaseProvider",
     "ProviderRegistry",
     "OpenAIProvider",

@@ -3,6 +3,7 @@
 from app.api.schemas.chat import (
     ChatCancelRequest,
     ChatCancelResponse,
+    ChatCitation,
     ChatRequest,
     ChatResetRequest,
     ChatResetResponse,
@@ -20,6 +21,7 @@ __all__ = [
     "ChatStreamOptions",
     "ChatCancelRequest",
     "ChatCancelResponse",
+    "ChatCitation",
     "ChatResetRequest",
     "ChatResetResponse",
 ]

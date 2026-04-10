@@ -19,7 +19,7 @@
 
 当前 services 主要输出：
 
-- 同步路径：`LLMResponse`，由 API 再转为 `ChatResponse`
+- 同步路径：`ChatServiceResult`（含 `LLMResponse + citations + retrieval_trace`），由 API 再转为 `ChatResponse`
 - 流式路径：canonical event dict，再由 API 序列化为 SSE
 
 ---
@@ -29,6 +29,7 @@
 `ChatRequestAssembler` 当前必须保证：
 
 - system prompt 在前
+- knowledge block 在 working memory 前
 - working memory 在 rolling summary 前
 - recent raw messages 在用户输入前
 - user prompt 最后入列
@@ -46,8 +47,7 @@
 - usage（按配置）
 - latency_ms
 - trace（按配置）
-
-当前不包含 citations。
+- citations
 
 ---
 

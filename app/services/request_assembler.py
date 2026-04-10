@@ -41,7 +41,13 @@ class ChatRequestAssembler:
             or build_default_context_policy_pipeline(app_config.context_policy_config)
         )
 
-    def assemble_from_user_prompt(self, request: ChatRequest, context_manager: ContextManager) -> LLMRequest:
+    def assemble_from_user_prompt(
+        self,
+        request: ChatRequest,
+        context_manager: ContextManager,
+        *,
+        knowledge_block: str | None = None,
+    ) -> LLMRequest:
         normalized_session_id = normalize_optional_text(request.session_id)
         normalized_conversation_id = normalize_optional_text(request.conversation_id)
         normalized_request_id = normalize_optional_text(request.request_id)
@@ -74,7 +80,10 @@ class ChatRequestAssembler:
         ]
 
         # 分层短期记忆组装（Layered Memory）：
-        layered_messages = self.build_layered_messages(context_window)
+        layered_messages = self.build_layered_messages(
+            context_window,
+            knowledge_block=knowledge_block,
+        )
         log_report("ChatRequestAssembler.assemble_from_user_prompt.layered_messages", layered_messages)
 
         history_messages = layered_messages + recent_raw_messages
@@ -147,11 +156,18 @@ class ChatRequestAssembler:
         return request_metadata
 
     @staticmethod
-    def build_layered_messages(context_window: ContextWindow) -> list[LLMMessage]:
+    def build_layered_messages(
+        context_window: ContextWindow,
+        *,
+        knowledge_block: str | None = None,
+    ) -> list[LLMMessage]:
         # 1) working_memory 先入列，提供当前会话结构化状态；
         # 2) rolling_summary 后入列，提供被压缩历史的背景信息；
         # 3) recent_raw_messages 最后拼接，保留最近原始对话上下文。
         layered_messages: list[LLMMessage] = []
+
+        if knowledge_block:
+            layered_messages.append(LLMMessage(role="system", content=knowledge_block))
 
         # 将 working memory 渲染为系统提示块；为空时跳过，避免噪音注入。
         working_memory_block = render_working_memory_block(context_window.working_memory)

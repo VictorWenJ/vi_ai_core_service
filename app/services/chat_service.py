@@ -17,8 +17,11 @@ from app.providers.base import (
     StreamNotImplementedError,
 )
 from app.providers.registry import ProviderRegistry
+from app.rag.models import RetrievalResult
+from app.rag.runtime import RAGRuntime
 from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse
+from app.services.chat_result import ChatServiceResult
 from app.services.errors import (
     ServiceConfigurationError,
     ServiceDependencyError,
@@ -40,6 +43,7 @@ class ChatService:
             prompt_service: PromptService | None = None,
             context_manager: ContextManager | None = None,
             request_assembler: ChatRequestAssembler | None = None,
+            rag_runtime: RAGRuntime | None = None,
     ) -> None:
         self._app_config = app_config
         self._registry = registry or ProviderRegistry(app_config)
@@ -48,6 +52,11 @@ class ChatService:
         self._request_assembler = request_assembler or ChatRequestAssembler(
             app_config=app_config,
             prompt_service=self._prompt_service,
+        )
+        self._rag_runtime = rag_runtime or (
+            RAGRuntime.from_app_config(app_config)
+            if app_config.rag_config.enabled
+            else RAGRuntime.disabled(default_top_k=app_config.rag_config.retrieval_top_k)
         )
 
     def chat(self, llm_request: LLMRequest) -> LLMResponse:
@@ -118,25 +127,47 @@ class ChatService:
             raise ServiceValidationError(str(exc)) from exc
 
     def chat_from_user_prompt(self, chat_request: ChatRequest) -> LLMResponse:
+        result = self.chat_with_citations_from_user_prompt(chat_request)
+        return result.llm_response
+
+    def chat_with_citations_from_user_prompt(self, chat_request: ChatRequest) -> ChatServiceResult:
+        retrieval_filter = _extract_retrieval_filter(chat_request.metadata)
+        retrieval_result = self._rag_runtime.retrieve_for_chat(
+            query_text=chat_request.user_prompt,
+            metadata_filter=retrieval_filter,
+        )
         llm_request = (
             self._request_assembler.assemble_from_user_prompt(
                 request=chat_request,
                 context_manager=self._context_manager,
+                knowledge_block=retrieval_result.knowledge_block,
             ))
+        llm_request.metadata["retrieval"] = retrieval_result.trace.to_dict()
         log_report("ChatService.chat_from_user_prompt.llm_request", llm_request)
 
         llm_response = self.chat(llm_request)
         log_report("ChatService.chat_from_user_prompt.llm_response", llm_response)
 
-        self._write_context_after_response(llm_request, chat_request, llm_response)
+        self._write_context_after_response(
+            llm_request,
+            chat_request,
+            llm_response,
+            retrieval_result=retrieval_result,
+        )
 
-        return llm_response
+        return ChatServiceResult(
+            llm_response=llm_response,
+            citations=retrieval_result.citations,
+            retrieval_trace=retrieval_result.trace,
+        )
 
     def _write_context_after_response(
             self,
             llm_request: LLMRequest,
             chat_request: ChatRequest,
             llm_response: LLMResponse,
+            *,
+            retrieval_result: RetrievalResult,
     ) -> None:
         if llm_request.session_id:
             context_metadata = {
@@ -144,6 +175,8 @@ class ChatService:
                 "request_id": llm_request.request_id,
                 "provider": llm_response.provider,
                 "model": llm_response.model,
+                "retrieval_status": retrieval_result.trace.status,
+                "citation_count": len(retrieval_result.citations),
             }
 
             updated_context_window = self._context_manager.update_after_chat_turn(
@@ -183,6 +216,15 @@ class ChatService:
         }
         log_report("ChatService.reset_context", result)
         return result
+
+
+def _extract_retrieval_filter(metadata: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not metadata:
+        return None
+    retrieval_filter = metadata.get("retrieval_filter")
+    if not isinstance(retrieval_filter, dict):
+        return None
+    return dict(retrieval_filter)
 
 
 def _log_service_exception(

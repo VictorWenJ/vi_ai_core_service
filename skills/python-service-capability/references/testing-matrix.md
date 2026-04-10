@@ -20,7 +20,7 @@
 - placeholder / finalize 收口
 
 ### C. request assembly
-- system / working memory / rolling summary / recent raw / user 顺序
+- system / knowledge / working memory / rolling summary / recent raw / user 顺序
 - non-completed assistant message 过滤
 - context_assembly trace
 
@@ -28,8 +28,9 @@
 - 已落地 Phase 2~5 行为不回退
 - API 调用 services 的入口保持稳定
 
-### E. future Phase 6
-- 若后续新增 retrieval / citations，再追加对应编排测试
+### E. Phase 6
+- retrieval / citations 编排测试
+- retrieval degrade 不拖垮 chat/stream 测试
 
 ---
 

@@ -41,7 +41,7 @@
 - FastAPI
 - SSE
 - `/chat_stream` 返回 `text/event-stream`
-- 当前不包含 citations
+- `/chat` 与 `/chat_stream` completed 包含 citations 契约字段
 
 ---
 

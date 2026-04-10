@@ -40,27 +40,26 @@
 
 ## 2. 模块定位
 
-`app/rag/` 是系统在 Phase 6 预留的内部知识与检索子域。
-截至当前代码基线，它还没有任何 Python 运行时代码，当前只保留模块治理文档，用于约束后续 Knowledge + Citation Layer 的落位边界。
+`app/rag/` 是系统在 Phase 6 落地的内部知识与检索子域。
+截至当前代码基线，模块已具备 Python 运行时代码与最小 ingest/retrieval/citation 闭环。
 
 当前阶段建议围绕以下职责组织：
 
-- 当前目录下实际仅有：`AGENTS.md`
-- 一旦开始编码，后续实现应收敛在：
-  - `models.py`
-  - `ingestion/`
-  - `retrieval/`
-  - `citation/`
-  - 其他确有必要的内部实现目录
+- `models.py`
+- `ingestion/`
+- `retrieval/`
+- `citation/`
+- `runtime.py`
+- `AGENTS.md`
 
 ---
 
 ## 3. 本模块职责
 
-1. 维护 Phase 6 子域的职责边界与治理占位
-2. 约束未来知识文档、切块、检索与 citation 相关代码应收敛在本目录
-3. 约束 future ingestion / retrieval 实现不越界写入 API、services、context、providers
-4. 在代码尚未落地前，明确本模块当前不提供 parser / chunker / embedding / index / retrieval / citation 运行时能力
+1. 提供 Phase 6 知识对象模型与 citation 对象模型
+2. 提供最小 ingest pipeline（parser / cleaner / chunker / embedding / index）
+3. 提供 retrieval service 与 knowledge block 渲染
+4. 提供 citation-ready retrieval 结果与可降级 runtime
 
 ---
 
@@ -79,11 +78,9 @@
 ## 5. 依赖边界
 
 ### 允许依赖
-- 当前代码基线下无运行时依赖
-- 后续实现时可按需依赖：
-  - `app/providers/`
-  - `app/schemas/`
-  - `app/observability/`
+- `app/providers/`（embedding provider abstraction）
+- `app/observability/`
+- `app/context/policies/tokenizer.py`（token counter 复用）
 
 ### 禁止依赖
 - `app/api/`
@@ -129,9 +126,9 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 检索失败时，应支持由 `services` 做可控降级。
 
 ### 6.6 当前代码事实
-- 当前仓库尚未创建 `models.py`、`ingestion/`、`retrieval/`、`citation/` 等实现文件
-- 当前 `/chat` 与 `/chat_stream` 也还没有接入本模块
-- 当前所有 RAG 相关描述都只能作为后续实现约束，不能写成已落地事实
+- 当前仓库已创建 `models.py`、`ingestion/`、`retrieval/`、`citation/`、`runtime.py`
+- 当前 `/chat` 与 `/chat_stream` completed 已接入本模块并返回 citations
+- 当前 retrieval 失败路径支持可降级，主 chat 链路不被拖垮
 
 ---
 
@@ -139,12 +136,12 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 
 当前代码现状：
 
-- `app/rag/` 当前仅有模块治理文档
-- 仓库中没有 RAG Python 实现文件
-- `/chat` 与 `/chat_stream` 当前没有 knowledge block 或 citations
-- `tests/` 当前没有 RAG / citation 测试
+- `app/rag/` 已落地运行时代码
+- 仓库已具备 ingest -> embed -> index -> retrieve 主链路
+- `/chat` 与 `/chat_stream` completed 已接入 citations
+- `tests/` 已具备 RAG / citation 测试
 
-当前本轮待落地目标：
+当前本轮已落地目标：
 
 - `app/rag/` 子域运行时代码
 - 知识对象模型
@@ -163,8 +160,6 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - embedding：单一文本 embedding 基线
 - 检索：top-k + metadata filter
 - retrieval 结果进入 request assembly 的位置由 `services / request_assembler` 决定
-
-以上默认基线当前仍属于待实现目标，尚未在代码中落地。
 
 当前本轮不要求落地：
 
@@ -294,9 +289,9 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 1. 不允许在 `rag` 中直接编排 `/chat` 或 `/chat_stream`
 2. 不允许让 `rag` 依赖 `app/api/`、`app/services/`、`app/context/`
 3. 不允许把当前不存在的 RAG 能力写成已落地实现
-4. 一旦开始实现，不允许继续使用“按字符硬切分”作为正式主 chunking 策略
-5. 一旦开始实现，不允许把 Qdrant SDK 调用散落到多个无边界业务文件中
-6. 一旦开始实现，不允许把 citation 做成模型自由输出字符串
+4. 不允许回退为“按字符硬切分”作为正式主 chunking 策略
+5. 不允许把 Qdrant SDK 调用散落到多个无边界业务文件中
+6. 不允许把 citation 做成模型自由输出字符串
 7. 不允许在当前轮次中把长期记忆、审批流、Case Workspace、Agent runtime 混入 `rag` 子域
 
 ---
@@ -324,8 +319,8 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 
 ## 12. 测试要求
 
-当前代码现状下，本模块暂无运行时代码，因此暂无模块内测试对象。
-一旦开始实现，至少覆盖：
+当前代码现状下，本模块已存在运行时代码。
+当前测试至少覆盖：
 
 1. parser 解析正确
 2. cleaner 行为稳定（如实现）
@@ -343,4 +338,4 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 
 ## 13. 一句话总结
 
-`app/rag/` 在当前代码基线中仍是 Phase 6 的治理占位目录，当前尚未形成任何运行时代码；它的职责是在后续开始实现时承接 Knowledge + Citation Layer 的内部代码，而不是让未落地能力继续停留在文档完成态，并在后续更新中严格遵守模块文档的模板冻结规则。
+`app/rag/` 在当前代码基线中已是 Phase 6 的运行时子域，负责知识导入、检索、citation-ready 输出与可降级 runtime，并在后续更新中继续严格遵守模块文档的模板冻结规则。

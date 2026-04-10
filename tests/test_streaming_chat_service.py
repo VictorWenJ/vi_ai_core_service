@@ -8,6 +8,7 @@ from app.context.manager import ContextManager
 from app.context.stores.in_memory import InMemoryContextStore
 from app.providers.base import BaseLLMProvider
 from app.providers.registry import ProviderRegistry
+from app.rag.models import Citation, RetrievalResult, RetrievalTrace
 from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse, LLMStreamChunk
 from app.services.cancellation_registry import CancellationRegistry
@@ -19,12 +20,16 @@ from app.services.streaming_chat_service import StreamingChatService
 class FakeStreamingProvider(BaseLLMProvider):
     provider_name = "openai"
 
+    def __init__(self, provider_config: ProviderConfig) -> None:
+        super().__init__(provider_config)
+        self.last_request: LLMRequest | None = None
+
     def chat(self, request: LLMRequest) -> LLMResponse:
         del request
         return LLMResponse(content="ok", provider=self.provider_name, model="gpt-test")
 
     def stream_chat(self, request: LLMRequest):
-        del request
+        self.last_request = request
         yield LLMStreamChunk(delta="你", sequence=1, done=False)
         yield LLMStreamChunk(delta="好", sequence=2, done=False)
         yield LLMStreamChunk(delta="", sequence=2, finish_reason="stop", done=True)
@@ -44,8 +49,28 @@ class SlowStreamingProvider(BaseLLMProvider):
         yield LLMStreamChunk(delta="", sequence=5, finish_reason="stop", done=True)
 
 
+class StubRAGRuntime:
+    def __init__(self, retrieval_result: RetrievalResult) -> None:
+        self._retrieval_result = retrieval_result
+
+    def retrieve_for_chat(
+        self,
+        *,
+        query_text: str,
+        metadata_filter: dict | None = None,
+        top_k: int | None = None,
+    ) -> RetrievalResult:
+        del query_text, metadata_filter, top_k
+        return self._retrieval_result
+
+
 class StreamingChatServiceTests(unittest.TestCase):
-    def _build_service(self, provider: BaseLLMProvider) -> tuple[StreamingChatService, ContextManager]:
+    def _build_service(
+        self,
+        provider: BaseLLMProvider,
+        *,
+        rag_runtime: StubRAGRuntime | None = None,
+    ) -> tuple[StreamingChatService, ContextManager]:
         providers = {
             "openai": ProviderConfig(name="openai", api_key="k1", default_model="gpt-test"),
             "deepseek": ProviderConfig(name="deepseek"),
@@ -70,6 +95,7 @@ class StreamingChatServiceTests(unittest.TestCase):
             context_manager=context_manager,
             request_assembler=assembler,
             cancellation_registry=CancellationRegistry(),
+            rag_runtime=rag_runtime,  # type: ignore[arg-type]
         )
         return service, context_manager
 
@@ -124,3 +150,81 @@ class StreamingChatServiceTests(unittest.TestCase):
         assistant_messages = [message for message in window.messages if message.role == "assistant"]
         self.assertTrue(assistant_messages)
         self.assertEqual(assistant_messages[-1].status, "cancelled")
+
+    def test_stream_completed_includes_citations_and_delta_has_no_citations(self) -> None:
+        provider = FakeStreamingProvider(ProviderConfig(name="openai", api_key="k1"))
+        rag_runtime = StubRAGRuntime(
+            RetrievalResult(
+                knowledge_block="[knowledge_block]\n1. title=Doc One; source=file:///doc-1.md; score=0.9000\n   snippet=snippet",
+                citations=[
+                    Citation(
+                        citation_id="c-1",
+                        document_id="doc-1",
+                        chunk_id="chk-1",
+                        title="Doc One",
+                        snippet="snippet",
+                        origin_uri="file:///doc-1.md",
+                        source_type="markdown_file",
+                        updated_at="2026-04-10T00:00:00+00:00",
+                        metadata={"score": 0.9},
+                    )
+                ],
+                trace=RetrievalTrace(
+                    status="succeeded",
+                    query_text="你好",
+                    top_k=4,
+                    hit_count=1,
+                    citation_count=1,
+                ),
+            )
+        )
+        service, _ = self._build_service(provider, rag_runtime=rag_runtime)
+
+        events = list(
+            service.stream_chat_from_user_prompt(
+                ChatStreamRequest(
+                    user_prompt="你好",
+                    provider="openai",
+                    session_id="session-1",
+                    conversation_id="conv-1",
+                )
+            )
+        )
+
+        delta_events = [event for event in events if event["event"] == "response.delta"]
+        completed_event = [event for event in events if event["event"] == "response.completed"][0]
+        self.assertTrue(delta_events)
+        for event in delta_events:
+            self.assertNotIn("citations", event["data"])
+        self.assertEqual(len(completed_event["data"]["citations"]), 1)
+        self.assertEqual(completed_event["data"]["citations"][0]["citation_id"], "c-1")
+        assert provider.last_request is not None
+        self.assertIn("[knowledge_block]", provider.last_request.messages[1].content)
+
+    def test_stream_retrieval_degraded_still_completed_with_empty_citations(self) -> None:
+        provider = FakeStreamingProvider(ProviderConfig(name="openai", api_key="k1"))
+        rag_runtime = StubRAGRuntime(
+            RetrievalResult.degraded(
+                query_text="你好",
+                top_k=4,
+                error_type="RuntimeError",
+                error_message="retrieval failed",
+                latency_ms=10.1,
+            )
+        )
+        service, _ = self._build_service(provider, rag_runtime=rag_runtime)
+
+        events = list(
+            service.stream_chat_from_user_prompt(
+                ChatStreamRequest(
+                    user_prompt="你好",
+                    provider="openai",
+                    session_id="session-1",
+                    conversation_id="conv-1",
+                )
+            )
+        )
+
+        self.assertEqual(events[-1]["event"], "response.completed")
+        self.assertEqual(events[-1]["data"]["citations"], [])
+        self.assertEqual(events[-1]["data"]["trace"]["retrieval"]["status"], "degraded")

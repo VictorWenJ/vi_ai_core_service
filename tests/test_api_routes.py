@@ -10,8 +10,10 @@ from app.context.manager import ContextManager
 from app.context.stores.redis_store import RedisContextStore
 from app.providers.base import BaseLLMProvider
 from app.providers.registry import ProviderRegistry
+from app.rag.models import Citation, RetrievalTrace
 from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse
+from app.services.chat_result import ChatServiceResult
 from app.server import app
 from app.services.errors import (
     ServiceConfigurationError,
@@ -52,6 +54,62 @@ class FakeChatService:
             "remaining_message_count": 0,
             "scope": "conversation" if conversation_id else "session",
         }
+
+
+class FakeChatServiceWithCitations(FakeChatService):
+    def chat_with_citations_from_user_prompt(self, chat_request):
+        self.last_chat_request = chat_request
+        return ChatServiceResult(
+            llm_response=LLMResponse(
+                content="ok-with-citations",
+                provider="openai",
+                model="gpt-test",
+                metadata={"trace_id": "trace-2"},
+            ),
+            citations=[
+                Citation(
+                    citation_id="c-1",
+                    document_id="doc-1",
+                    chunk_id="chk-1",
+                    title="Doc One",
+                    snippet="Doc snippet",
+                    origin_uri="file:///doc-1.md",
+                    source_type="markdown_file",
+                    updated_at="2026-04-10T00:00:00+00:00",
+                    metadata={"score": 0.91},
+                )
+            ],
+            retrieval_trace=RetrievalTrace(
+                status="succeeded",
+                query_text=chat_request.user_prompt,
+                top_k=4,
+                hit_count=1,
+                citation_count=1,
+            ),
+        )
+
+
+class FakeChatServiceDegraded(FakeChatService):
+    def chat_with_citations_from_user_prompt(self, chat_request):
+        self.last_chat_request = chat_request
+        return ChatServiceResult(
+            llm_response=LLMResponse(
+                content="ok-degraded",
+                provider="openai",
+                model="gpt-test",
+                metadata={"retrieval_status": "degraded"},
+            ),
+            citations=[],
+            retrieval_trace=RetrievalTrace(
+                status="degraded",
+                query_text=chat_request.user_prompt,
+                top_k=4,
+                hit_count=0,
+                citation_count=0,
+                error_type="RuntimeError",
+                error_message="retrieval failed",
+            ),
+        )
 
 
 class FakeStreamingChatService:
@@ -95,6 +153,79 @@ class FakeStreamingChatService:
             "assistant_message_id": cancel_request.assistant_message_id,
             "session_id": cancel_request.session_id,
             "conversation_id": cancel_request.conversation_id,
+        }
+
+
+class FakeStreamingChatServiceWithCitations(FakeStreamingChatService):
+    def stream_chat_from_user_prompt(self, chat_request):
+        del chat_request
+        yield {
+            "event": "response.started",
+            "data": {
+                "request_id": "req-1",
+                "conversation_id": "conv-1",
+                "assistant_message_id": "am-1",
+                "provider": "openai",
+                "model": "gpt-test",
+                "created_at": "2026-04-09T00:00:00+00:00",
+            },
+        }
+        yield {
+            "event": "response.delta",
+            "data": {
+                "assistant_message_id": "am-1",
+                "delta": "hello",
+                "sequence": 1,
+            },
+        }
+        yield {
+            "event": "response.completed",
+            "data": {
+                "assistant_message_id": "am-1",
+                "status": "completed",
+                "finish_reason": "stop",
+                "latency_ms": 12.3,
+                "citations": [
+                    {
+                        "citation_id": "c-1",
+                        "document_id": "doc-1",
+                        "chunk_id": "chk-1",
+                        "title": "Doc One",
+                        "snippet": "Doc snippet",
+                        "origin_uri": "file:///doc-1.md",
+                        "source_type": "markdown_file",
+                        "updated_at": "2026-04-10T00:00:00+00:00",
+                        "metadata": {"score": 0.91},
+                    }
+                ],
+            },
+        }
+
+
+class FakeStreamingChatServiceDegraded(FakeStreamingChatService):
+    def stream_chat_from_user_prompt(self, chat_request):
+        del chat_request
+        yield {
+            "event": "response.started",
+            "data": {
+                "request_id": "req-1",
+                "conversation_id": "conv-1",
+                "assistant_message_id": "am-1",
+                "provider": "openai",
+                "model": "gpt-test",
+                "created_at": "2026-04-09T00:00:00+00:00",
+            },
+        }
+        yield {
+            "event": "response.completed",
+            "data": {
+                "assistant_message_id": "am-1",
+                "status": "completed",
+                "finish_reason": "stop",
+                "latency_ms": 8.2,
+                "citations": [],
+                "trace": {"retrieval": {"status": "degraded"}},
+            },
         }
 
 
@@ -142,11 +273,47 @@ class APIRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["content"], "ok")
+        self.assertEqual(body["citations"], [])
         self.assertEqual(fake_service.last_chat_request.user_prompt, "hello")
         self.assertEqual(fake_service.last_chat_request.session_id, "session-1")
         self.assertEqual(fake_service.last_chat_request.conversation_id, "conv-1")
         self.assertEqual(fake_service.last_chat_request.temperature, 0.3)
         self.assertEqual(fake_service.last_chat_request.max_tokens, 256)
+
+    def test_chat_returns_citations_when_service_provides_chat_service_result(self) -> None:
+        fake_service = FakeChatServiceWithCitations()
+        with patch("app.api.chat._get_chat_service", return_value=fake_service):
+            response = self.client.post(
+                "/chat",
+                json={
+                    "user_prompt": "hello",
+                    "provider": "openai",
+                    "model": "gpt-test",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["content"], "ok-with-citations")
+        self.assertEqual(len(body["citations"]), 1)
+        self.assertEqual(body["citations"][0]["citation_id"], "c-1")
+
+    def test_chat_retrieval_degraded_still_returns_success_with_empty_citations(self) -> None:
+        fake_service = FakeChatServiceDegraded()
+        with patch("app.api.chat._get_chat_service", return_value=fake_service):
+            response = self.client.post(
+                "/chat",
+                json={
+                    "user_prompt": "hello",
+                    "provider": "openai",
+                    "model": "gpt-test",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["content"], "ok-degraded")
+        self.assertEqual(body["citations"], [])
 
     def test_chat_rejects_invalid_input(self) -> None:
         response = self.client.post("/chat", json={"user_prompt": ""})
@@ -271,6 +438,57 @@ class APIRouteTests(unittest.TestCase):
         self.assertIn("event: response.delta", response.text)
         self.assertIn("event: response.completed", response.text)
 
+    def test_chat_stream_completed_includes_citations_and_delta_does_not(self) -> None:
+        with patch(
+            "app.api.chat._get_streaming_chat_service",
+            return_value=FakeStreamingChatServiceWithCitations(),
+        ):
+            response = self.client.post(
+                "/chat_stream",
+                json={
+                    "user_prompt": "hello",
+                    "provider": "openai",
+                    "model": "gpt-test",
+                    "session_id": "session-1",
+                    "conversation_id": "conv-1",
+                    "request_id": "req-1",
+                    "stream": True,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        events = self._parse_sse_events(response.text)
+        delta_event = next(event for event in events if event["event"] == "response.delta")
+        completed_event = next(event for event in events if event["event"] == "response.completed")
+        self.assertNotIn("citations", delta_event["data"])
+        self.assertEqual(len(completed_event["data"]["citations"]), 1)
+        self.assertEqual(completed_event["data"]["citations"][0]["citation_id"], "c-1")
+
+    def test_chat_stream_retrieval_degraded_still_completes(self) -> None:
+        with patch(
+            "app.api.chat._get_streaming_chat_service",
+            return_value=FakeStreamingChatServiceDegraded(),
+        ):
+            response = self.client.post(
+                "/chat_stream",
+                json={
+                    "user_prompt": "hello",
+                    "provider": "openai",
+                    "model": "gpt-test",
+                    "session_id": "session-1",
+                    "conversation_id": "conv-1",
+                    "request_id": "req-1",
+                    "stream": True,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        events = self._parse_sse_events(response.text)
+        self.assertIn("response.completed", [event["event"] for event in events])
+        self.assertNotIn("response.error", [event["event"] for event in events])
+        completed_event = next(event for event in events if event["event"] == "response.completed")
+        self.assertEqual(completed_event["data"]["citations"], [])
+
     def test_chat_cancel_delegates_to_streaming_service(self) -> None:
         with patch(
             "app.api.chat._get_streaming_chat_service",
@@ -361,3 +579,36 @@ class APIRouteTests(unittest.TestCase):
         self.assertEqual(chat_response.json()["content"], "echo:hello redis")
         self.assertEqual(reset_response.status_code, 200)
         self.assertEqual(reset_response.json()["scope"], "conversation")
+
+    @staticmethod
+    def _parse_sse_events(payload: str) -> list[dict[str, object]]:
+        events: list[dict[str, object]] = []
+        current_event: str | None = None
+        current_data: str | None = None
+        for raw_line in payload.splitlines():
+            line = raw_line.strip()
+            if line.startswith("event:"):
+                current_event = line.removeprefix("event:").strip()
+            elif line.startswith("data:"):
+                current_data = line.removeprefix("data:").strip()
+            elif not line and current_event and current_data:
+                import json
+
+                events.append(
+                    {
+                        "event": current_event,
+                        "data": json.loads(current_data),
+                    }
+                )
+                current_event = None
+                current_data = None
+        if current_event and current_data:
+            import json
+
+            events.append(
+                {
+                    "event": current_event,
+                    "data": json.loads(current_data),
+                }
+            )
+        return events

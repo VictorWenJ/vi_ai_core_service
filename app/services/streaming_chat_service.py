@@ -20,6 +20,8 @@ from app.providers.base import (
     StreamNotImplementedError,
 )
 from app.providers.registry import ProviderRegistry
+from app.rag.models import Citation, RetrievalResult
+from app.rag.runtime import RAGRuntime
 from app.schemas.llm_response import LLMStreamChunk, LLMUsage
 from app.services.cancellation_registry import CancellationRegistry
 from app.services.errors import ServiceNotImplementedError
@@ -39,6 +41,7 @@ class StreamingChatService:
             context_manager: ContextManager,
             request_assembler: ChatRequestAssembler,
             cancellation_registry: CancellationRegistry,
+            rag_runtime: RAGRuntime | None = None,
     ) -> None:
         self._app_config = app_config
         self._registry = registry
@@ -46,6 +49,11 @@ class StreamingChatService:
         self._context_manager = context_manager
         self._request_assembler = request_assembler
         self._cancellation_registry = cancellation_registry
+        self._rag_runtime = rag_runtime or (
+            RAGRuntime.from_app_config(app_config)
+            if app_config.rag_config.enabled
+            else RAGRuntime.disabled(default_top_k=app_config.rag_config.retrieval_top_k)
+        )
 
     def stream_chat_from_user_prompt(self, chat_request: ChatStreamRequest) -> Iterator[dict[str, Any]]:
         # 步骤 0：全局开关校验。若环境未开启 streaming，则直接拒绝。
@@ -67,12 +75,20 @@ class StreamingChatService:
 
         # 步骤 3：复用现有 assembler 组装并规范化请求。
         # 这里保持与同步链路一致的 request assembly 规则，只是把 stream 强制设为 True。
+        retrieval_filter = _extract_retrieval_filter(chat_request.metadata)
+        retrieval_result = self._rag_runtime.retrieve_for_chat(
+            query_text=chat_request.user_prompt,
+            metadata_filter=retrieval_filter,
+        )
+
         llm_request = self._request_assembler.assemble_from_user_prompt(
             request=chat_request,
             context_manager=self._context_manager,
+            knowledge_block=retrieval_result.knowledge_block,
         )
         llm_request.request_id = request_id
         llm_request.stream = True
+        llm_request.metadata["retrieval"] = retrieval_result.trace.to_dict()
         llm_request = self._request_assembler.normalize_request(
             llm_request,
             provider_registry=self._registry,
@@ -114,6 +130,8 @@ class StreamingChatService:
                 "conversation_id": conversation_scope,
                 "provider": llm_request.provider,
                 "model": llm_request.model,
+                "retrieval_status": retrieval_result.trace.status,
+                "citation_count": len(retrieval_result.citations),
             }
             self._context_manager.append_user_message(
                 session_id=normalized_session_id,
@@ -304,6 +322,7 @@ class StreamingChatService:
                         stream_event_count=stream_event_count,
                         cancelled=True,
                         error_code=None,
+                        retrieval_trace=retrieval_result.trace.to_dict(),
                     )
                     if stream_options["stream_emit_trace"]
                     else None,
@@ -345,6 +364,7 @@ class StreamingChatService:
                         stream_event_count=stream_event_count,
                         cancelled=False,
                         error_code=error_code,
+                        retrieval_trace=retrieval_result.trace.to_dict(),
                     )
                     if stream_options["stream_emit_trace"]
                     else None,
@@ -382,6 +402,7 @@ class StreamingChatService:
                 "finish_reason": finish_reason or "stop",
                 "usage": self._usage_to_dict(usage) if stream_options["stream_emit_usage"] else None,
                 "latency_ms": round((perf_counter() - started_at) * 1000, 2),
+                "citations": self._citations_to_dict(retrieval_result.citations),
                 "trace": self._build_stream_trace(
                     request_id=request_id,
                     session_id=normalized_session_id,
@@ -395,6 +416,7 @@ class StreamingChatService:
                     stream_event_count=stream_event_count,
                     cancelled=False,
                     error_code=None,
+                    retrieval_trace=retrieval_result.trace.to_dict(),
                 )
                 if stream_options["stream_emit_trace"]
                 else None,
@@ -468,6 +490,10 @@ class StreamingChatService:
         return asdict(usage)
 
     @staticmethod
+    def _citations_to_dict(citations: list[Citation]) -> list[dict[str, Any]]:
+        return [citation.to_dict() for citation in citations]
+
+    @staticmethod
     def _build_stream_trace(
             *,
             request_id: str,
@@ -482,6 +508,7 @@ class StreamingChatService:
             stream_event_count: int,
             cancelled: bool,
             error_code: str | None,
+            retrieval_trace: dict[str, Any] | None,
     ) -> dict[str, Any]:
         finished_at = perf_counter()
         return {
@@ -500,6 +527,7 @@ class StreamingChatService:
             "latency_ms": round((finished_at - started_at) * 1000, 2),
             "cancelled": cancelled,
             "error_code": error_code,
+            "retrieval": retrieval_trace,
         }
 
 
@@ -508,3 +536,12 @@ def normalize_optional_text(value: str | None) -> str | None:
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def _extract_retrieval_filter(metadata: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not metadata:
+        return None
+    retrieval_filter = metadata.get("retrieval_filter")
+    if not isinstance(retrieval_filter, dict):
+        return None
+    return dict(retrieval_filter)

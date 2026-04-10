@@ -14,6 +14,14 @@
 - title
 - source_type
 - content
+- origin_uri
+- file_name
+- jurisdiction
+- domain
+- tags
+- effective_at
+- updated_at
+- visibility
 - metadata
 
 ---
@@ -27,6 +35,7 @@
 - chunk_text
 - chunk_index
 - token_count
+- embedding_model
 - metadata
 
 ---
@@ -41,6 +50,11 @@
 - score
 - title
 - origin_uri
+- source_type
+- jurisdiction
+- domain
+- effective_at
+- updated_at
 - metadata
 
 ---
@@ -55,12 +69,14 @@
 - title
 - snippet
 - origin_uri
+- source_type
+- updated_at
 - metadata
 
 ---
 
 ## 6. 原则
 
-- 上述对象当前仍属待实现目标
+- 上述对象当前已在代码中落地
 - citation 必须来自 retrieval 结果
 - 不直接把内部 SDK 对象透传为模型

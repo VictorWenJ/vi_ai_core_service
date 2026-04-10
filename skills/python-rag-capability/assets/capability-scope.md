@@ -37,11 +37,11 @@
 
 ## 4. 当前默认技术基线
 
-- 当前代码尚无 RAG 运行时代码
-- 后续默认向量库：Qdrant
-- 后续默认相似度：Cosine
-- 后续默认 chunking：结构感知 + token-aware + overlap
-- 后续默认 citation：来自 retrieval 结果
+- 当前代码已有 RAG 运行时代码
+- 默认向量库：Qdrant
+- 默认相似度：Cosine
+- 默认 chunking：结构感知 + token-aware + overlap
+- 默认 citation：来自 retrieval 结果
 
 ---
 

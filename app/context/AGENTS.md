@@ -52,7 +52,7 @@
 当前阶段必须兼容：
 
 - **Phase 5：Streaming Chat & Conversation Lifecycle**
-- **Phase 6：Knowledge + Citation Layer 的后续接入**
+- **Phase 6：Knowledge + Citation Layer 的已落地接入**
 
 ---
 
@@ -142,7 +142,7 @@ Phase 6 中引入的知识检索是外部 grounding，不得把 retrieval 结果
 
 - `/chat` 当前的 request assembly
 - `/chat_stream` 的 completed / failed / cancelled 收口
-- 后续 retrieval 引入后 context 语义不被污染
+- retrieval 已引入后 context 语义不被污染
 
 当前本轮不要求在 `context` 中新增：
 

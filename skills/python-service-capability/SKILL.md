@@ -62,6 +62,7 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 当前代码中，装配顺序固定为：
 
 - system prompt
+- knowledge block
 - working memory block
 - rolling summary block
 - recent raw messages
@@ -75,9 +76,9 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 ### 4.4 流式生命周期必须收敛在 services
 `started / delta / heartbeat / completed / error / cancelled` 的业务语义由 services 统一调度。
 
-### 4.5 当前代码尚未落地 RAG 编排
-当前仓库中的 services 还没有 retrieval、knowledge block、citations 运行时逻辑。
-如后续开始实现，必须在本层统一编排，不能散落到 API / provider / context。
+### 4.5 当前代码已落地 RAG 编排
+当前仓库中的 services 已有 retrieval、knowledge block、citations 运行时编排逻辑。
+后续迭代必须继续在本层统一编排，不能散落到 API / provider / context。
 
 ---
 
@@ -90,7 +91,7 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 - `ChatRequestAssembler` 负责上下文组装与请求规范化
 - `CancellationRegistry` 负责请求级取消
 - `PromptService` 负责消息装配辅助
-- 当前代码不包含 retrieval / citation 编排
+- 当前代码包含 retrieval / citation 编排
 
 如需变更该基线，必须先更新根目录文档与模块 AGENTS，再进入实现。
 
@@ -174,8 +175,8 @@ services 可依赖：
 不得直接散落访问 Redis client、向量库 SDK 或 provider 原始 SDK。
 
 ### 8.5 Phase 6 约束
-当前代码尚未落地 retrieval / citations。
-任何声称新增这类能力的改动，都必须同时补真实代码与测试。
+当前代码已落地 retrieval / citations。
+新增这类能力的改动，必须同时补真实代码与测试。
 
 ---
 
@@ -195,8 +196,8 @@ prompts 负责模板资产；services 负责决定何时取默认 system prompt 
 providers 负责厂商适配与 canonical result；services 负责调用时机与结果收口。
 
 ### 与 rag 协作
-当前代码尚未接入 rag。
-后续若落地，rag 负责知识实现，services 负责编排。
+当前代码已接入 rag。
+rag 负责知识实现，services 负责编排。
 
 ---
 
@@ -210,6 +211,7 @@ service 相关实现至少补以下测试之一或多项：
 4. request assembly 顺序与过滤路径
 5. completed 才进入标准 memory update 路径
 6. 默认 provider / model / system prompt 解析路径
+7. retrieval degrade 不拖垮 chat/stream 主链路
 
 ---
 
@@ -221,7 +223,7 @@ service 相关实现至少补以下测试之一或多项：
 2. request_assembler 是否仍是唯一装配中枢？
 3. completed / failed / cancelled 语义是否仍清晰？
 4. 是否没有把 route / SDK / store 细节混入 services？
-5. 是否没有把未落地的 retrieval / citations 写成已实现事实？
+5. retrieval / citations 是否仍保持 services 编排边界？
 6. 是否补了测试？
 
 ---
@@ -239,4 +241,4 @@ service 相关实现至少补以下测试之一或多项：
 
 ## 13. 一句话总结
 
-本 skill 的目标，是确保 `app/services/` 在当前项目中持续作为应用编排层演进，稳定承接同步 / 流式 chat、request assembly 与生命周期收口，而不是把未落地的 RAG 规划误写成已存在的 services 能力。
+本 skill 的目标，是确保 `app/services/` 在当前项目中持续作为应用编排层演进，稳定承接同步 / 流式 chat、request assembly、retrieval 编排与生命周期收口。

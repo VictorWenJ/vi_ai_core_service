@@ -49,8 +49,8 @@ providers 负责厂商适配与 canonical result。
 
 ## 6. 与 rag 的边界
 
-当前代码尚未接入 rag。
-后续若落地：services 负责编排，rag 负责知识实现。
+当前代码已接入 rag。
+services 负责编排，rag 负责知识实现。
 
 ---
 

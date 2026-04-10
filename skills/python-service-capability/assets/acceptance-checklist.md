@@ -23,7 +23,7 @@
 - [ ] 未混入 route 逻辑
 - [ ] 未混入 provider SDK 细节
 - [ ] 未混入 store / Redis 细节
-- [ ] 未把未落地 retrieval / citations 写成已实现事实
+- [ ] retrieval / citations 保持 services 编排边界，未侵入 API/provider/context
 
 ### 回归
 - [ ] 未破坏同步 chat 主链路

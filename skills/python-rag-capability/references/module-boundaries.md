@@ -44,4 +44,4 @@ RAG 对外暴露的结果由 services / API 再进行编排与输出。
 
 ## 6. 结论
 
-`app/rag/` 是内部知识与检索子域。当前代码尚未落地运行时代码，后续实现也不得替代 services、context、providers 或 api 的职责。
+`app/rag/` 是内部知识与检索子域。当前代码已落地运行时代码，后续实现也不得替代 services、context、providers 或 api 的职责。

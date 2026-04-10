@@ -42,7 +42,7 @@
 4. retrieval / chunking / index 实现
 5. citation 生成
 6. request assembly
-7. embedding provider（当前代码未落地）
+7. retrieval / citation 业务编排
 8. 长期记忆平台
 9. 审批流
 10. Case Workspace
@@ -63,8 +63,8 @@ provider 负责调用厂商、归一化返回、映射错误；
 ### 4.3 streaming 与 non-streaming 一致性
 同一 provider 在流式与非流式场景下都必须有稳定 contract。
 
-### 4.4 当前代码不含 embedding provider
-未落地能力不得写进当前默认基线。
+### 4.4 embedding 通过独立抽象落地
+当前代码已通过独立 embedding provider 抽象落地，不污染 `BaseLLMProvider`。
 
 ### 4.5 成熟度显式化
 `ProviderRegistry` 当前通过 `implemented / scaffolded` 描述 Provider 成熟度。
@@ -81,7 +81,7 @@ provider 负责调用厂商、归一化返回、映射错误；
 - canonical response / chunk：统一结构
 - 已实现 provider：`openai`、`deepseek`
 - 脚手架 provider：`gemini`、`doubao`、`tongyi`
-- 当前不含 embedding provider
+- embedding provider：`deterministic`、`openai`
 
 如需变更该基线，必须先更新根目录文档与模块 AGENTS，再进入实现。
 
@@ -153,7 +153,7 @@ provider 层负责将厂商错误收敛为项目内统一错误语义。
 实现态与脚手架态必须在代码和文档中一致。
 
 ### 8.5 扩展约束
-未来如要引入 embedding provider，必须先真实落地代码，再更新模块文档与 skill。
+扩展 embedding provider 时，必须继续保持独立抽象边界并同步更新文档与测试。
 
 ---
 
@@ -169,8 +169,8 @@ API 不直接调用厂商 SDK；API 通过 services 间接使用 provider。
 context 不直接依赖 provider SDK；provider 也不直接操作 context。
 
 ### 与 rag 协作
-当前代码中 rag 尚未落地运行时代码。
-provider 当前也不承接 retrieval / citation 职责。
+当前代码中 rag 已落地运行时代码。
+provider 不承接 retrieval / citation 职责，只提供 embedding 能力入口。
 
 ---
 
@@ -184,6 +184,7 @@ provider 相关实现至少补以下测试之一或多项：
 4. timeout / error mapping 测试
 5. config / registry 测试
 6. 实现态 / 脚手架态一致性测试
+7. embedding provider 构建与调用测试
 
 ---
 
@@ -212,4 +213,4 @@ provider 相关实现至少补以下测试之一或多项：
 
 ## 13. 一句话总结
 
-本 skill 的目标，是确保 `app/providers/` 在当前项目中持续作为 LLM 厂商接入层演进，稳定承接 chat / stream canonical contract 与 provider registry，而不是把未落地的 embedding 能力误写成已存在模块。
+本 skill 的目标，是确保 `app/providers/` 在当前项目中持续作为模型接入层演进，稳定承接 chat / stream canonical contract、provider registry 与独立 embedding provider 抽象。

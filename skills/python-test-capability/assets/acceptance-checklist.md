@@ -19,9 +19,10 @@
 
 ### 基础模块
 - [ ] provider / prompt / API / config 相关回归面已覆盖
+- [ ] rag / citation / degrade 相关回归面已覆盖
 
 ### 边界
-- [ ] 未把未落地 retrieval / citation 写成已覆盖事实
+- [ ] 未把未落地能力写成已覆盖事实
 - [ ] 未过度依赖真实外部服务
 
 ### 文档治理

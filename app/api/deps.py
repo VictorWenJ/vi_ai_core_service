@@ -7,6 +7,7 @@ from functools import lru_cache
 from app.config import AppConfig
 from app.context.manager import ContextManager
 from app.providers.registry import ProviderRegistry
+from app.rag.runtime import RAGRuntime
 from app.services.cancellation_registry import CancellationRegistry
 from app.services.llm_service import LLMService
 from app.services.prompt_service import PromptService
@@ -48,6 +49,14 @@ def get_cancellation_registry() -> CancellationRegistry:
 
 
 @lru_cache(maxsize=1)
+def get_rag_runtime() -> RAGRuntime:
+    app_config = get_app_config()
+    if not app_config.rag_config.enabled:
+        return RAGRuntime.disabled(default_top_k=app_config.rag_config.retrieval_top_k)
+    return RAGRuntime.from_app_config(app_config)
+
+
+@lru_cache(maxsize=1)
 def get_chat_service() -> LLMService:
     return LLMService(
         app_config=get_app_config(),
@@ -55,6 +64,7 @@ def get_chat_service() -> LLMService:
         prompt_service=get_prompt_service(),
         context_manager=get_context_manager(),
         request_assembler=get_request_assembler(),
+        rag_runtime=get_rag_runtime(),
     )
 
 
@@ -67,4 +77,5 @@ def get_streaming_chat_service() -> StreamingChatService:
         context_manager=get_context_manager(),
         request_assembler=get_request_assembler(),
         cancellation_registry=get_cancellation_registry(),
+        rag_runtime=get_rag_runtime(),
     )

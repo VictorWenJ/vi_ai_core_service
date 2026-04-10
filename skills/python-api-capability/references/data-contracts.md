@@ -15,7 +15,7 @@
 - temperature / max_tokens 覆盖
 - session_id / conversation_id / request_id
 - metadata
-- 返回 `content / provider / model / usage / finish_reason / metadata / raw_response`
+- 返回 `content / provider / model / usage / finish_reason / metadata / raw_response / citations`
 
 ---
 
@@ -29,6 +29,7 @@
 - `response.error`
 - `response.cancelled`
 - `response.heartbeat`
+- `response.completed` 中包含 `citations`
 
 ---
 
@@ -44,6 +45,6 @@
 
 ## 5. 原则
 
-- 当前不承诺 citations
+- citations 仅通过稳定 schema 透传
 - 不暴露底层 Qdrant / embedding / SDK 细节
 - contract 变更必须同步补测试

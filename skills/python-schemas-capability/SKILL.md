@@ -64,8 +64,8 @@
 ### 4.4 流式与非流式语义一致
 `finish_reason`、`usage`、`metadata` 等核心语义在 `LLMResponse` 与 `LLMStreamChunk` 中必须保持一致。
 
-### 4.5 当前代码未落地 citation schema
-未落地能力不得写进 `app/schemas/` 的默认基线。
+### 4.5 citation schema 继续与内部契约分离
+citation schema 已在 `app/api/schemas/` 落地，不得写进 `app/schemas/` 的默认基线。
 
 ---
 

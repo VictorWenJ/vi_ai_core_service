@@ -23,7 +23,7 @@
 ### 边界
 - [ ] 未混入业务编排
 - [ ] 未混入 retrieval / provider SDK 逻辑
-- [ ] 未把未落地 citations 写成已实现事实
+- [ ] citations 字段仅作为 schema 契约透传
 
 ### 回归
 - [ ] 已补对应测试

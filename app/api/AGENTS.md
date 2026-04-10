@@ -94,9 +94,10 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 
 ### 6.3 当前代码中的 API 契约事实
 - `/chat` 当前返回：`content`、`provider`、`model`、`usage`、`finish_reason`、`metadata`、`raw_response`
+- `/chat` 当前还返回：`citations`
 - `/chat_stream` 当前输出：`response.started`、`response.delta`、`response.completed`、`response.error`、`response.cancelled`、`response.heartbeat`
-- `response.completed` 当前可携带 `usage`、`latency_ms`、`trace`
-- 当前代码尚未在 `/chat` 或 `/chat_stream` 中输出 citations
+- `response.completed` 当前可携带 `usage`、`latency_ms`、`trace`、`citations`
+- delta 阶段不输出 citation 增量
 
 ### 6.4 外部契约不泄漏内部实现细节
 不应把：
@@ -129,15 +130,15 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 
 当前代码事实补充：
 
-- `ChatResponse` 当前未定义 `citations`
-- `response.completed` 当前未定义 `citations`
-- API 层当前没有 retrieval 接入，也没有 RAG 降级分支
+- `ChatResponse` 已定义 `citations`
+- `response.completed` 已定义 `citations`
+- API 层仍不直接接入 retrieval，仅消费 service 编排结果与降级结果
 
-当前本轮后续如进入 Phase 6 实现：
+当前本轮必须保持：
 
-- citations 只能在真实代码落地后进入 API 契约
-- 若新增 citations，`/chat_stream` 也只能在 completed 事件携带
-- 不得在 API 层自行拼装 retrieval / citation 业务语义
+- citations 通过稳定 schema 输出
+- `chat_stream` 仅在 completed 事件携带 citations
+- API 层不得自行拼装 retrieval / citation 业务语义
 
 ---
 
@@ -188,7 +189,7 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 1. 不允许在 API 层直接访问向量库
 2. 不允许在 API 层直接构建 retrieval query
 3. 不允许在 API 层直接组织 knowledge block
-4. 不允许把尚未实现的 citations 写成已存在的 API 字段
+4. 不允许在 API 层生成 citations 内容
 5. 若未来新增 citations，不允许以无 schema、临时拼接字段的方式输出
 6. 不允许在 API 层直接做 context reset / cancel / stream 之外的状态机编排
 
@@ -200,7 +201,7 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 2. 是否没有把 retrieval / context / provider 逻辑混到 API 层？
 3. `/chat` 当前返回字段是否仍与 `app/api/schemas/chat.py` 一致？
 4. `/chat_stream` 当前事件集合与 payload 是否仍与 service 输出一致？
-5. delta 阶段是否仍保持轻量、稳定？
+5. delta 阶段是否仍保持轻量、稳定且不带 citations？
 6. `/chat_stream_cancel` 语义是否清晰且稳定？
 7. `/chat_reset` 是否只承担接入层职责？
 8. 是否没有把未落地的 Phase 6 能力写成已实现事实？
@@ -215,15 +216,18 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 至少覆盖：
 
 1. `/chat` 正常返回 `ChatResponse`
-2. `/chat_stream` started / delta / completed 事件输出
-3. `/chat_stream_cancel` 行为符合设计
-4. `/chat_reset` 行为符合设计
-5. `error_mapping.py` 映射稳定
-6. `/health` 与 HTTP smoke 行为符合设计
-7. 原有同步与流式契约未被破坏
+2. `/chat` citations 输出与空数组行为
+3. `/chat_stream` started / delta / completed 事件输出
+4. `/chat_stream` completed citations 输出，delta 不输出 citations
+5. retrieval 失败时 chat/stream 仍成功
+6. `/chat_stream_cancel` 行为符合设计
+7. `/chat_reset` 行为符合设计
+8. `error_mapping.py` 映射稳定
+9. `/health` 与 HTTP smoke 行为符合设计
+10. 原有同步与流式契约未被破坏
 
 ---
 
 ## 12. 一句话总结
 
-`app/api/` 在当前代码基线中只负责同步 JSON 与 SSE 文本协议接入、错误映射与稳定契约输出，当前尚未承接 citations 或 retrieval 语义，并在后续更新中严格遵守模块文档的模板冻结规则。
+`app/api/` 在当前代码基线中只负责同步 JSON 与 SSE 文本协议接入、错误映射与稳定契约输出；citations 仅作为契约字段透传，不承接 retrieval 业务语义，并在后续更新中严格遵守模块文档的模板冻结规则。

@@ -9,6 +9,7 @@ from app.context.models import ContextMessage, ContextWindow
 from app.context.stores.redis_store import RedisContextStore
 from app.providers.base import BaseLLMProvider, ProviderNotImplementedError
 from app.providers.registry import ProviderRegistry
+from app.rag.models import Citation, RetrievalResult, RetrievalTrace
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.schemas.llm_response import LLMResponse
 from app.services.errors import (
@@ -105,6 +106,25 @@ class FakeContextManager:
         del conversation_id
         self._window = ContextWindow(session_id=session_id, messages=[])
         return self._window
+
+
+class StubRAGRuntime:
+    def __init__(self, retrieval_result: RetrievalResult) -> None:
+        self._retrieval_result = retrieval_result
+        self.last_query_text: str | None = None
+        self.last_metadata_filter: dict | None = None
+
+    def retrieve_for_chat(
+        self,
+        *,
+        query_text: str,
+        metadata_filter: dict | None = None,
+        top_k: int | None = None,
+    ) -> RetrievalResult:
+        del top_k
+        self.last_query_text = query_text
+        self.last_metadata_filter = metadata_filter
+        return self._retrieval_result
 
 
 class LLMServiceTests(unittest.TestCase):
@@ -296,6 +316,96 @@ class LLMServiceTests(unittest.TestCase):
         self.assertEqual(response.provider, "openai")
         self.assertIsNone(fake_context_manager.last_get_session_id)
         self.assertIsNone(fake_context_manager.last_update_payload)
+
+    def test_chat_with_citations_injects_knowledge_block_and_returns_citations(self) -> None:
+        fake_context_manager = FakeContextManager()
+        retrieval_result = RetrievalResult(
+            knowledge_block="[knowledge_block]\n1. title=Doc One; source=file:///doc-1.md; score=0.9000\n   snippet=snippet",
+            citations=[
+                Citation(
+                    citation_id="c-1",
+                    document_id="doc-1",
+                    chunk_id="chk-1",
+                    title="Doc One",
+                    snippet="snippet",
+                    origin_uri="file:///doc-1.md",
+                    source_type="markdown_file",
+                    updated_at="2026-04-10T00:00:00+00:00",
+                    metadata={"score": 0.9},
+                )
+            ],
+            trace=RetrievalTrace(
+                status="succeeded",
+                query_text="new question",
+                top_k=4,
+                hit_count=1,
+                citation_count=1,
+            ),
+        )
+        rag_runtime = StubRAGRuntime(retrieval_result)
+        service = LLMService(
+            app_config=self.config,
+            registry=self.registry,
+            prompt_service=PromptService(),
+            context_manager=fake_context_manager,
+            rag_runtime=rag_runtime,  # type: ignore[arg-type]
+        )
+
+        result = service.chat_with_citations_from_user_prompt(
+            ChatRequest(
+                user_prompt="new question",
+                session_id="session-1",
+                provider="openai",
+                metadata={"retrieval_filter": {"domain": "policy"}},
+            )
+        )
+
+        self.assertEqual(result.llm_response.provider, "openai")
+        self.assertEqual(len(result.citations), 1)
+        self.assertEqual(result.citations[0].citation_id, "c-1")
+        self.assertEqual(rag_runtime.last_query_text, "new question")
+        self.assertEqual(rag_runtime.last_metadata_filter, {"domain": "policy"})
+
+        sent_messages = self.providers["openai"].last_request.messages
+        self.assertEqual(sent_messages[0].role, "system")
+        self.assertEqual(sent_messages[1].role, "system")
+        self.assertIn("[knowledge_block]", sent_messages[1].content)
+        self.assertEqual(sent_messages[-1].role, "user")
+
+    def test_chat_with_citations_degraded_retrieval_still_returns_response(self) -> None:
+        fake_context_manager = FakeContextManager()
+        rag_runtime = StubRAGRuntime(
+            RetrievalResult.degraded(
+                query_text="new question",
+                top_k=4,
+                error_type="RuntimeError",
+                error_message="retrieval failed",
+                latency_ms=8.2,
+            )
+        )
+        service = LLMService(
+            app_config=self.config,
+            registry=self.registry,
+            prompt_service=PromptService(),
+            context_manager=fake_context_manager,
+            rag_runtime=rag_runtime,  # type: ignore[arg-type]
+        )
+
+        result = service.chat_with_citations_from_user_prompt(
+            ChatRequest(
+                user_prompt="new question",
+                session_id="session-1",
+                provider="openai",
+            )
+        )
+
+        self.assertEqual(result.llm_response.provider, "openai")
+        self.assertEqual(result.citations, [])
+        self.assertEqual(result.retrieval_trace.status, "degraded")
+        self.assertEqual(
+            self.providers["openai"].last_request.metadata["retrieval"]["status"],
+            "degraded",
+        )
 
     def test_reset_context_clears_session_window(self) -> None:
         fake_context_manager = FakeContextManager()

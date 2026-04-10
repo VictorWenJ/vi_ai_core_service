@@ -41,4 +41,4 @@
 ## 5. 原则
 
 - 保护当前已落地契约
-- 未落地 retrieval / citation 不写进现有测试完成态
+- 已落地 retrieval / citation 必须进入测试完成态

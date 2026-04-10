@@ -13,6 +13,7 @@
 - `log_report`
 - JSON-safe 序列化
 - request / stream / context assembly / provider 相关日志
+- retrieval / citation 生命周期相关日志
 - observability 相关测试
 
 ---
@@ -35,7 +36,7 @@
 - 结构化日志
 - JSON-safe
 - stdout logger
-- 当前不包含 retrieval / citation 专项字段
+- 当前包含 retrieval / citation 专项字段
 
 ---
 

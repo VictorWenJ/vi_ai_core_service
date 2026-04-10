@@ -36,11 +36,11 @@ context 负责会话状态；providers 不直接操作 context。
 
 ## 5. 与 rag 的边界
 
-当前代码中 rag 尚未落地运行时代码。
-providers 当前也不负责 retrieval / citation。
+当前代码中 rag 已落地运行时代码。
+providers 仍不负责 retrieval / citation。
 
 ---
 
 ## 6. 结论
 
-`app/providers/` 是模型与厂商接入层，不是业务编排层，不是知识检索层，也不是当前代码中的 embedding 子系统。
+`app/providers/` 是模型与厂商接入层，不是业务编排层，也不是知识检索层；embedding 通过独立 provider 抽象在本模块内维护。

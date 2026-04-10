@@ -33,6 +33,17 @@ class ConfigTests(unittest.TestCase):
             "STREAM_EMIT_USAGE": "false",
             "STREAM_EMIT_TRACE": "true",
             "STREAM_CANCEL_ENABLED": "true",
+            "RAG_ENABLED": "true",
+            "RAG_QDRANT_URL": "http://qdrant:6333",
+            "RAG_QDRANT_API_KEY": "qdrant-key",
+            "RAG_QDRANT_COLLECTION": "knowledge_chunks",
+            "RAG_RETRIEVAL_TOP_K": "6",
+            "RAG_SCORE_THRESHOLD": "0.35",
+            "RAG_CHUNK_TOKEN_SIZE": "320",
+            "RAG_CHUNK_OVERLAP_TOKEN_SIZE": "64",
+            "RAG_EMBEDDING_PROVIDER": "deterministic",
+            "RAG_EMBEDDING_MODEL": "deterministic-text-v1",
+            "RAG_EMBEDDING_DIMENSION": "96",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -68,6 +79,17 @@ class ConfigTests(unittest.TestCase):
         self.assertFalse(config.streaming_config.stream_emit_usage)
         self.assertTrue(config.streaming_config.stream_emit_trace)
         self.assertTrue(config.streaming_config.stream_cancel_enabled)
+        self.assertTrue(config.rag_config.enabled)
+        self.assertEqual(config.rag_config.qdrant_url, "http://qdrant:6333")
+        self.assertEqual(config.rag_config.qdrant_api_key, "qdrant-key")
+        self.assertEqual(config.rag_config.qdrant_collection, "knowledge_chunks")
+        self.assertEqual(config.rag_config.retrieval_top_k, 6)
+        self.assertEqual(config.rag_config.score_threshold, 0.35)
+        self.assertEqual(config.rag_config.chunk_token_size, 320)
+        self.assertEqual(config.rag_config.chunk_overlap_token_size, 64)
+        self.assertEqual(config.rag_config.embedding_provider, "deterministic")
+        self.assertEqual(config.rag_config.embedding_model, "deterministic-text-v1")
+        self.assertEqual(config.rag_config.embedding_dimension, 96)
 
     def test_invalid_default_provider_raises(self) -> None:
         with patch.dict(os.environ, {"LLM_DEFAULT_PROVIDER": "unknown"}, clear=True):
@@ -94,6 +116,24 @@ class ConfigTests(unittest.TestCase):
             {"CONTEXT_STORE_BACKEND": "unknown"},
             clear=True,
         ):
+            with self.assertRaises(ConfigError):
+                AppConfig.from_env(load_dotenv_file=False)
+
+    def test_invalid_rag_embedding_provider_raises(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"RAG_EMBEDDING_PROVIDER": "unknown"},
+            clear=True,
+        ):
+            with self.assertRaises(ConfigError):
+                AppConfig.from_env(load_dotenv_file=False)
+
+    def test_invalid_rag_overlap_settings_raise(self) -> None:
+        env = {
+            "RAG_CHUNK_TOKEN_SIZE": "128",
+            "RAG_CHUNK_OVERLAP_TOKEN_SIZE": "128",
+        }
+        with patch.dict(os.environ, env, clear=True):
             with self.assertRaises(ConfigError):
                 AppConfig.from_env(load_dotenv_file=False)
 

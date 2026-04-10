@@ -5,7 +5,7 @@
 
 当前目录提供：
 - `Dockerfile`：构建 app 运行镜像
-- `compose.yaml`：编排 app + redis
+- `compose.yaml`：编排 app + redis + qdrant
 - 根目录 `.env.example`：当前阶段唯一配置文件（单一事实来源）
 
 ## 1. 前置条件
@@ -20,7 +20,7 @@
 # 当前阶段直接使用根目录 .env.example，不再复制 .env
 ```
 
-2. 启动 app + redis：
+2. 启动 app + redis + qdrant：
 ```powershell
 docker compose -f infra/compose.yaml up -d --build
 ```
@@ -64,6 +64,11 @@ docker compose -f infra/compose.yaml logs -f app
 docker compose -f infra/compose.yaml logs -f redis
 ```
 
+查看 qdrant 日志：
+```powershell
+docker compose -f infra/compose.yaml logs -f qdrant
+```
+
 ## 5. 停止与清理
 
 停止服务：
@@ -80,9 +85,11 @@ docker compose -f infra/compose.yaml down --rmi local --volumes
 
 - `app`：运行 FastAPI HTTP 服务（入口：`app.server:app`）
 - `redis`：提供短期记忆持久化依赖
+- `qdrant`：提供 Phase 6 知识向量索引依赖
 
 其中 `infra/compose.yaml` 通过 `env_file: ../.env.example` 读取根目录 `.env.example`。
 `CONTEXT_REDIS_URL=redis://redis:6379/0` 使用 compose 服务名 `redis` 进行容器内网络访问。
+`RAG_QDRANT_URL=http://qdrant:6333` 使用 compose 服务名 `qdrant` 进行容器内网络访问。
 
 ## 7. 运行边界
 

@@ -110,9 +110,8 @@ observability 记录的内容应以当前代码真实可得的字段为准，例
 - request / response / stream 生命周期
 - context 组装与过滤
 - provider 调用结果与错误
+- retrieval / citation 相关 trace、降级与失败
 - JSON-safe 输出稳定性
-
-retrieval / citation 观测当前尚未在代码中落地。
 
 ### 6.5 observability 是横切支撑，不反向驱动业务
 日志帮助定位问题，但不能决定：
@@ -134,9 +133,9 @@ retrieval / citation 观测当前尚未在代码中落地。
 
 当前代码事实补充：
 
-- 当前仓库没有 retrieval / citation 专项可观测性实现
+- 当前仓库已包含 retrieval / ingestion 专项可观测性实现
 - 当前仓库没有 metrics / tracing / alerting 平台
-- 若未来补充 RAG 观测字段，必须以真实代码实现为准，而不是只写文档字段名
+- RAG 观测字段必须继续以真实代码实现为准，不得只写文档字段名
 
 当前本轮不要求：
 
@@ -222,9 +221,10 @@ retrieval / citation 观测当前尚未在代码中落地。
 4. 未知复杂对象退化为字符串
 5. 流式场景下 observability 不因不可序列化对象崩溃
 6. 若后续新增 retrieval 观测字段，再补对应测试
+7. retrieval disabled / succeeded / degraded / failed 区分日志路径测试
 
 ---
 
 ## 12. 一句话总结
 
-`app/observability/` 在当前代码基线中是系统的结构化观测基础设施层，当前以 `log_report` 和 JSON-safe 序列化为核心，为同步聊天、流式聊天、上下文生命周期与 provider 调用提供事实型记录能力，而不参与业务编排与状态决策，并在后续更新中严格遵守模块文档的模板冻结规则。
+`app/observability/` 在当前代码基线中是系统的结构化观测基础设施层，当前以 `log_report` 和 JSON-safe 序列化为核心，为同步聊天、流式聊天、上下文生命周期、provider 调用与 retrieval 生命周期提供事实型记录能力，而不参与业务编排与状态决策，并在后续更新中严格遵守模块文档的模板冻结规则。

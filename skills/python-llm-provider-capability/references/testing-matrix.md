@@ -23,6 +23,7 @@
 - provider config 加载
 - registry / maturity 选择
 - implemented / scaffolded 行为
+- embedding provider 构建与调用
 
 ### D. regression
 - 同步主链路未被 provider 改动破坏
@@ -34,4 +35,4 @@
 
 - 以确定性测试为主
 - 优先验证 canonical contract、错误映射与 registry 稳定性
-- 不把未落地 embedding 能力写进现有测试完成态
+- embedding 能力变更必须同步测试

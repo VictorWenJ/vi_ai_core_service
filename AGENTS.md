@@ -39,7 +39,7 @@
 - 最小可观测性
 - 稳定数据契约
 - 本地运行与交付（`infra/`）
-- 内部 `rag` 子域的治理占位与后续 Knowledge + Citation 基础能力
+- 内部 `rag` 子域的 Knowledge + Citation 运行时能力
 
 ---
 
@@ -66,24 +66,23 @@
 
 **Phase 6：Knowledge + Citation Layer**
 
-### 本轮必须完成
+### 本轮已落地（当前代码事实）
 
-截至当前代码基线，以下内容仍属于本轮待完成项，尚未在仓库代码中落地：
+截至当前代码基线，Phase 6 已在仓库中完成以下能力：
 
-- 在 `vi_ai_core_service` 内新增 `app/rag/` 运行时代码子域
-- 先作为内部能力建设，不拆独立 RAG 微服务
-- 建立知识对象模型、chunk 模型、retrieval 结果模型、citation 模型
-- 建立最小 ingest pipeline：
+- `app/rag/` 运行时代码子域已落地（`models / ingestion / retrieval / citation / runtime`）
+- 知识对象模型、chunk 模型、retrieval 结果模型、citation 模型已落地
+- 最小 ingest pipeline 已落地：
   - parser
   - cleaner
-  - chunker
+  - chunker（结构感知 + token-aware + overlap）
   - embedding
   - index
-- 引入向量检索能力，并支持基础 metadata filter
-- 将 retrieved knowledge block 纳入 request assembly
-- `/chat` 返回 citations
-- `/chat_stream` 的 `response.completed` 支持携带 citations
-- 建立 retrieval observability 与基础测试闭环
+- 向量检索能力已接入，并支持基础 metadata filter
+- retrieved knowledge block 已纳入 request assembly
+- `/chat` 已返回 citations
+- `/chat_stream` 的 `response.completed` 已返回 citations
+- retrieval observability 与基础测试闭环已落地
 
 ### 本轮默认技术基线
 
@@ -160,8 +159,8 @@
 - `api` 负责 HTTP / SSE 协议输出
 - `services` 负责同步与流式会话编排
 - `context` 负责会话状态与记忆收口规则
-- `rag` 负责知识导入、检索、引用装配；截至当前代码基线该子域仅有治理文档占位，尚未落地运行时代码
-- `providers` 负责模型厂商适配；截至当前代码基线仅实现 chat / streaming provider，embedding 尚未落地
+- `rag` 负责知识导入、检索、引用装配与可降级 retrieval 运行时
+- `providers` 负责模型厂商适配，并提供独立 embedding provider 抽象与实现入口
 - `schemas` 负责内部共享契约；当前 API 对外 request / response schema 位于 `app/api/schemas/`
 - `observability` 负责结构化日志；当前代码核心能力为 `log_report`
 
@@ -199,7 +198,7 @@ Phase 6 中引入的知识增强能力，不得替代 Phase 4 已建立的：
 
 ### 7.5 citation 是本轮一等能力
 citation 必须来自 retrieval 结果，不得变成模型自由生成的装饰性文本。
-截至当前代码基线，citation 契约尚未在 `/chat` 与 `/chat_stream` 中落地。
+截至当前代码基线，citation 契约已在 `/chat` 与 `/chat_stream` completed 中落地。
 
 ---
 
@@ -216,11 +215,12 @@ citation 必须来自 retrieval 结果，不得变成模型自由生成的装饰
 
 当前代码事实补充：
 
-- `app/rag/` 当前仅有模块治理文档占位
-- `/chat` 当前未返回 citations
-- `/chat_stream` 的 `response.completed` 当前未返回 citations
+- `app/rag/` 已落地运行时代码与最小 ingest/retrieval 闭环
+- `/chat` 已返回 `citations`（为空时返回空数组）
+- `/chat_stream` 的 `response.completed` 已返回 `citations`
 - `request_assembler` 当前装配顺序为：
   - system prompt
+  - knowledge block
   - working memory block
   - rolling summary block
   - recent raw messages

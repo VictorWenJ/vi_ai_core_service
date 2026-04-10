@@ -34,8 +34,9 @@
 ### E. integration
 - HTTP smoke
 
-### F. future Phase 6
-- 若后续实现 retrieval / citation，再补对应测试矩阵
+### F. Phase 6
+- rag ingestion / retrieval / citation 测试
+- retrieval degrade 测试
 
 ---
 

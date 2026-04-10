@@ -95,6 +95,18 @@ class ChatUsage(BaseModel):
     total_tokens: int | None = None
 
 
+class ChatCitation(BaseModel):
+    citation_id: str
+    document_id: str
+    chunk_id: str
+    title: str | None = None
+    snippet: str
+    origin_uri: str | None = None
+    source_type: str | None = None
+    updated_at: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ChatResponse(BaseModel):
     content: str
     provider: str
@@ -103,6 +115,7 @@ class ChatResponse(BaseModel):
     finish_reason: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     raw_response: dict[str, Any] | None = None
+    citations: list[ChatCitation] = Field(default_factory=list)
 
 
 class ChatResetRequest(BaseModel):

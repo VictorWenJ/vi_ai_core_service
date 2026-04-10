@@ -15,6 +15,7 @@
 ### B. stream
 - started / delta / completed 事件
 - error / cancelled / heartbeat 路径
+- completed citations 输出，delta 不输出 citations
 
 ### C. cancel / reset / health
 - `/chat_stream_cancel`
@@ -24,8 +25,9 @@
 ### D. integration
 - HTTP smoke
 
-### E. future Phase 6
-- 若后续真实新增 citations，再补对应输出测试
+### E. Phase 6
+- `/chat` citations 输出与空数组测试
+- retrieval 失败时 chat/stream 仍成功测试
 
 ---
 
@@ -33,4 +35,4 @@
 
 - 以确定性测试为主
 - 先保护当前已落地 API 契约
-- 不把未落地 citations 写进现有测试完成态
+- citations 契约变更必须同步测试
