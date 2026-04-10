@@ -1,108 +1,140 @@
 # app/providers/AGENTS.md
 
-> 更新日期：2026-04-09
+> 更新日期：2026-04-10
 
 ## 1. 文档定位
 
 本文件定义 `app/providers/` 的职责、边界、结构约束与 review 标准。  
 当前阶段，本文件临时同时承担该模块的 AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW 职责。
+执行 prompts 相关任务时，必须先读根目录`AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据skill `skills/python-prompts-capability/`执行。
 
 ---
 
 ## 2. 模块定位
 
-`app/providers/` 是系统的模型 API 接入层。  
-它负责对接不同模型厂商，实现统一 provider 抽象，并向上层暴露一致的模型调用能力。
+`app/providers/` 是模型与厂商接入层。  
+它负责对接不同大模型厂商，输出统一的 chat completion / stream chunk / embedding 结果，不承担业务编排职责。
+
+当前阶段建议围绕以下职责组织：
+
+- 非流式 chat completion provider
+- 流式 chat completion provider
+- canonical provider response / canonical stream chunk
+- embedding provider 抽象与实现
 
 ---
 
 ## 3. 本层职责
 
-1. 定义 provider 统一抽象
-2. 对接不同厂商模型接口
-3. 将内部请求映射到厂商请求
-4. 将厂商响应归一化为系统内部结果
-5. 将厂商流式 chunk / finish / usage / error 归一化为系统内部 stream contract
-6. 管理 provider 注册与查找
+1. 对接不同厂商的聊天能力
+2. 对接不同厂商的流式能力
+3. 输出统一的非流式结果结构
+4. 输出统一的流式 chunk 结构
+5. 在 Phase 6 中提供文本 embedding 抽象与实现
+6. 管理 provider 级错误映射与配置
 
 ---
 
 ## 4. 本层不负责什么
 
-1. 不负责 HTTP API 暴露
-2. 不负责业务流程编排
-3. 不负责上下文存储
-4. 不负责 SSE 文本序列化
-5. 不负责 assistant message 生命周期状态机
-6. 不负责 cancel 接口或 request registry
+1. 不负责同步或流式 chat 主链路编排
+2. 不负责 context state 管理
+3. 不负责 retrieval orchestration
+4. 不负责 parser / chunker / vector index
+5. 不负责 citations 生成
+6. 不负责 knowledge block 装配
+7. 不负责 request assembly 顺序
 
 ---
 
-## 5. 架构原则
+## 5. 依赖边界
 
-### 5.1 统一抽象优先
-系统内部必须围绕统一 provider 抽象设计，而不是围绕单一厂商 SDK 设计。
+### 允许依赖
+- `app/schemas/`（如需要共享基础契约）
+- `app/observability/`
 
-### 5.2 协议差异向下吸收
-厂商差异应尽量在 provider 层被吸收，不要外溢到 service 层或 API 层。
-
-### 5.3 流式与非流式都要归一化
-Phase 5 中，provider 不再只要求非流式文本 chat 主路径，还必须支持文本 streaming 的统一归一化。
-
-### 5.4 provider 只输出 canonical stream，不输出 SSE
-provider 负责 chunk / finish / usage / provider error 的 canonical 化，不负责 `event:` / `data:` 这类 SSE 文本协议。
-
----
-
-## 6. 当前阶段能力声明
-
-本轮必须新增或补强：
-
-- 文本 streaming 真实路径
-- provider streaming chunk 归一化
-- finish_reason / usage / provider error 的流式收口字段
-- streaming 与 non-streaming 的统一抽象关系
-
-当前仍不要求落地：
-
-- 多模态真实输入映射
-- tools/function calling
-- 结构化输出
-- 自动 fallback / retry / routing 引擎
+### 禁止依赖
+- `app/api/`
+- `app/services/`
+- `app/context/`
+- `app/rag/`（除非仅被上层调用，不应形成反向依赖）
+- 向量库 SDK
 
 ---
 
-## 7. 修改规则
+## 6. 架构原则
 
-1. 不允许把厂商私有逻辑泄漏到上层
-2. 不允许影响现有 registry 行为
-3. 不允许把 SSE 或生命周期状态机塞进 provider
-4. 不允许 streaming 实现破坏 non-streaming 主路径
+### 6.1 provider 只输出能力，不决定业务
+providers 只负责“怎么调用厂商”，不负责“何时调用、怎么编排”。
 
----
+### 6.2 chat 与 embedding 都应通过抽象暴露
+Phase 6 后，不仅 chat provider 要抽象，embedding provider 也必须抽象。
 
-## 8. Code Review 清单
+### 6.3 canonical contract 优先
+无论不同厂商返回什么结构，provider 层都必须向上层暴露稳定的统一结构。
 
-1. 是否仍围绕统一 provider 抽象实现？
-2. chunk 增量是否归一化清晰？
-3. finish / usage / error 是否可被上层稳定理解？
-4. 是否没有直接暴露厂商原始事件流？
-5. streaming 与 non-streaming 是否共享合理的 canonical contract？
+### 6.4 provider 不关心 citations
+provider 只负责生成与 embedding，不负责 retrieval、citation 或外部知识增强逻辑。
 
 ---
 
-## 9. 测试要求
+## 7. 当前阶段能力声明
+
+当前本轮必须保持稳定：
+
+- 非流式 chat completion
+- 流式 chat completion
+- stream chunk 归一化
+- finish / usage / error 归一化
+
+当前本轮新增要求：
+
+- embedding provider 抽象
+- 至少一个文本 embedding 基线实现
+- embedding 返回结果维度、数据类型、错误映射稳定可测
+
+当前本轮不要求：
+
+- 多模态 embedding 主链路
+- 图像 / 音频 / 视频 embedding 主链路
+- provider 层直接参与 retrieval
+
+---
+
+## 8. 修改规则
+
+1. 不允许在 provider 层直接访问向量库
+2. 不允许在 provider 层直接组织 retrieval query
+3. 不允许在 provider 层生成 citations
+4. 不允许让厂商原始 embedding 响应直接泄漏给 service / rag
+5. 不允许把 retrieval 逻辑混进 chat provider 或 embedding provider
+
+---
+
+## 9. Code Review 清单
+
+1. providers 是否仍然保持为“厂商接入层”？
+2. chat 与 embedding 是否都通过抽象暴露？
+3. 是否没有将 retrieval / context / citation 逻辑写进 provider 层？
+4. embedding 维度与返回类型是否稳定？
+5. 错误映射是否合理？
+6. 是否没有把底层厂商响应结构直接泄漏给上层？
+
+---
+
+## 10. 测试要求
 
 至少覆盖：
 
-1. provider 注册与发现
-2. 非流式请求/响应归一化
-3. 流式 chunk 归一化
-4. 流式 finish / usage / error 收口
-5. OpenAI 兼容基类复用行为
+1. embedding provider 基础行为
+2. 维度与数据类型稳定性
+3. batch 行为（如实现）
+4. timeout / error 映射
+5. config 加载
+6. 不同 provider 的 canonical contract 稳定性
 
 ---
 
-## 10. 一句话总结
+## 11. 一句话总结
 
-`app/providers/` 在 Phase 5 中的职责是把厂商侧的非流式与流式文本生成都吸收到统一 provider 抽象下，并向 services 提供稳定的 canonical response / stream chunk，而不是承担 SSE 或业务生命周期编排。
+`app/providers/` 在 Phase 6 中新增文本 embedding 能力，但仍然只承担厂商接入与 canonical contract 输出职责，不参与 retrieval、citation 与 knowledge block 装配。

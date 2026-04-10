@@ -5,7 +5,9 @@
 
 ## 1. 文档定位
 
-本文件定义 `app/prompts/` 目录的职责、边界、结构约束、演进方向与代码审查标准。
+本文件定义 `app/prompts/` 的职责、边界、结构约束与 review 标准。  
+当前阶段，本文件临时同时承担该模块的 AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW 职责。
+执行 prompts 相关任务时，必须先读根目录`AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据skill `skills/python-prompts-capability/`执行。
 
 当前阶段，本文件临时同时承担该模块的：
 

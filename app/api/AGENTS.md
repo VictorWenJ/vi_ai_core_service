@@ -1,49 +1,68 @@
 # app/api/AGENTS.md
 
-> 更新日期：2026-04-09
+> 更新日期：2026-04-10
 
 ## 1. 文档定位
 
-本文件定义 `app/api/` 的职责、边界、结构约束与 review 标准。  
-当前阶段，本文件临时同时承担该模块的 AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW 职责。
+本文件定义 `app/api/` 的职责、边界、结构约束、开发约束与 review 标准。  
+当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。  
+执行 api 相关任务时，必须先读根目录 `AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据 skill `skills/python-api-capability/` 执行。
+
+本文件不负责：
+
+- 仓库级协作规则
+- 你和我之间的交互流程
+- 根目录阶段路线图
+- 根目录级总体架构说明
+- 根目录级 Code Review 总标准
+
+这些内容分别由：
+
+- 根目录 `AGENTS.md`
+- 根目录 `PROJECT_PLAN.md`
+- 根目录 `ARCHITECTURE.md`
+- 根目录 `CODE_REVIEW.md`
+- `CHAT_HANDOFF.md`
+
+承担。
 
 ---
 
 ## 2. 模块定位
 
-`app/api/` 是系统的 API 接入层。  
-它负责把内部应用编排能力暴露为稳定、清晰、可测试的 HTTP 接口。
+`app/api/` 是系统的 HTTP / SSE 接入层。  
+它负责对外暴露同步与流式接口，解析请求，调用 services，并返回稳定的数据契约。
 
-当前阶段核心接口：
+当前阶段建议围绕以下职责组织：
 
-- `/health`
 - `/chat`
 - `/chat_stream`
-- `/chat_stream_cancel`
-- `/chat_reset`
+- `/chat/cancel`
+- 其他项目级基础接口（如当前仓库已有）
 
 ---
 
 ## 3. 本层职责
 
-1. 定义 HTTP 路由
-2. 接收并解析请求
-3. 做基础输入校验与错误映射
-4. 调用 `app/services/`
-5. 返回同步响应
-6. 输出 SSE 流式事件
-7. 透传 `session_id` / `conversation_id` / `request_id` / `assistant_message_id`
+1. 解析请求参数
+2. 进行 schema 校验
+3. 调用对应 service
+4. 返回 JSON 响应
+5. 输出 SSE 事件流
+6. 保持对外契约稳定
+7. 在 Phase 6 中向外返回 citations
 
 ---
 
 ## 4. 本层不负责什么
 
-1. 不负责 provider SDK / HTTP 适配
-2. 不负责 Prompt 渲染
-3. 不负责 context store 持久化
-4. 不负责业务状态机
-5. 不负责 provider chunk 归一化
-6. 不负责 Redis / key / TTL / default scope 细节
+1. 不负责 chat 主用例编排
+2. 不负责 assistant message lifecycle 状态机实现
+3. 不负责 retrieval query 构建
+4. 不负责 parser / chunker / embedding / index / retrieval
+5. 不负责 citations 生成逻辑
+6. 不负责 context state 更新
+7. 不负责 provider 原始 chunk 处理细节
 
 ---
 
@@ -52,92 +71,136 @@
 ### 允许依赖
 - `app/services/`
 - `app/schemas/`
-- FastAPI 与必要框架基础设施
 
-### 禁止直接依赖
-- `app/context/stores/*`
-- `app/providers/` 作为常规调用路径
-- Redis client
-- provider 原始 stream chunk 类型
+### 禁止依赖
+- `app/context/`
+- `app/providers/`
+- `app/rag/`
+- Redis / Qdrant / embedding provider 的底层 SDK
 
 ---
 
-## 6. 设计原则
+## 6. 架构原则
 
-### 6.1 薄路由原则
-route handler 只做：
+### 6.1 API 只做协议，不做业务编排
+API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 
-- 请求接收
-- 参数校验
-- service 调用
-- HTTP / SSE 响应输出
+### 6.2 同步与流式契约都要稳定
+- `/chat` 返回 JSON
+- `/chat_stream` 返回 `text/event-stream`
 
-### 6.2 SSE 是 API 协议，不是业务状态机
-API 层可以序列化 started / delta / completed / error / cancelled / heartbeat。  
-但不决定这些事件何时发生。
+### 6.3 Phase 6 在 API 层的新增重点是 citations 输出
+- `/chat` 响应新增 citations
+- `/chat_stream` 仅在 completed 事件中携带 citations
+- delta 阶段不发送 citations
 
-### 6.3 不泄漏 layered memory 实现细节
-API 层最多承接 `session_id` / `conversation_id`。  
-不得把 store key、默认 scope、working memory schema 等内部实现细节暴露到外部协议层。
+### 6.4 外部契约不泄漏内部实现细节
+不应把：
+- Qdrant collection
+- embedding model 内部细节
+- 向量维度
+- 检索后端 SDK 结构
 
-### 6.4 同步与流式输入尽量对齐
-`/chat` 与 `/chat_stream` 优先复用同一套请求结构。
+直接暴露到 API 响应中。
 
 ---
 
 ## 7. 当前阶段能力声明
 
-本轮必须新增并验收：
+当前本轮必须保持稳定：
 
+- `/chat`
 - `/chat_stream`
-- `/chat_stream_cancel`
-- 标准 SSE 输出
-- started / delta / completed / error / cancelled 事件对外协议
+- `/chat/cancel`
+- started / delta / completed / error / cancelled / heartbeat 事件语义
+- 同步与流式 chat 主链路
 
-当前不要求落地：
+当前本轮新增要求：
 
-- WebSocket
-- conversation CRUD 全家桶
-- 多模态接口
-- Tool / RAG 专用 API
-
----
-
-## 8. 修改规则
-
-1. 不允许在 API 层读写 store 私有状态
-2. 不允许在路由里拼接 Redis key、设置 TTL 或写默认 scope
-3. 不允许在路由里手写上下文治理逻辑
-4. 不允许在路由里消费 provider 原始 chunk
-5. 变更接口契约必须同步更新 schema、测试与文档
+- `/chat` 返回 citations
+- `/chat_stream` completed 事件返回 citations
+- retrieval 失败时 API 能配合 service 执行降级，而不是无意义地直接崩溃
 
 ---
 
-## 9. Code Review 清单
+## 8. 文档维护规则（强约束）
 
-1. 路由层是否保持薄？
-2. SSE `Content-Type` 是否正确？
-3. `conversation_id` / `session_id` / `request_id` / `assistant_message_id` 是否正确透传？
-4. 是否破坏现有 `/chat` 与 `/chat_reset` 契约？
-5. cancel 接口是否清晰、最小、无业务算法泄漏？
+本文件属于 `app/api/` 模块的治理模板资产。  
+后续任何更新，必须严格遵守以下规则：
+
+### 8.1 基线规则
+- 必须以当前文件内容为基线进行增量更新
+- 不涉及变动的内容不得改写
+- 未经明确确认，不得重写文件整体风格
+
+### 8.2 冻结规则
+未经明确确认，不得擅自改变以下内容：
+
+- 布局
+- 排版
+- 标题层级
+- 写法
+- 风格
+- 章节顺序
+
+### 8.3 允许的修改范围
+允许的修改仅包括：
+
+1. 在原有章节内补充当前阶段内容
+2. 新增当前阶段确实需要的新章节
+3. 更新日期、阶段、默认基线等必要信息
+4. 删除已明确确认废弃且必须移除的旧约束
+
+### 8.4 禁止事项
+禁止：
+
+1. 把原文档整体改写成另一种风格
+2. 把模块文档从“模块治理文件”改写成“泛项目说明书”
+3. 每次更新都擅自改变标题层级与章节结构
+4. 未经确认新增大段不属于本模块职责的内容
+
+### 8.5 模板升级规则
+如果未来需要升级 `app/api/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。  
+在未确认是“模板升级”前，默认只允许做增量更新，不允许重写模板。
 
 ---
 
-## 10. 测试要求
+## 9. 修改规则
+
+1. 不允许在 API 层直接访问向量库
+2. 不允许在 API 层直接构建 retrieval query
+3. 不允许在 API 层直接组织 knowledge block
+4. 不允许让 citations 以无 schema、临时拼接字段的方式输出
+5. 不允许在 delta 阶段发送 citation 增量
+
+---
+
+## 10. Code Review 清单
+
+1. API 是否仍然只负责协议输入输出？
+2. 是否没有把 retrieval / context / provider 逻辑混到 API 层？
+3. `/chat` 是否正确返回 citations？
+4. `/chat_stream` 是否仅在 completed 事件中返回 citations？
+5. delta 阶段是否仍保持轻量、稳定？
+6. retrieval 失败时 API 行为是否与服务降级策略一致？
+7. 是否没有泄漏底层向量库与 embedding 细节？
+8. 本次文档更新是否遵守了“文档维护规则”？
+9. 是否保持了原有布局、排版、标题层级、写法和风格？
+
+---
+
+## 11. 测试要求
 
 至少覆盖：
 
-1. `/health` 成功路径
-2. `/chat` 成功路径
-3. `/chat_stream` 返回 `text/event-stream`
-4. `/chat_stream` 的 started -> delta -> completed 顺序
-5. `/chat_stream` 的 error / cancelled 路径
-6. `/chat_stream_cancel` 成功路径
-7. `/chat_reset` session / conversation 路径
+1. `/chat` 返回 citations
+2. `/chat_stream` completed 事件带 citations
+3. delta 阶段不带 citations
+4. retrieval 失败时 API 行为符合设计
+5. 原有同步与流式契约未被破坏
 
 ---
 
-## 11. 一句话总结
+## 12. 一句话总结
 
-`app/api/` 的职责是接入、校验、转发、返回。  
-Phase 5 新增 SSE 对外协议输出，但流式业务状态机与记忆收口细节仍不应进入路由层。
+`app/api/` 在 Phase 6 中只负责把 retrieval 结果形成的 citations 通过稳定契约返回给客户端，而不承担 retrieval、citation 生成或知识装配本身，并在后续更新中严格遵守模块文档的模板冻结规则。

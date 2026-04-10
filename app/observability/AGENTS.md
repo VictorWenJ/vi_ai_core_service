@@ -1,99 +1,141 @@
 # app/observability/AGENTS.md
 
-> 更新日期：2026-04-09
+> 更新日期：2026-04-10
 
 ## 1. 文档定位
 
-本文件定义 `app/observability/` 的职责边界、设计原则、演进约束与 review 标准。  
-执行 observability 相关任务时，必须先读根目录四文档，再读本文件，再执行 `skills/python-observability-capability/`。
+本文件定义 `app/observability/` 的职责、边界、结构约束与 review 标准。  
+当前阶段，本文件临时同时承担该模块的 AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW 职责。
+执行 observability 相关任务时，必须先读根目录`AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据skill `skills/python-observability-capability/`执行。
 
 ---
 
 ## 2. 模块定位
 
-`app/observability/` 是系统的最小可观测性基础设施层。  
-当前阶段核心仍不是平台化 observability，而是统一日志能力与流式会话生命周期定位能力。
+`app/observability/` 是系统的可观测性基础设施层。  
+它负责结构化日志、调试辅助与运行时可观测性支撑，不负责业务编排和状态机推进。
 
 ---
 
 ## 3. 本层职责
 
-1. 提供统一日志上报入口
-2. 统一日志格式与结构化 JSON 输出
-3. 提供最小对象序列化支持
-4. 为 Phase 5 提供流式会话定位字段约束
-
-### Phase 5 必须覆盖的流式定位字段
-
-- `request_id`
-- `session_id`
-- `conversation_id`
-- `assistant_message_id`
-- `streaming`
-- `status`
-- `stream_event_count`
-- `provider`
-- `model`
-- `finish_reason`
-- `latency_ms`
-- `error_code`
+1. 提供 JSON-safe 的结构化日志能力
+2. 为同步 chat 提供可观测性支撑
+3. 为流式 chat 提供可观测性支撑
+4. 为 assistant message lifecycle 提供可观测性支撑
+5. 在 Phase 6 中为 retrieval / citation 提供可观测性支撑
 
 ---
 
 ## 4. 本层不负责什么
 
-1. 不负责 request middleware 平台化建设
-2. 不负责 tracing / metrics / alerting / APM
-3. 不负责业务流程编排
-4. 不负责 SSE 事件驱动
-5. 不负责取消注册表或生命周期状态机
+1. 不负责 chat 主链路编排
+2. 不负责 request assembly
+3. 不负责 retrieval query 构建
+4. 不负责 citations 生成
+5. 不负责 context state 更新
+6. 不负责 provider 或向量库调用
 
 ---
 
-## 5. 设计原则
+## 5. 依赖边界
 
-- 标准库优先：继续使用 `logging`
-- 前缀稳定、业务 JSON 结构化
-- Phase 5 只补观测字段，不升级成 tracing 平台
-- 严格避免敏感信息泄漏
+### 允许依赖
+- 标准库
+- 项目内基础 schema / utility（如当前仓库已有）
 
----
-
-## 6. 当前阶段能力声明
-
-本轮必须新增或补强：
-
-- 流式链路日志字段约束
-- started / completed / error / cancelled 的结构化记录
-- request_id / assistant_message_id 等定位信息的贯穿
-
-当前仍不要求落地：
-
-- tracing / metrics / alerting / APM
-- 中间件式自动 request context 注入平台
-- 链路可视化平台
+### 禁止依赖
+- 反向依赖业务层状态机
+- 把 observability 写成另一个 services 层
 
 ---
 
-## 7. 修改规则
+## 6. 架构原则
 
-1. 不把业务编排逻辑放进 observability
-2. 不绕开统一输出格式约束
-3. 不在 observability 层处理 SSE、取消控制或 provider chunk 聚合
-4. 若新增字段或格式规则，必须同步更新根文档、模块文档与 skill
+### 6.1 结构化优先
+所有日志必须尽量保持结构化、JSON-safe、可检索。
+
+### 6.2 只记录事实，不记录业务推理
+observability 记录：
+- request_id
+- conversation_id
+- status
+- provider/model
+- retrieval_query
+- retrieved_chunk_count
+- citation_count
+
+不记录：
+- 随意业务解释
+- 不必要的大段正文
+- 不可控敏感内容
+
+### 6.3 不能因为日志破坏主链路
+上一阶段已经验证过：不可序列化对象不能直接进入日志。  
+Phase 6 新增 retrieval / citation 可观测性时，必须继续遵守 JSON-safe 原则。
+
+### 6.4 retrieval 观测是新增重点
+需要能定位：
+- 为什么没召回
+- 为什么召回数量异常
+- 为什么 citations 为空
+- retrieval 是否启用
+- 使用了什么 filter / top-k
 
 ---
 
-## 8. Code Review 清单
+## 7. 当前阶段能力声明
 
-1. 是否仍使用标准库 `logging`
-2. 是否仍满足前缀 + `message=<json>` 输出格式
-3. started / completed / error / cancelled 日志字段是否可定位
-4. 是否输出了敏感凭据字段
-5. 是否引入了当前阶段无关的平台化能力
+当前本轮必须保持稳定：
+
+- 同步 chat 可观测性
+- 流式 chat 可观测性
+- started / delta / completed / cancelled / error 相关观测
+- lifecycle 与 cancel registry 相关观测
+
+当前本轮新增要求：
+
+- retrieval_query
+- retrieval_top_k
+- retrieval_filters
+- retrieved_chunk_count
+- retrieved_document_ids
+- citation_count
+- embedding_model
+- vector_index_backend
 
 ---
 
-## 9. 一句话总结
+## 8. 修改规则
 
-当前 `app/observability/` 的职责是为同步与流式两条主链路提供统一、可解析、可定位的结构化日志基础设施，而不是承担 tracing 平台或业务状态机。
+1. 不允许把不可 JSON-safe 的对象直接打进日志
+2. 不允许在 observability 层实现 retrieval 或 citation 业务逻辑
+3. 不允许输出过量 chunk 原文正文
+4. 不允许 retrieval 相关字段命名混乱、无统一约定
+
+---
+
+## 9. Code Review 清单
+
+1. observability 是否仍然是基础设施层，而不是业务编排层？
+2. retrieval / citation 相关字段是否齐全且命名稳定？
+3. 是否保证日志 JSON-safe？
+4. 是否没有把大段原始知识文本、敏感数据无控制地写入日志？
+5. 新增可观测性是否没有破坏流式主链路？
+
+---
+
+## 10. 测试要求
+
+至少覆盖：
+
+1. JSON-safe 序列化
+2. retrieval trace 字段输出
+3. citation_count 等字段输出
+4. 流式场景下 observability 不因不可序列化对象崩溃
+
+---
+
+## 11. 一句话总结
+
+`app/observability/` 在 Phase 6 中新增 retrieval / citation 的结构化观测，但仍然只做事实记录与调试支撑，不参与业务会话编排与知识检索实现。
