@@ -37,12 +37,14 @@
 
 - `/chat`
 - `/chat_stream`
-- `/chat/cancel`
+- `/chat_stream_cancel`
+- `/chat_reset`
+- `/health`
 - 其他项目级基础接口（如当前仓库已有）
 
 ---
 
-## 3. 本层职责
+## 3. 本模块职责
 
 1. 解析请求参数
 2. 进行 schema 校验
@@ -54,7 +56,7 @@
 
 ---
 
-## 4. 本层不负责什么
+## 4. 本模块不负责什么
 
 1. 不负责 chat 主用例编排
 2. 不负责 assistant message lifecycle 状态机实现
@@ -71,6 +73,8 @@
 ### 允许依赖
 - `app/services/`
 - `app/schemas/`
+- `app/api/schemas/`
+- `app/observability/`
 
 ### 禁止依赖
 - `app/context/`
@@ -100,8 +104,14 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 - embedding model 内部细节
 - 向量维度
 - 检索后端 SDK 结构
+- context store scope 细节
 
 直接暴露到 API 响应中。
+
+### 6.5 SSE 序列化属于 API 协议职责
+- SSE 文本格式化应留在 API 层
+- SSE event name 与 payload 结构必须稳定
+- API 层不负责定义业务生命周期状态机，但负责正确输出其协议表示
 
 ---
 
@@ -111,7 +121,9 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 
 - `/chat`
 - `/chat_stream`
-- `/chat/cancel`
+- `/chat_stream_cancel`
+- `/chat_reset`
+- `/health`
 - started / delta / completed / error / cancelled / heartbeat 事件语义
 - 同步与流式 chat 主链路
 
@@ -172,6 +184,7 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 3. 不允许在 API 层直接组织 knowledge block
 4. 不允许让 citations 以无 schema、临时拼接字段的方式输出
 5. 不允许在 delta 阶段发送 citation 增量
+6. 不允许在 API 层直接做 context reset / cancel / stream 之外的状态机编排
 
 ---
 
@@ -182,10 +195,12 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 3. `/chat` 是否正确返回 citations？
 4. `/chat_stream` 是否仅在 completed 事件中返回 citations？
 5. delta 阶段是否仍保持轻量、稳定？
-6. retrieval 失败时 API 行为是否与服务降级策略一致？
-7. 是否没有泄漏底层向量库与 embedding 细节？
-8. 本次文档更新是否遵守了“文档维护规则”？
-9. 是否保持了原有布局、排版、标题层级、写法和风格？
+6. `/chat_stream_cancel` 语义是否清晰且稳定？
+7. `/chat_reset` 是否只承担接入层职责？
+8. retrieval 失败时 API 行为是否与服务降级策略一致？
+9. 是否没有泄漏底层向量库与 embedding 细节？
+10. 本次文档更新是否遵守了“文档维护规则”？
+11. 是否保持了原有布局、排版、标题层级、写法和风格？
 
 ---
 
@@ -196,11 +211,13 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 1. `/chat` 返回 citations
 2. `/chat_stream` completed 事件带 citations
 3. delta 阶段不带 citations
-4. retrieval 失败时 API 行为符合设计
-5. 原有同步与流式契约未被破坏
+4. `/chat_stream_cancel` 行为符合设计
+5. `/chat_reset` 行为符合设计
+6. retrieval 失败时 API 行为符合设计
+7. 原有同步与流式契约未被破坏
 
 ---
 
 ## 12. 一句话总结
 
-`app/api/` 在 Phase 6 中只负责把 retrieval 结果形成的 citations 通过稳定契约返回给客户端，而不承担 retrieval、citation 生成或知识装配本身，并在后续更新中严格遵守模块文档的模板冻结规则。
+`app/api/` 在 Phase 6 中只负责把 retrieval 结果形成的 citations 通过稳定契约返回给客户端，并负责同步 JSON 与 SSE 文本协议输出，而不承担 retrieval、citation 生成或知识装配本身，并在后续更新中严格遵守模块文档的模板冻结规则。

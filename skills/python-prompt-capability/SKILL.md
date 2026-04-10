@@ -1,329 +1,245 @@
----
-name: python-prompt-capability
-description: 用于为 vi_ai_core_service 搭建和标准化面向主流 C 端 AI 应用的 Prompt 资产层。重点关注模板资产管理、分层指令组合、registry/renderer、系统提示与场景提示分离、多模态输入预留、工具调用与结构化输出提示约束，以及与 service/provider/context 的清晰边界。
-last_updated: 2026-04-06
----
+# SKILL.md
 
-# 目的
+> skill_name: python-prompt-capability  
+> module_scope: app/prompts/  
+> status: active  
+> last_updated: 2026-04-10
 
-本 skill 用于指导 `vi_ai_core_service` 中 Prompt 资产层的新增、整理、标准化与升级工作。
+## 1. Skill 定位
 
-它面向的是当前主流 C 端 AI 应用产品常见的 Prompt 后端形态，而不只是早期“一个 system prompt 文件 + 一个 renderer”的简单模式。
+本 skill 用于指导 `vi_ai_core_service` 在 `app/prompts/` 模块中进行 Prompt 资产层的设计、实现、测试与增量演进。
 
-本 skill 的目标是为 `app/prompts/` 建立一个：
+本 skill 的目标不是生成“泛化的 Prompt 示例代码”，而是约束在本项目文档治理体系下，按企业级 AI 应用的标准实现：
 
-- 结构清晰
-- 资产可发现
-- 组合方式明确
-- 可版本化
-- 可扩展
-- 便于测试
-- 不绑定单一 provider
-
-的 Prompt 层实现规范。
-
-本 skill 重点解决的问题包括：
-
-- 如何管理系统提示、场景提示、模板提示等不同类型的 Prompt 资产
-- 如何建立 registry 与 renderer
-- 如何支持分层指令组合
-- 如何为工具调用、结构化输出、多模态输入等场景预留 Prompt 扩展点
-- 如何避免把 Prompt 文本散落到 service / provider / API 层
-- 如何为未来 Prompt 版本治理、A/B 试验、缓存友好结构预留空间
-
-本 skill 是 **任务执行规范**，不是模块治理文档。  
-使用本 skill 前，应先阅读：
-
-1. 项目根目录 `AGENTS.md`
-2. 项目根目录 `PROJECT_PLAN.md`
-3. 项目根目录 `ARCHITECTURE.md`
-4. 项目根目录 `CODE_REVIEW.md`
-5. `app/prompts/AGENTS.md`
+- Prompt 模板资产管理
+- Prompt registry
+- Prompt renderer
+- system / scenario / constraint 的分层提示意识
+- 与 services / providers / context / rag 清晰边界的 Prompt 能力
 
 ---
 
-# 当前阶段约束（必须遵守）
+## 2. Skill 适用范围
 
-在 `vi_ai_core_service` 当前阶段，执行本 skill 时必须默认遵守以下范围：
+本 skill 适用于以下类型的工作：
 
-- Prompt 层只要求“基础资产目录 + registry + renderer + 默认 chat system prompt”稳定可用。
-- tools、结构化输出、多模态等仅做提示层预留，不做完整 orchestration engine。
-- 不把 Prompt 层扩展成策略平台或业务规则引擎。
-- 重点是收敛散落 Prompt、稳定渲染行为、保持与 service/provider/context 的边界清晰。
-
----
-
-# 适用场景
-
-在以下场景中使用本 skill：
-
-- 新增 `app/prompts/` 下的 Prompt 模板目录
-- 新增 system prompt / 场景提示词（scenario prompt） / fallback prompt
-- 新增或整理 registry / renderer
-- 把散落在 service / script 中的 prompt 文本收敛到 Prompt 层
-- 为多轮对话、工具调用、结构化输出场景补充 Prompt 资产
-- 为 future variants / versioning / A/B test 做结构准备
-- 校正 Prompt 层边界，使其更符合主流 C 端 AI 应用后端结构
+1. Prompt 模板目录结构设计
+2. Prompt 模板文件新增与维护
+3. registry 设计与实现
+4. renderer 设计与实现
+5. Prompt 变量渲染
+6. Prompt 命名与查找规则治理
+7. Prompt 资产化收敛
+8. Prompt 相关测试
 
 ---
 
-# 不适用场景
+## 3. Skill 不适用范围
 
-以下场景不应使用本 skill：
+本 skill 不用于以下工作：
 
-- provider SDK 接入
-- API 路由设计
-- context store 管理
-- 业务主流程编排
-- 工具执行循环
-- Agent 规划
-- 检索 / RAG 管线
-- 复杂 prompt orchestration engine 的一次性实现
-- 在 Prompt 层中写业务规则引擎
+1. API 路由设计
+2. chat 主链路编排
+3. provider SDK 调用
+4. context store 管理
+5. retrieval / chunking / embedding / index 实现
+6. tool execution loop
+7. Agent 规划
+8. 审批流
+9. Case Workspace
 
----
-
-# 分层职责
-
-Prompt 层负责：
-
-- 管理 Prompt 模板资产
-- 定义 Prompt 目录组织方式
-- 提供 registry 用于查找模板
-- 提供 renderer 用于模板渲染与组合
-- 区分不同 Prompt 类型，例如：
-  - 基础系统提示词（base system prompt）
-  - 产品策略提示词（product policy prompt）
-  - 场景提示词（scenario prompt）
-  - 输出约束提示词（输出约束（output constraint） prompt）
-  - 工具使用引导提示词（工具使用引导（tool-use guidance） prompt）
-- 为多模态输入、结构化输出、工具调用等场景预留提示层扩展位
-- 为未来版本治理、缓存友好结构、变体选择预留空间
-
-Prompt 层不负责：
-
-- provider SDK / HTTP 调用
-- 业务主流程编排
-- conversation/session 存储
-- tool 执行
-- fallback / routing 策略
-- 用户态业务规则引擎
-- moderation / abuse 决策本身
+如任务超出上述边界，应转交对应模块 skill 处理。
 
 ---
 
-# 必要输入
+## 4. 本 skill 的核心原则
 
-使用本 skill 前，应明确以下输入信息：
-
-1. 当前要新增或改造的是哪类 Prompt 资产：
-   - system
-   - scenario
-   - 输出约束（output constraint）
-   - tool guidance
-   - multimodal prompt support
-2. 该 Prompt 对应哪个产品场景：
-   - chat
-   - assistant reply
-   - summarize
-   - rewrite
-   - task guidance
-   - 结构化输出
-3. Prompt 是否需要变量渲染
-4. Prompt 是否需要分层组合
-5. 是否需要为 tools / function calling 预留提示结构
-6. 是否需要为 结构化输出 / JSON mode（JSON 模式） 预留约束提示
-7. 当前是否只做最小落地，还是同时补 registry / renderer / variants 能力
-
----
-
-# 预期输出
-
-使用本 skill 后，交付物应至少包括：
-
-1. 位于 `app/prompts/templates/` 下的 Prompt 模板文件
-2. 清晰的模板目录结构
-3. registry 中显式的模板标识与查找逻辑
-4. renderer 中稳定、可测试的渲染逻辑
-5. system / scenario / constraint 等 Prompt 分层思路或落地
-6. 对 tools / 结构化输出 / multimodal 的扩展位
-7. 最小运行与验证说明
-8. 必要时补充测试
-
----
-
-# 必要流程
-
-1. 先确认本次需求是否真的属于 Prompt 层。
-2. 先检查根目录文档与 `app/prompts/AGENTS.md`。
-3. 明确 Prompt 属于哪一类资产。
-4. 按场景将模板放入 `app/prompts/templates/` 的合理目录中。
-5. 在 registry 中显式注册模板标识，不要靠隐式路径猜测。
-6. 在 renderer 中实现基础变量渲染与必要的分层组合。
-7. 若存在 system / scenario / 输出约束（output constraint） / tool guidance，应明确分层边界。
-8. 保持 Prompt 层 provider-agnostic，不嵌入厂商私有请求协议。
-9. 为未来 variants / versioning / cache-friendly blocks 预留结构，但当前不做过度复杂化。
-10. 对照 checklist 自检。
-11. 若改动影响 Prompt 资产结构、契约或测试行为，需同步更新文档与测试。
-
----
-
-# 设计规则
-
-## 1. Prompt 是资产，不是内联文本
-
+### 4.1 Prompt 是资产，不是内联文本
 Prompt 应被视为长期维护的工程资产，而不是散落在 service、script、provider 中的字符串常量。
 
-## 2. 分层指令组合
-
-Prompt 层设计时，应优先考虑分层组合，而不是把所有要求塞进一个超长 system prompt。
+### 4.2 分层指令组合意识
+Prompt 设计时，应优先考虑分层组合，而不是长期依赖单一超长 system prompt。
 
 典型层次可包括：
 
 - 基础系统指令（base system instruction）
-- 产品/安全指令（product / safety instruction）
 - 场景特定指令（scenario-specific instruction）
 - 输出约束（output constraint）
-- 工具使用引导（tool-use guidance）
-- 运行时变量注入（runtime variable injection）
+- tool guidance
+- 运行时变量注入
 
-当前可以不全部实现，但结构上应允许未来演进。
+当前可以不完整实现，但必须保持扩展意识。
 
-## 3. 默认保持 Provider 无关
+### 4.3 registry 与 renderer 分离
+- registry 负责模板查找
+- renderer 负责模板渲染
 
-Prompt 层不应绑定某个 provider 的私有字段名、SDK 参数名或响应对象格式。
+不得把模板查找、模板渲染、业务决策混写成一个“大工具函数”。
 
-Prompt 应服务于系统内部语义，不应服务于厂商私有协议。
+### 4.4 provider-agnostic
+Prompt 层必须保持 provider-agnostic。  
+不嵌入厂商私有请求协议、响应格式或 transport 细节。
 
-## 4. Prompt 层应支持真实产品形态
+### 4.5 当前阶段避免过度平台化
+当前阶段只要求：
+- 基础模板资产目录
+- registry + renderer
+- 默认 chat system prompt
 
-Prompt 结构设计时，应面向主流 C 端 AI 产品常见形态：
-
-- 多轮对话
-- 工具调用提示
-- 结构化输出约束
-- 多模态输入说明
-- 长上下文场景下的稳定 system blocks
-- 可缓存的稳定提示块
-
-## 5. 保持稳定区块可发现
-
-对于稳定且可能重复使用的 Prompt 片段，应允许未来做：
-
-- 独立模板化
-- 版本治理
-- 缓存友好组织
-- 变体选择
-
-不要把所有提示写成一个不可拆的大文件。
-
-## 6. 渲染器必须确定性
-
-Renderer 行为必须尽量确定、易读、易测。
-
-不要让 renderer 变成隐式业务路由器或复杂决策引擎。
-
-## 7. Prompt 资产与业务路由分离
-
-Prompt 层负责“提示内容怎么存、怎么找、怎么渲染”，  
-不负责“什么时候走哪个产品流程”。
-
-## 8. 当前阶段避免过度建设
-
-当前阶段不应在 Prompt 层提前引入：
-
-- 复杂 prompt routing engine
-- 复杂策略 DSL
-- 大型实验平台
-- 与 provider 强绑定的高级控制逻辑
-
-先把资产层、registry、renderer、分层组合思路打稳。
+不要求一步到位做 Prompt 平台。
 
 ---
 
-# 验证标准
+## 5. 默认阶段基线
 
-一个合格的面向主流 C 端 AI 应用的 Prompt 层实现，至少应满足：
+当前 skill 默认基线如下：
 
-- 模板位于正确目录
-- 模板命名与组织清晰
-- registry 查找逻辑显式
-- renderer 渲染逻辑稳定
-- Prompt 资产不再大量散落在其他层
-- system / scenario / constraint 等层次有清晰思路或落地
-- 对 tools / 结构化输出 / multimodal 具备扩展意识
-- 保持 provider-agnostic
-- 当前阶段未引入不必要的复杂引擎
+- Prompt 资产目录：`app/prompts/templates/`
+- registry：显式 template_id -> file path 映射
+- renderer：基础变量替换
+- 默认 chat 模板：`templates/chat/default_system.md`
+- Prompt 层保持 provider-agnostic
+- Prompt 层不承担编排逻辑
 
----
-
-# 完成标准
-
-本 skill 任务完成，至少表示：
-
-1. Prompt 模板已落在正确目录
-2. Prompt 资产结构清晰
-3. registry 与 renderer 最小可用
-4. Prompt 层边界未被破坏
-5. service / provider / API 中无不必要的硬编码 Prompt 文本
-6. 对主流 C 端 AI 产品常见提示层需求有合理预留
-7. 已通过 checklist 自检
-8. 必要时已同步测试与文档
+如需变更该基线，必须先更新根目录文档与模块 AGENTS，再进入实现。
 
 ---
 
-# 备注
+## 6. 标准执行流程
 
-本 skill 适用于当前 `vi_ai_core_service` 的 Prompt 资产层建设阶段。  
-未来若 Prompt 层复杂度提升，可继续细分为：
+执行 `app/prompts/` 相关任务时，必须遵循以下顺序：
 
-- python-prompt-variants-skill
-- python-prompt-structured-output-skill
-- python-prompt-tool-guidance-skill
-- python-prompt-cache-friendly-layout-skill
-- python-prompt-governance-and-versioning-skill
+1. 阅读根目录文档  
+   - `AGENTS.md`
+   - `PROJECT_PLAN.md`
+   - `ARCHITECTURE.md`
+   - `CODE_REVIEW.md`
 
----
+2. 阅读模块文档  
+   - `app/prompts/AGENTS.md`
 
-# 编码前输出要求
+3. 阅读本 skill  
+   - `skills/python-prompt-capability/SKILL.md`
 
-开始编码前，必须先输出：
+4. 按需阅读 assets / references  
+   - `assets/capability-scope.md`
+   - `assets/delivery-workflow.md`
+   - `assets/acceptance-checklist.md`
+   - `references/module-boundaries.md`
+   - `references/data-contracts.md`
+   - `references/testing-matrix.md`
 
-1. 任务理解与范围边界（仅基础资产层，不做 orchestration engine）
-2. 模板/registry/renderer 的文件级改动计划
-3. 风险与假设
-4. 验证计划（模板查找与渲染稳定性）
-
----
-
-# 编码后输出要求
-
-完成编码后，必须输出：
-
-1. 文件级变更清单与原因
-2. Prompt 资产变化说明
-3. 测试与验证结果
-4. 文档回写说明
+5. 明确本轮任务边界  
+6. 设计最小增量改动  
+7. 补充测试  
+8. 自检与回归验证
 
 ---
 
-# 资产与验证索引
+## 7. 标准交付物要求
 
-1. 检查清单：`assets/prompt_capability_checklist.md`
-2. 测试矩阵：`assets/prompt_test_matrix.md`
-3. 参考文档：`references/prompt_boundaries_and_acceptance.md`
+Prompt 相关任务，至少应交付以下之一或多项：
+
+1. 模板文件新增或更新
+2. registry 更新
+3. renderer 更新
+4. 模板命名与目录结构收敛
+5. Prompt 相关测试更新
+
+仅给概念说明、不落代码、不补测试，不视为完成。
 
 ---
 
-# 治理联动
+## 8. 实现约束
 
-执行本 skill 时必须遵循统一闭环：
+### 8.1 资产化约束
+需要复用、维护、审查的 Prompt，应优先沉淀为模板资产。  
+不得长期散落在 services / providers / scripts 中。
 
-`根目录文档 -> app/prompts/AGENTS.md -> 本 skill -> 代码实现 -> review -> 文档回写`
+### 8.2 模板约束
+- 模板文件名应可读、可推断
+- 模板变量应清晰、稳定
+- 模板内容保持可读性
+- 不在模板中隐藏复杂业务判断
 
-强制要求：
+### 8.3 registry 约束
+- registry 必须显式
+- template_id 命名必须稳定
+- 不依赖隐式路径猜测
+- 不使用难追踪的动态魔法注册
 
-1. 未完成根目录四文档与模块 AGENTS 阅读，不进入代码实现。
-2. 改动后必须按根 `CODE_REVIEW.md`、模块 `AGENTS.md`、本 skill checklist 联合自审。
-3. 若 Prompt 资产结构、渲染行为或测试事实变化，必须同步更新对应文档与测试。
+### 8.4 renderer 约束
+- renderer 只负责渲染
+- renderer 不负责业务判断
+- renderer 不耦合 provider 私有协议
 
+### 8.5 扩展约束
+可为以下场景预留结构，但当前不要求完整落地：
+- tools
+- 结构化输出
+- multimodal
+- Prompt variants / versioning
+
+---
+
+## 9. 与其他模块的协作约束
+
+### 与 services 协作
+services 可调用 registry / renderer 获取 Prompt 文本；  
+prompts 不负责业务编排。
+
+### 与 providers 协作
+providers 保持 prompt-agnostic；  
+prompts 不感知 provider transport 细节。
+
+### 与 context 协作
+context 提供状态，services 决定如何注入变量；  
+prompts 不直接访问 context store。
+
+### 与 rag 协作
+retrieval 结果由 services 决定如何作为变量或块注入；  
+prompts 不负责 retrieval 本身。
+
+---
+
+## 10. 测试要求
+
+Prompt 相关实现至少补以下测试之一或多项：
+
+1. 模板查找成功路径
+2. 未知模板失败路径
+3. 基础变量渲染替换
+4. 默认 system prompt 可用性
+5. 渲染结果基本断言
+6. Prompt 入口在 services 中的调用稳定性（如当前轮次需要）
+
+---
+
+## 11. Review 要点
+
+提交前至少自查：
+
+1. Prompt 是否真正沉淀为资产？
+2. 是否还有大量 prompt 硬编码散落在其他层？
+3. registry 是否清晰、显式、稳定？
+4. renderer 是否仍只负责渲染？
+5. 是否没有把业务逻辑塞进 prompts 层？
+6. 是否补了测试？
+7. 是否保持 provider-agnostic？
+
+---
+
+## 12. 关联文件
+
+- `assets/capability-scope.md`
+- `assets/delivery-workflow.md`
+- `assets/acceptance-checklist.md`
+- `references/module-boundaries.md`
+- `references/data-contracts.md`
+- `references/testing-matrix.md`
+
+---
+
+## 13. 一句话总结
+
+本 skill 的目标，是确保 `app/prompts/` 在当前项目中以企业级、可增量演进、可测试、可审查的方式建设 Prompt 资产层，通过清晰的模板目录、显式的 registry 与稳定的 renderer 支撑 chat 主链路，而不是演化成承担业务编排或 provider 适配职责的模块。
