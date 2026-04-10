@@ -19,26 +19,19 @@
 - error 路径
 - finish 路径
 
-### C. embedding
-- 单条文本 embedding
-- 批量文本 embedding
-- 维度与数据类型稳定性
-- timeout / error 行为
-
-### D. config / registry
+### C. config / registry
 - provider config 加载
-- registry / factory 选择
-- 不同 provider 初始化行为
+- registry / maturity 选择
+- implemented / scaffolded 行为
 
-### E. regression
+### D. regression
 - 同步主链路未被 provider 改动破坏
 - 流式主链路未被 provider 改动破坏
-- rag 对 embedding 的接入需求未被破坏
 
 ---
 
 ## 3. 原则
 
 - 以确定性测试为主
-- 优先验证 canonical contract、错误映射与 embedding 稳定性
-- 不让厂商差异扩散到上层模块
+- 优先验证 canonical contract、错误映射与 registry 稳定性
+- 不把未落地 embedding 能力写进现有测试完成态

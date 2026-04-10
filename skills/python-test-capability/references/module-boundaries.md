@@ -6,41 +6,34 @@
 
 ---
 
-## 2. 与 api 的边界
+## 2. 与 api / services 的边界
 
-tests 验证 API contract 与 HTTP 行为，  
-不实现 route。
-
----
-
-## 3. 与 services 的边界
-
-tests 验证应用编排语义与主链路回归，  
-不实现 service 本身。
+tests 负责验证 API contract 与 services 编排语义；
+tests 不负责实现 route 或 service。
 
 ---
 
-## 4. 与 context 的边界
+## 3. 与 context 的边界
 
-tests 验证 lifecycle 与 memory 收口，  
-不实现 state 管理逻辑。
+tests 负责验证 lifecycle 与 memory 收口；
+tests 不负责实现 context state 管理。
+
+---
+
+## 4. 与 providers / prompts / schemas 的边界
+
+tests 负责验证这些基础模块的稳定性与回归面；
+tests 不负责实现它们本身。
 
 ---
 
 ## 5. 与 rag 的边界
 
-tests 验证 retrieval / citation 路径与降级行为，  
-不实现检索能力本身。
+当前代码中 rag 尚未落地运行时代码。
+未来如开始实现，再扩展对应测试边界。
 
 ---
 
-## 6. 与 providers / prompts / schemas 的边界
+## 6. 结论
 
-tests 验证这些模块的 contract、registry、renderer、canonical result 稳定性，  
-不负责实现这些模块。
-
----
-
-## 7. 结论
-
-`tests/` 是项目级回归保护层，不是业务实现层，也不是临时脚本堆放目录。
+`tests/` 是回归保护层，不是实现层，也不是当前代码中的 RAG 测试平台。

@@ -10,11 +10,9 @@
 
 当前能力范围限定为：
 
-- 结构化日志
+- `log_report`
 - JSON-safe 序列化
-- request / stream trace
-- lifecycle trace
-- retrieval / citation trace
+- request / stream / context assembly / provider 相关日志
 - observability 相关测试
 
 ---
@@ -24,11 +22,9 @@
 当前不在范围内的能力包括：
 
 - chat 主链路编排
-- API 协议实现
-- context state 更新
-- retrieval / chunking / embedding / index 实现
+- retrieval / chunking / embedding / index
 - citation 生成
-- metrics / tracing / alerting 平台
+- tracing / metrics / alerting 平台
 - 审批流
 - Case Workspace
 
@@ -38,8 +34,8 @@
 
 - 结构化日志
 - JSON-safe
-- request / stream / retrieval 关键字段可观测
-- 不建设完整可观测平台
+- stdout logger
+- 当前不包含 retrieval / citation 专项字段
 
 ---
 

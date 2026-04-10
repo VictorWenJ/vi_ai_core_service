@@ -8,63 +8,25 @@
 
 ## 2. 与 services 的边界
 
-### api 负责
-- 接入
-- 校验
-- 转发
-- 返回 JSON
-- 返回 SSE
-
-### services 负责
-- chat 主链路编排
-- 流式状态机推进
-- cancel / reset 内部逻辑
-- retrieval 调度
-- citations 数据准备
+api 负责接入与返回；
+services 负责编排与生命周期收口。
 
 ---
 
 ## 3. 与 schemas 的边界
 
-### schemas 负责
-- request / response 数据契约
-- SSE event payload 契约
-- cancel / reset 契约
-
-### api 负责
-- 使用这些契约承接输入与输出
-- 不绕开 schema 临时拼字段
+API 层的 request / response / SSE event 由 `app/api/schemas/` 承载；
+`app/schemas/` 当前负责内部 `LLM*` 契约。
 
 ---
 
-## 4. 与 context 的边界
+## 4. 与 context / rag / providers 的边界
 
-API 不直接操作 context。  
-上下文读取、更新、重置都应通过 service 触发。
-
----
-
-## 5. 与 rag 的边界
-
-API 不直接操作：
-
-- parser
-- chunker
-- embedding
-- vector index
-- retrieval
-
-API 只承接 citations 结果输出。
+API 不直接访问 context manager、rag 实现或 provider SDK。
+这些能力都必须经由 services 暴露。
 
 ---
 
-## 6. 与 providers 的边界
+## 5. 结论
 
-API 不直接调用 provider SDK。  
-chat completion、streaming、embedding 都不属于 API 层职责。
-
----
-
-## 7. 结论
-
-`app/api/` 是协议接入层，不是业务编排层，不是知识检索层，也不是状态管理层。
+`app/api/` 是协议接入层，不是业务编排层，也不是当前代码中的 retrieval / citation 实现层。

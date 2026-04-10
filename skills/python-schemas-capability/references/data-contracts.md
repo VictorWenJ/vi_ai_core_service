@@ -2,63 +2,70 @@
 
 ## 1. 目的
 
-本文件用于说明 `app/schemas/` 中关键 contract 的最小要求。
+本文件用于说明 `app/schemas/` 中核心对象的最小契约要求。
 
 ---
 
-## 2. chat contract
+## 2. LLMMessage
 
 必须能表达：
 
-- 用户输入
-- 会话标识
-- provider / model（如当前项目支持）
-- answer
-- usage / finish_reason（如当前项目支持）
-- citations（Phase 6）
+- role
+- content
+
+并明确：
+- role 只能取允许集合
+- content 不能为空
 
 ---
 
-## 3. stream event contract
-
-至少应能表达：
-
-- `response.started`
-- `response.delta`
-- `response.completed`
-- `response.error`
-- `response.cancelled`
-- `response.heartbeat`
-
-并满足：
-
-- completed 可带 citations
-- delta 不带 citations
-
----
-
-## 4. cancel / reset contract
+## 3. LLMRequest
 
 必须能表达：
 
-- cancel：取消目标信息与取消结果
-- reset：session / conversation 重置语义与结果
+- provider
+- model
+- messages
+- system_prompt
+- temperature
+- max_tokens
+- stream
+- session_id
+- conversation_id
+- request_id
+- metadata
 
 ---
 
-## 5. lifecycle / citation contract
+## 4. LLMResponse / LLMUsage
 
 必须能表达：
 
-- lifecycle 字段的共享语义
-- citation 的展示语义
-- citation 来源可追溯但不透传内部对象
+- content
+- provider
+- model
+- usage
+- finish_reason
+- metadata
+- raw_response
+
+---
+
+## 5. LLMStreamChunk
+
+必须能表达：
+
+- delta
+- sequence
+- finish_reason
+- usage
+- done
+- metadata
 
 ---
 
 ## 6. 原则
 
-- 共享 contract 不应等于内部对象直透
-- 命名必须稳定
-- 语义必须一致
-- 应尽量兼容已有主链路
+- 当前不承接 `/chat`、`/chat_stream`、cancel、reset、citation 契约
+- 不泄漏 provider 原始响应对象
+- contract 必须稳定、可测试、可扩展

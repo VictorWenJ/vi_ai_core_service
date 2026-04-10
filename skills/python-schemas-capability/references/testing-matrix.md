@@ -2,39 +2,36 @@
 
 ## 1. 目的
 
-本文件用于给 `python-schema-capability` 提供标准测试矩阵参考。
+本文件用于给 `python-schemas-capability` 提供标准测试矩阵参考。
 
 ---
 
 ## 2. 测试矩阵
 
-### A. chat
-- `/chat` request schema
-- `/chat` response schema
-- citations 字段存在与为空场景
+### A. message
+- role 校验
+- content 非空校验
 
-### B. stream
-- started / delta / completed / error / cancelled / heartbeat schema
-- completed citations
-- delta 无 citations
+### B. request
+- provider / model / ids 归一化
+- temperature / max_tokens 校验
 
-### C. cancel / reset
-- cancel contract
-- reset contract
+### C. response
+- `LLMUsage` 结构
+- `LLMResponse` 结构
+- `to_dict()` 行为
 
-### D. lifecycle / citation
-- lifecycle 字段一致性
-- citation 结构完整性
-- citation 不是内部对象透传
+### D. stream
+- `LLMStreamChunk` 字段语义
+- done / finish_reason / usage 组合语义
 
 ### E. regression
-- 现有主链路 contract 未被破坏
-- 同步与流式表达保持兼容
+- service / provider / request assembler 对 `LLM*` 契约的兼容性
 
 ---
 
 ## 3. 原则
 
 - 以确定性测试为主
-- 重点验证 contract 稳定性与兼容性
-- 不让 schemas 演化为各模块临时拼字段的出口
+- 先保护当前已落地的内部 canonical contract
+- 不把未落地 API / citation 模型写进测试完成态

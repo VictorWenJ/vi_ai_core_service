@@ -15,8 +15,6 @@
 - registry
 - renderer
 - 模板变量渲染
-- Prompt 命名与查找规则
-- Prompt 资产化收敛
 - Prompt 相关测试
 
 ---
@@ -30,8 +28,6 @@
 - provider SDK 调用
 - context store 管理
 - retrieval / chunking / embedding / index
-- tool execution loop
-- Agent 规划
 - Prompt 平台化系统
 - 审批流
 - Case Workspace
@@ -44,7 +40,7 @@
 - registry：显式映射
 - renderer：基础变量替换
 - 默认 chat 模板：`templates/chat/default_system.md`
-- provider-agnostic
+- 当前不包含版本化体系
 
 ---
 

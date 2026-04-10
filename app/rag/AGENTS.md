@@ -4,9 +4,9 @@
 
 ## 1. 文档定位
 
-本文件定义 `app/rag/` 的职责、边界、结构约束、开发约束与 review 标准。  
+本文件定义 `app/rag/` 的职责、边界、结构约束、开发约束与 review 标准。
 
-现阶段，`app/rag/` 板块仅使用 **一个 `AGENTS.md` 文件** 进行模块治理。  
+现阶段，`app/rag/` 板块仅使用 **一个 `AGENTS.md` 文件** 进行模块治理。
 该文件**临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责**。
 
 也就是说，在当前阶段，`app/rag/AGENTS.md` 同时用于约束：
@@ -40,31 +40,27 @@
 
 ## 2. 模块定位
 
-`app/rag/` 是系统在 Phase 6 新增的内部知识与检索子域。  
-它负责在 `vi_ai_core_service` 内提供最小可用的 **Knowledge + Citation Layer**，不直接承担 API 接入职责，也不直接承担同步或流式 chat 主链路编排职责。
+`app/rag/` 是系统在 Phase 6 预留的内部知识与检索子域。
+截至当前代码基线，它还没有任何 Python 运行时代码，当前只保留模块治理文档，用于约束后续 Knowledge + Citation Layer 的落位边界。
 
 当前阶段建议围绕以下职责组织：
 
-- `models.py`：知识对象与检索对象模型
-- `ingestion/`：文档解析、清洗、切块、导入管线
-- `embedding/`：embedding 抽象与调用适配
-- `index/`：向量索引抽象与实现
-- `retrieval/`：检索服务
-- `citation/`：citation 模型与格式化
-- `evaluation/`：基础评测与测试辅助（如当前轮次需要）
+- 当前目录下实际仅有：`AGENTS.md`
+- 一旦开始编码，后续实现应收敛在：
+  - `models.py`
+  - `ingestion/`
+  - `retrieval/`
+  - `citation/`
+  - 其他确有必要的内部实现目录
 
 ---
 
 ## 3. 本模块职责
 
-1. 定义知识文档与切块模型
-2. 管理文档导入与标准化
-3. 执行结构感知 + token-aware + overlap 的切块
-4. 生成文本 embedding
-5. 将切块写入向量索引
-6. 提供统一 retrieval service
-7. 输出 citation-ready 的 retrieval 结果
-8. 为 `services` 提供 retrieved knowledge block 所需的数据支撑
+1. 维护 Phase 6 子域的职责边界与治理占位
+2. 约束未来知识文档、切块、检索与 citation 相关代码应收敛在本目录
+3. 约束 future ingestion / retrieval 实现不越界写入 API、services、context、providers
+4. 在代码尚未落地前，明确本模块当前不提供 parser / chunker / embedding / index / retrieval / citation 运行时能力
 
 ---
 
@@ -83,9 +79,11 @@
 ## 5. 依赖边界
 
 ### 允许依赖
-- `app/providers/`（仅 embedding provider 抽象或实现）
-- `app/schemas/`（如需要共享基础契约）
-- `app/observability/`
+- 当前代码基线下无运行时依赖
+- 后续实现时可按需依赖：
+  - `app/providers/`
+  - `app/schemas/`
+  - `app/observability/`
 
 ### 禁止依赖
 - `app/api/`
@@ -93,7 +91,7 @@
 - `app/context/`
 
 ### 原则
-`app/rag/` 是被编排方，不是主链路编排方。  
+`app/rag/` 是被编排方，不是主链路编排方。
 在线 retrieval 由 `services` 调用，`rag` 不反向驱动 chat 或 context。
 
 ---
@@ -101,7 +99,7 @@
 ## 6. 架构原则
 
 ### 6.1 先做内部子域，不拆独立服务
-当前 Phase 6 中，RAG 只作为 `vi_ai_core_service` 内部子域实现。  
+当前 Phase 6 中，RAG 只作为 `vi_ai_core_service` 内部子域实现。
 本轮不拆独立知识服务，不引入额外微服务边界。
 
 ### 6.2 ingestion 与 online retrieval 分离
@@ -127,16 +125,28 @@ Phase 6 中 retrieval 结果用于：
 - citation 结构必须稳定、可读、可展示
 
 ### 6.5 检索失败必须可降级
-RAG 是增强层，不应在当前阶段成为主链路单点故障。  
+RAG 是增强层，不应在当前阶段成为主链路单点故障。
 检索失败时，应支持由 `services` 做可控降级。
+
+### 6.6 当前代码事实
+- 当前仓库尚未创建 `models.py`、`ingestion/`、`retrieval/`、`citation/` 等实现文件
+- 当前 `/chat` 与 `/chat_stream` 也还没有接入本模块
+- 当前所有 RAG 相关描述都只能作为后续实现约束，不能写成已落地事实
 
 ---
 
 ## 7. 当前阶段能力声明
 
-当前本轮必须落地：
+当前代码现状：
 
-- `app/rag/` 子域目录
+- `app/rag/` 当前仅有模块治理文档
+- 仓库中没有 RAG Python 实现文件
+- `/chat` 与 `/chat_stream` 当前没有 knowledge block 或 citations
+- `tests/` 当前没有 RAG / citation 测试
+
+当前本轮待落地目标：
+
+- `app/rag/` 子域运行时代码
 - 知识对象模型
 - 文档导入最小闭环
 - 结构感知 + token-aware + overlap 的 chunking
@@ -154,6 +164,8 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - 检索：top-k + metadata filter
 - retrieval 结果进入 request assembly 的位置由 `services / request_assembler` 决定
 
+以上默认基线当前仍属于待实现目标，尚未在代码中落地。
+
 当前本轮不要求落地：
 
 - 独立 RAG 微服务
@@ -170,7 +182,7 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 
 ## 8. 核心模型要求
 
-至少应定义以下模型：
+一旦开始编码，至少应定义以下模型：
 
 ### 8.1 KnowledgeDocument
 表示知识文档主对象。
@@ -237,7 +249,7 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 
 ## 9. 文档维护规则（强约束）
 
-本文件属于 `app/rag/` 模块的治理模板资产。  
+本文件属于 `app/rag/` 模块的治理模板资产。
 后续任何更新，必须严格遵守以下规则：
 
 ### 9.1 基线规则
@@ -272,7 +284,7 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 4. 未经确认新增大段不属于本模块职责的内容
 
 ### 9.5 模板升级规则
-如果未来需要升级 `app/rag/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。  
+如果未来需要升级 `app/rag/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。
 在未确认是“模板升级”前，默认只允许做增量更新，不允许重写模板。
 
 ---
@@ -281,36 +293,39 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 
 1. 不允许在 `rag` 中直接编排 `/chat` 或 `/chat_stream`
 2. 不允许让 `rag` 依赖 `app/api/`、`app/services/`、`app/context/`
-3. 不允许继续使用“按字符硬切分”作为正式主 chunking 策略
-4. 不允许把 Qdrant SDK 调用散落到多个无边界业务文件中
-5. 不允许把 citation 做成模型自由输出字符串
-6. 不允许在当前轮次中把长期记忆、审批流、Case Workspace、Agent runtime 混入 `rag` 子域
+3. 不允许把当前不存在的 RAG 能力写成已落地实现
+4. 一旦开始实现，不允许继续使用“按字符硬切分”作为正式主 chunking 策略
+5. 一旦开始实现，不允许把 Qdrant SDK 调用散落到多个无边界业务文件中
+6. 一旦开始实现，不允许把 citation 做成模型自由输出字符串
+7. 不允许在当前轮次中把长期记忆、审批流、Case Workspace、Agent runtime 混入 `rag` 子域
 
 ---
 
 ## 11. Code Review 清单
 
 1. `app/rag/` 是否仍保持为“内部知识与检索子域”？
-2. ingestion 与 retrieval 是否职责清晰？
-3. 是否已按结构感知 + token-aware + overlap 实现正式 chunking？
-4. embedding 是否通过抽象接入，而不是把厂商细节写死在 retrieval 中？
-5. 向量索引是否通过统一接口暴露？
-6. 默认技术基线是否与当前轮次一致：
+2. 当前提交是否真的新增了 RAG 代码，而不是只在文档中宣称已实现？
+3. 若已新增实现，ingestion 与 retrieval 是否职责清晰？
+4. 若已新增实现，是否按结构感知 + token-aware + overlap 实现正式 chunking？
+5. 若已新增实现，embedding 是否通过抽象接入，而不是把厂商细节写死在 retrieval 中？
+6. 若已新增实现，向量索引是否通过统一接口暴露？
+7. 默认技术基线是否与当前轮次一致：
    - Qdrant
    - Cosine
    - 文本 embedding
-7. retrieval 结果是否足以支撑 citation，而不是只返回一段裸文本？
-8. 是否没有把 retrieval 与 short-term memory 混为一体？
-9. citation 是否可追溯、可展示、结构稳定？
-10. 检索失败时是否可被 services 安全降级？
-11. 本次文档更新是否遵守了“文档维护规则”？
-12. 是否保持了原有布局、排版、标题层级、写法和风格？
+8. retrieval 结果是否足以支撑 citation，而不是只返回一段裸文本？
+9. 是否没有把 retrieval 与 short-term memory 混为一体？
+10. citation 是否可追溯、可展示、结构稳定？
+11. 检索失败时是否可被 services 安全降级？
+12. 本次文档更新是否遵守了“文档维护规则”？
+13. 是否保持了原有布局、排版、标题层级、写法和风格？
 
 ---
 
 ## 12. 测试要求
 
-至少覆盖：
+当前代码现状下，本模块暂无运行时代码，因此暂无模块内测试对象。
+一旦开始实现，至少覆盖：
 
 1. parser 解析正确
 2. cleaner 行为稳定（如实现）
@@ -328,4 +343,4 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 
 ## 13. 一句话总结
 
-`app/rag/` 在 Phase 6 中的职责，是在不拆独立微服务、不侵入 chat 主链路编排与 short-term memory 边界的前提下，为系统提供最小可用的 Knowledge + Citation Layer，实现从文档导入、切块、embedding、索引、检索到 citation-ready 数据输出的内部能力闭环，并在后续更新中严格遵守模块文档的模板冻结规则。
+`app/rag/` 在当前代码基线中仍是 Phase 6 的治理占位目录，当前尚未形成任何运行时代码；它的职责是在后续开始实现时承接 Knowledge + Citation Layer 的内部代码，而不是让未落地能力继续停留在文档完成态，并在后续更新中严格遵守模块文档的模板冻结规则。

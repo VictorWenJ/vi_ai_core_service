@@ -2,43 +2,39 @@
 
 ## 1. 目的
 
-本文件用于给 `python-llm-provider-capability` 提供标准测试矩阵参考。
+本文件用于给 `python-service-capability` 提供标准测试矩阵参考。
 
 ---
 
 ## 2. 测试矩阵
 
-### A. chat
-- 基础 completion
-- provider 错误映射
-- usage / finish_reason 映射
+### A. sync chat
+- 默认 provider / model 解析
+- system prompt 注入
+- context completed 收口
+- provider / config 错误路径
 
-### B. stream
-- chunk 序列稳定
-- canonical stream chunk 结构
-- error 路径
-- finish 路径
+### B. stream chat
+- started / delta / heartbeat / completed 路径
+- cancel / timeout / error 路径
+- placeholder / finalize 收口
 
-### C. embedding
-- 单条文本 embedding
-- 批量文本 embedding
-- 维度与数据类型稳定性
-- timeout / error 行为
+### C. request assembly
+- system / working memory / rolling summary / recent raw / user 顺序
+- non-completed assistant message 过滤
+- context_assembly trace
 
-### D. config / registry
-- provider config 加载
-- registry / factory 选择
-- 不同 provider 初始化行为
+### D. compatibility
+- 已落地 Phase 2~5 行为不回退
+- API 调用 services 的入口保持稳定
 
-### E. regression
-- 同步主链路未被 provider 改动破坏
-- 流式主链路未被 provider 改动破坏
-- rag 对 embedding 的接入需求未被破坏
+### E. future Phase 6
+- 若后续新增 retrieval / citations，再追加对应编排测试
 
 ---
 
 ## 3. 原则
 
 - 以确定性测试为主
-- 优先验证 canonical contract、错误映射与 embedding 稳定性
-- 不让厂商差异扩散到上层模块
+- 先保护当前已落地主链路
+- 未落地能力不写进现有测试完成态

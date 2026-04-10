@@ -2,7 +2,7 @@
 
 ## 1. 目的
 
-本文件用于说明 `python-schema-capability` 当前阶段的能力范围，避免 skill 在执行过程中发生边界漂移。
+本文件用于说明 `python-schemas-capability` 当前阶段的能力范围，避免 skill 在执行过程中发生边界漂移。
 
 ---
 
@@ -10,13 +10,12 @@
 
 当前能力范围限定为：
 
-- `/chat` request / response schema
-- `/chat_stream` event schema
-- `/chat_stream_cancel` schema
-- `/chat_reset` schema
-- lifecycle schema
-- citation schema
-- schema 相关测试
+- `LLMMessage`
+- `LLMRequest`
+- `LLMUsage`
+- `LLMResponse`
+- `LLMStreamChunk`
+- 内部 canonical contract 测试
 
 ---
 
@@ -24,25 +23,21 @@
 
 当前不在范围内的能力包括：
 
-- HTTP 路由
-- chat 主链路编排
-- context store 实现
-- provider SDK 适配
-- retrieval / chunking / embedding / index
-- citation 生成逻辑
-- metrics / tracing 平台
-- 审批流
-- Case Workspace
+- `/chat` request / response schema
+- `/chat_stream` SSE 事件 schema
+- cancel / reset contract
+- citation contract
+- retrieval 内部对象
+- 长期记忆对象体系
 
 ---
 
 ## 4. 当前默认技术基线
 
-- request / response contract 稳定
-- stream event contract 稳定
-- cancel / reset contract 稳定
-- Phase 6 citation contract 正式化
-- delta 不带 citations
+- `app/schemas/` 只承载内部 `LLM*` 契约
+- API 对外 schema 位于 `app/api/schemas/`
+- dataclass 优先
+- provider-agnostic
 
 ---
 

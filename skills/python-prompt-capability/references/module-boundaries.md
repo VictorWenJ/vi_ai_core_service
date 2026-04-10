@@ -8,53 +8,26 @@
 
 ## 2. 与 services 的边界
 
-### prompts 负责
-- 模板资产
-- registry
-- renderer
-
-### services 负责
-- 何时选用哪个 Prompt
-- 如何注入变量
-- 如何与 context / rag / provider 组合
+services 负责业务编排与消息装配时机；
+prompts 负责模板资产、registry 与 renderer。
 
 ---
 
 ## 3. 与 providers 的边界
 
-### prompts 负责
-- provider-agnostic 文本模板资产
-
-### providers 负责
-- 模型厂商接入
-- chat / stream / embedding 能力
-
-### 原则
-Prompt 层不绑定 provider transport 细节。
+providers 保持 prompt-agnostic；
+prompts 不感知 provider transport 细节。
 
 ---
 
-## 4. 与 context 的边界
+## 4. 与 context / rag 的边界
 
-context 负责会话状态与短期记忆；  
-prompts 只负责文本资产，不直接访问 context store。
-
----
-
-## 5. 与 rag 的边界
-
-rag 负责 retrieval 与 knowledge 数据；  
-prompts 可被 services 用来承载知识块变量，但不负责 retrieval。
+context / rag 提供状态或数据；
+services 决定是否作为变量注入。
+prompts 不直接访问它们的底层实现。
 
 ---
 
-## 6. 与 api 的边界
+## 5. 结论
 
-API 不应直接管理 Prompt 资产。  
-route handler 不长期持有 Prompt 文本。
-
----
-
-## 7. 结论
-
-`app/prompts/` 是 Prompt 资产层，不是业务编排层，不是 provider 适配层，也不是知识检索层。
+`app/prompts/` 是 Prompt 资产层，不是业务编排层，也不是当前代码中的 RAG 模板平台。

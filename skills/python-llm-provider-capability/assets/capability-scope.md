@@ -12,10 +12,8 @@
 
 - chat completion provider
 - stream completion provider
-- embedding provider
 - canonical response / chunk
-- provider config / registry / factory
-- provider 错误映射
+- provider config / registry / maturity
 - provider 相关测试
 
 ---
@@ -29,7 +27,7 @@
 - context state 管理
 - retrieval / chunking / index
 - citation 生成
-- request assembly
+- embedding provider（当前未落地）
 - 长期记忆平台
 - 审批流
 - Case Workspace
@@ -41,8 +39,8 @@
 - provider 抽象优先
 - canonical contract 优先
 - 流式与非流式统一治理
-- embedding 纳入同一 provider 技能域
-- 当前只要求文本 embedding
+- registry 显式管理成熟度
+- 当前不包含 embedding provider
 
 ---
 

@@ -10,13 +10,12 @@
 
 当前能力范围限定为：
 
-- 文档导入
-- 文档清洗
-- 文档切块
-- 文本 embedding
-- 向量索引
-- retrieval
-- citation-ready 数据输出
+- `app/rag/` 运行时代码的首次落地
+- 知识对象模型
+- ingest pipeline
+- retrieval service
+- citation 结构
+- RAG 相关测试
 
 ---
 
@@ -24,24 +23,25 @@
 
 当前不在范围内的能力包括：
 
-- 独立 RAG 微服务
+- API 路由
+- chat 主链路编排
+- short-term memory
+- provider chat completion
 - 长期记忆平台
 - 审批流
 - Case Workspace
-- Agentic retrieval
-- graph retrieval
-- hybrid retrieval 大系统
+- Agent Runtime
 - 多模态主链路
-- 知识平台管理后台
 
 ---
 
 ## 4. 当前默认技术基线
 
-- 向量数据库：Qdrant
-- 相似度：Cosine
-- embedding：单一文本 embedding 基线
-- chunking：结构感知 + token-aware + overlap
+- 当前代码尚无 RAG 运行时代码
+- 后续默认向量库：Qdrant
+- 后续默认相似度：Cosine
+- 后续默认 chunking：结构感知 + token-aware + overlap
+- 后续默认 citation：来自 retrieval 结果
 
 ---
 

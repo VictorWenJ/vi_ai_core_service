@@ -4,7 +4,7 @@
 
 ## 1. 文档定位
 
-本文件定义 `vi_ai_core_service` 的项目级 Code Review 标准、全局审查原则、跨模块检查点与当前阶段专项审查要求。  
+本文件定义 `vi_ai_core_service` 的项目级 Code Review 标准、全局审查原则、跨模块检查点与当前阶段专项审查要求。
 
 本文件只负责回答以下问题：
 
@@ -43,7 +43,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 3. 是否与总体架构一致
 4. 是否可维护、可扩展、可测试
 5. 是否破坏同步与流式两条主链路
-6. 是否以可追溯引用的方式接入知识能力
+6. 是否让代码事实、文档描述与阶段声明保持一致
 
 ---
 
@@ -53,13 +53,13 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 先看结构，再看技巧
 - 保守对待会扩大耦合的改动
 - 可测试性是硬要求
-- citation 与知识时效性是 Phase 6 的核心审查对象
+- 代码事实优先于规划表述与文档描述
 
 ### 当前阶段额外原则
 
-- retrieval 是增强层，不得破坏 chat 主链路
-- citation 必须来自 retrieval 结果，不得变成模型自由生成文本
-- chunking 必须从“按字符切分”升级到结构感知 + token-aware + overlap
+- 当前已落地主链路仍是 Phase 2~5，不得被“计划中的 Phase 6”改坏
+- 若改动声称落地 retrieval / citation，必须同时给出真实代码与测试依据
+- 未落地能力不得继续在模块文档、skill、测试矩阵中写成完成态
 - 引入知识能力时，不得混淆 short-term memory 与 external knowledge
 
 ---
@@ -77,8 +77,8 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 ### 当前阶段补充问题
 
-7. 当前改动是否仍属于 Phase 6 边界？
-8. 是否把 retrieval、citation、chunking、embedding 等内容放在了正确模块？
+7. 当前改动是在维护已落地的 Phase 2~5，还是在真实新增 Phase 6 代码？
+8. 若涉及 retrieval、citation、chunking、embedding，是否真的有对应代码落位在正确模块？
 9. 是否保持了根目录四文档与模块文档各自职责清晰？
 
 ---
@@ -89,26 +89,29 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 是否只做接入、校验、转发、返回
 - SSE 序列化是否留在 API 层
 - route 是否没有直接消费 provider 原始 chunk 或 vector index
-- citation 是否通过稳定 schema 返回，而不是随意拼接
+- 当前 `/chat` 与 `/chat_stream` 契约是否仍与 `app/api/schemas/chat.py` 一致
+- 若未来新增 citation，是否通过稳定 schema 返回，而不是随意拼接
 
 ### Services 层
 - 是否仍然是编排层
 - 生命周期状态机、取消协调、完成态收口是否由 services 统一调度
-- retrieval 是否由 services 编排，而不是散落到 api/provider/context
+- 当前 request assembly 顺序是否仍为 system -> working memory -> rolling summary -> recent raw -> user
+- 若未来新增 retrieval，是否由 services 编排，而不是散落到 api/provider/context
 
 ### Context / Prompt / RAG / Provider
 - 四个专项能力模块是否职责分离
 - context 是否只在 completed 时执行标准 memory update
-- rag 是否只负责 ingest / retrieval / citation 相关实现
-- provider 是否只做 canonical response / stream chunk / embedding 归一化
+- rag 当前是否仍保持“治理占位、无运行时代码”的代码事实
+- provider 是否只做 canonical response / stream chunk 归一化
 
 ### Observability
 - 是否仍是结构化日志基础设施，而不是业务状态机
-- retrieval trace 是否只记录事实，不夹带业务推理
+- `log_report` 与 JSON-safe 序列化是否仍只记录事实，不夹带业务推理
 
 ### Schema
 - 是否仍是契约层
-- citation / stream event / lifecycle / cancel contract 是否清晰稳定
+- `app/schemas/` 是否仍只承载内部 `LLM*` 契约
+- `app/api/schemas/` 是否继续承载对外 request / response / stream event 契约
 
 ---
 
@@ -117,16 +120,14 @@ Code Review 不只是检查“能不能运行”，还要检查：
 必须检查：
 
 - `/chat` 与 `/chat_stream` 输入语义是否尽量一致
-- `/chat` 是否返回 citations
-- `/chat_stream` 是否仅在完成事件返回 citations
-- `request_id` / `assistant_message_id` / `finish_reason` / `usage` / `latency` / `error_code` / `citations` 语义是否统一
+- `request_id` / `assistant_message_id` / `finish_reason` / `usage` / `latency` / `error_code` 语义是否统一
 - Qdrant、embedding model、collection 之类内部实现细节是否未无意义暴露到外部协议
 
 ### 当前阶段补充要求
 
-- citations 是否为空时行为明确
-- delta 阶段是否没有混入 citation 增量
-- retrieval 结果是否没有以内部对象全量透传给外部响应
+- 当前 `/chat` 与 `/chat_stream` 是否都还没有文档外漂移字段
+- 若未来新增 citations，是否为空时行为明确
+- 若未来新增 citations，delta 阶段是否没有混入 citation 增量
 
 ---
 
@@ -138,13 +139,13 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - provider timeout 与 request timeout 是否区分
 - `response.error` 与 `response.cancelled` 是否不混淆
 - failed / cancelled assistant message 是否没有进入标准 memory update
-- retrieval / embedding / index 失败时是否可降级或可显式失败，而不是静默污染结果
+- 若未来新增 retrieval / embedding / index，失败时是否可降级或可显式失败，而不是静默污染结果
 
 ### 当前阶段补充要求
 
-- retrieval 失败时 `/chat` 是否仍可运行
-- retrieval 失败时 `/chat_stream` 是否仍保持正确收口
-- ingest 失败是否不会拖垮在线 chat 主链路
+- 当前流式取消、失败、完成路径是否仍各自收口清晰
+- 当前同步链路 provider/config 错误是否仍映射稳定
+- 若未来新增 Phase 6，ingest / retrieval 失败是否不会拖垮在线 chat 主链路
 
 ---
 
@@ -163,11 +164,16 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 至少应有下列测试之一或多项：
 
-- parser 测试
-- chunker 测试
-- embedding provider 测试
-- index upsert / query 测试
-- retrieval service 测试
+- `/chat` 路由测试
+- `/chat_stream` 生命周期测试
+- cancel / reset 测试
+- context manager / store / policy 测试
+- request assembly 顺序与过滤测试
+- provider normalization 与 registry 测试
+
+若后续真实落地 Phase 6，再追加：
+
+- parser / chunker / embedding / index / retrieval 测试
 - citation 格式化测试
 - `/chat` citation 输出测试
 - `/chat_stream` completed citation 输出测试
@@ -179,40 +185,41 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 ### 9.1 RAG 边界
 - `app/rag/` 是否保持为内部子域，而不是无计划扩展成新平台
-- retrieval 是否没有入侵 context 语义
+- 当前代码是否仍如实反映“RAG 尚未落地运行时代码”
+- 若开始新增 RAG 代码，retrieval 是否没有入侵 context 语义
 - knowledge retrieval 是否没有替代 working memory / rolling summary
 
 ### 9.2 数据与模型
-- `KnowledgeDocument` / `KnowledgeChunk` / `RetrievedChunk` / `Citation` 等模型是否职责清晰
-- metadata 是否足够支撑 citation、过滤与时效性展示
-- 向量维度、distance metric、embedding model 是否一致
+- 当前 `app/schemas/` 中的 `LLMMessage` / `LLMRequest` / `LLMResponse` / `LLMStreamChunk` 是否职责清晰
+- API 对外契约是否仍位于 `app/api/schemas/`
+- 若开始新增 `KnowledgeDocument` / `KnowledgeChunk` / `RetrievedChunk` / `Citation`，是否职责清晰
 
 ### 9.3 Chunking 与 Ingest
-- 是否已从“按字符切分”升级为结构感知 + token-aware + overlap
-- chunking 是否稳定、可测试、可解释
-- parser / chunker / embedding / index 是否链路清晰
+- 当前代码是否仍未宣称已实现 chunking / ingest
+- 若开始新增实现，是否已从“按字符切分”升级为结构感知 + token-aware + overlap
+- 若开始新增实现，parser / chunker / embedding / index 是否链路清晰
 
 ### 9.4 Retrieval 与 Assembly
 - request assembly 顺序是否为：
   - system
   - working memory
   - rolling summary
-  - retrieved knowledge
   - recent raw
   - user
-- retrieval 结果是否通过统一 knowledge block 渲染
-- citation 是否来自 retrieved chunks，而不是模型自由生成
+- 当前代码是否仍未注入 knowledge block
+- 若开始新增 retrieval，结果是否通过统一 knowledge block 渲染
+- 若开始新增 citation，是否来自 retrieved chunks，而不是模型自由生成
 
 ### 9.5 流式与同步契约
-- `/chat` 是否返回 citation 列表
-- `/chat_stream` 是否仅在完成事件返回 citations
-- delta 阶段是否没有混入 citation 增量
+- 当前 `/chat` 是否仍未返回 citation 列表
+- 当前 `/chat_stream` completed 是否仍未返回 citations
+- delta 阶段是否保持轻量且没有额外业务字段漂移
 
 ### 9.6 降级与鲁棒性
-- retrieval 失败时 chat 是否仍可运行
-- 无召回时是否行为稳定
-- embedding / index 异常是否可定位
-- ingest 失败是否不会影响在线 chat
+- 当前流式取消 / 失败 / 完成路径是否仍可运行
+- 当前同步 provider / config 错误路径是否稳定
+- 若未来新增 retrieval，失败时 chat 是否仍可运行
+- 若未来新增 embedding / index / ingest，异常是否可定位
 
 ---
 
@@ -226,6 +233,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 把 citation 做成模型随意输出的字符串
 - 继续使用按字符硬切分作为正式 chunking 主策略
 - 在没有抽象边界的前提下直接把 Qdrant/embedding 细节写死进业务层
+- 在未落地代码时把 Phase 6 能力写进文档、skill 或测试完成态
 
 ### 当前阶段补充拒绝项
 
@@ -239,4 +247,4 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 ## 11. 一句话总结
 
-`CODE_REVIEW.md` 在当前阶段的职责，是作为项目级审查标准文件，明确 `vi_ai_core_service` 在 Phase 6 中的通用 review 原则、跨模块检查点、专项审查清单与应拒绝改动类型，确保系统在引入 Knowledge + Citation Layer 时仍保持分层清晰、契约稳定、主链路可回归。
+`CODE_REVIEW.md` 在当前阶段的职责，是作为项目级审查标准文件，明确 `vi_ai_core_service` 在当前代码基线下的通用 review 原则、跨模块检查点、专项审查清单与应拒绝改动类型，既保护已落地的 Phase 2~5 主链路，也约束未来 Phase 6 实现必须以真实代码与测试为准。

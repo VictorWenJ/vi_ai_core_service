@@ -11,12 +11,10 @@
 ### 步骤 1：确认任务边界
 先确认本轮需求属于以下哪类：
 
-- chat provider
-- stream provider
-- embedding provider
-- canonical contract
-- config / registry
-- error mapping
+- provider 抽象
+- implemented provider
+- scaffolded provider
+- registry / maturity
 - provider tests
 
 ### 步骤 2：阅读治理文档
@@ -30,25 +28,24 @@
 要求：
 - 不推倒重来
 - 不越界改动
-- 不改动无关模块风格
+- 不把 embedding 写成当前已实现能力
 
 ### 步骤 4：实现
 要求：
-- provider 抽象清晰
 - canonical contract 清晰
-- 不把业务逻辑写进 provider
-- 不把 retrieval 逻辑写进 provider
+- 错误映射清晰
+- implemented / scaffolded 区分清晰
+- 不混入业务编排逻辑
 
 ### 步骤 5：补测试
 至少补当前改动直接相关的测试。
 
 ### 步骤 6：自检
 至少回答：
-- provider 是否仍为能力接入层？
+- providers 是否仍是接入层？
 - canonical contract 是否稳定？
-- 是否没有混入 retrieval / context / citation？
-- embedding 是否纳入统一治理？
-- 是否仍符合模块边界？
+- 成熟度声明是否与代码一致？
+- 是否没有混入 retrieval / citation？
 
 ---
 
@@ -58,4 +55,4 @@
 
 - 未读文档直接改代码
 - 不补测试直接提交
-- 未确认边界直接把 provider 改成“业务编排层”
+- 在 provider 层混入业务编排或未落地 embedding 规划

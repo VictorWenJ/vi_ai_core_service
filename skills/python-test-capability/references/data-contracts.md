@@ -2,47 +2,43 @@
 
 ## 1. 目的
 
-本文件用于说明 tests 层重点关注的共享契约与关键行为边界。
+本文件用于说明 `tests/` 当前重点保护的契约面。
 
 ---
 
-## 2. chat / stream contract
+## 2. API contract
 
-tests 至少应关注：
+当前重点保护：
 
-- `/chat` request / response
-- `/chat_stream` event 序列
+- `/chat`
+- `/chat_stream`
 - `/chat_stream_cancel`
 - `/chat_reset`
+- `/health`
 
 ---
 
-## 3. lifecycle contract
+## 3. service / lifecycle contract
 
-tests 至少应关注：
+当前重点保护：
 
-- created / streaming / completed / failed / cancelled
-- only completed 进入标准 memory update
-- non-completed assistant message 不参与后续装配
+- started / delta / heartbeat / completed / error / cancelled
+- completed 才进入标准 memory update
+- failed / cancelled 不污染后续 request assembly
 
 ---
 
-## 4. retrieval / citation contract
+## 4. provider / prompt / config contract
 
-tests 至少应关注：
+当前重点保护：
 
-- `/chat` citations
-- `/chat_stream` completed citations
-- delta 无 citations
-- retrieval 失败降级
+- provider canonical result
+- prompt registry / renderer
+- config 与 registry 解析
 
 ---
 
 ## 5. 原则
 
-tests 关注的是：
-- contract 稳定性
-- 行为边界
-- 路径差异
-
-不是内部实现细节逐行镜像。
+- 保护当前已落地契约
+- 未落地 retrieval / citation 不写进现有测试完成态

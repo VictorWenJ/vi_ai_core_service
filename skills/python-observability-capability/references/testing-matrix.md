@@ -9,36 +9,24 @@
 ## 2. 测试矩阵
 
 ### A. serialization
-- JSON-safe serialization
-- dataclass projection
-- non-serializable object protection
+- pydantic / dict / dataclass / list 归一化
+- 未知对象字符串化
 
-### B. request tracing
-- request_id / session_id / conversation_id 输出
-- provider / model 字段输出
-- status / latency 输出
+### B. logger
+- `log_report` 输出稳定
+- stdout logger 初始化稳定
 
-### C. stream tracing
-- assistant_message_id 输出
-- event count 输出
-- finish / error / cancelled 字段输出
-- 流式链路不因日志失败而中断
+### C. robustness
+- 不可序列化输入不崩溃
+- 流式场景不崩溃
 
-### D. retrieval tracing
-- retrieval_query 输出
-- retrieval_top_k 输出
-- retrieval_filters 输出
-- retrieved_chunk_count 输出
-- citation_count 输出
-
-### E. regression
-- 同步主链路未被 observability 改动破坏
-- 流式主链路未被 observability 改动破坏
+### D. future Phase 6
+- 若后续新增 retrieval / citation 观测，再补对应测试
 
 ---
 
 ## 3. 原则
 
 - 以确定性测试为主
-- 重点验证安全序列化与关键字段稳定性
-- 不让 observability 成为主链路脆弱点
+- 先保护当前已落地的结构化日志能力
+- 不把未落地字段写进现有测试完成态

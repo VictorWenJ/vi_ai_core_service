@@ -2,47 +2,58 @@
 
 ## 1. 目的
 
-本文件用于说明 `app/providers/` 与其他模块之间的边界关系。
+本文件用于说明 `app/services/` 与其他模块之间的边界关系。
 
 ---
 
-## 2. 与 services 的边界
-
-### providers 负责
-- 调用厂商
-- 输出 canonical result
-- 映射错误
-- 提供 embedding
+## 2. 与 api 的边界
 
 ### services 负责
-- chat / stream 编排
-- lifecycle 推进
-- cancel / reset / retrieval 时机
-- citations 输出时机
+- chat / stream / cancel / reset 编排
+- 生命周期收口
+- request assembly
+
+### api 负责
+- HTTP / SSE 协议接入
+- 请求 / 响应 schema
+- SSE 文本序列化
 
 ---
 
-## 3. 与 api 的边界
+## 3. 与 context 的边界
 
-API 不直接调用 provider SDK。  
-provider 通过 service 间接服务于 API。
+### services 负责
+- 何时读写上下文
+- 何时进入 completed 收口
 
----
-
-## 4. 与 context 的边界
-
-context 负责会话状态；providers 不直接操作 context。  
-providers 只提供模型能力。
-
----
-
-## 5. 与 rag 的边界
-
-rag 负责 retrieval / citation-ready 数据。  
-providers 可提供 embedding，但不负责 retrieval / citation。
+### context 负责
+- 状态模型
+- layered memory
+- store / policy / codec
 
 ---
 
-## 6. 结论
+## 4. 与 prompts 的边界
 
-`app/providers/` 是模型与厂商接入层，不是业务编排层，不是知识检索层，也不是上下文状态层。
+services 决定何时取默认 system prompt、何时装配消息；
+prompts 负责模板资产、registry 与 renderer。
+
+---
+
+## 5. 与 providers 的边界
+
+services 决定何时调用 provider；
+providers 负责厂商适配与 canonical result。
+
+---
+
+## 6. 与 rag 的边界
+
+当前代码尚未接入 rag。
+后续若落地：services 负责编排，rag 负责知识实现。
+
+---
+
+## 7. 结论
+
+`app/services/` 是应用编排层，不是协议层、不是 SDK 层、不是存储层，也不是当前代码中的 RAG 实现层。

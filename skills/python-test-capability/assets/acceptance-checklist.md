@@ -9,30 +9,20 @@
 ## 2. 验收清单
 
 ### 主链路
-- [ ] `/chat` 有测试保护
-- [ ] `/chat_stream` 有测试保护
-- [ ] cancel / reset 有测试保护
+- [ ] `/chat` 路径已覆盖
+- [ ] `/chat_stream` 路径已覆盖
+- [ ] cancel / reset 路径已覆盖
 
-### 生命周期
-- [ ] completed / failed / cancelled 有区别性测试
-- [ ] only completed 进入标准 memory update 有测试保护
-
-### retrieval / citation
-- [ ] `/chat` citations 有测试保护
-- [ ] `/chat_stream` completed citations 有测试保护
-- [ ] delta 无 citations 有测试保护
-- [ ] retrieval 失败降级有测试保护
+### 关键差异
+- [ ] completed / failed / cancelled 差异已覆盖
+- [ ] request assembly 顺序与过滤已覆盖
 
 ### 基础模块
-- [ ] provider canonical contract 有测试
-- [ ] prompt registry / renderer 有测试
-- [ ] schema contract 有测试
-- [ ] context lifecycle 有测试
+- [ ] provider / prompt / API / config 相关回归面已覆盖
 
-### 质量
-- [ ] 测试优先确定性
-- [ ] 没有过度依赖真实外部服务
-- [ ] 测试可读、可维护
+### 边界
+- [ ] 未把未落地 retrieval / citation 写成已覆盖事实
+- [ ] 未过度依赖真实外部服务
 
 ### 文档治理
 - [ ] 改动符合模块 AGENTS

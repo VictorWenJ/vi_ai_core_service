@@ -2,57 +2,34 @@
 
 ## 1. 目的
 
-本文件用于说明 `app/observability/` 中关键观测字段的最小契约要求。
+本文件用于说明 `app/observability/` 当前日志载荷的最小契约要求。
 
 ---
 
-## 2. request 相关字段
+## 2. 基础载荷契约
 
-至少应能表达：
+`log_report(event, message)` 当前必须满足：
 
-- request_id
-- session_id
-- conversation_id
-- provider
-- model
-- status
-- latency_ms
+- `event` 为稳定字符串
+- `message` 可被归一化为 JSON-safe 结构
 
 ---
 
-## 3. stream 相关字段
+## 3. 归一化契约
 
-至少应能表达：
+当前应支持：
 
-- request_id
-- assistant_message_id
-- streaming
-- stream_event_count
-- status
-- finish_reason
-- error_code
-
----
-
-## 4. retrieval 相关字段
-
-至少应能表达：
-
-- knowledge_retrieval_enabled
-- retrieval_query
-- retrieval_top_k
-- retrieval_filters
-- retrieved_chunk_count
-- retrieved_document_ids
-- embedding_model
-- vector_index_backend
-- citation_count
+- pydantic `model_dump`
+- `dict`
+- dataclass
+- `list` / `tuple` / `set`
+- 基础类型
+- 未知对象退化为字符串
 
 ---
 
-## 5. 原则
+## 4. 原则
 
-- 字段应以事实型为主
-- 字段必须 JSON-safe
-- 不应直接记录复杂对象
-- 不应把原始大段正文作为标准观测字段
+- 不直接记录不可序列化复杂运行时对象
+- 不承诺当前不存在的 retrieval / citation 字段
+- 契约变更必须同步补测试

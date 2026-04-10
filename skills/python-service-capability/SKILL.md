@@ -1,247 +1,242 @@
-# app/services/AGENTS.md
+# SKILL.md
 
-> 更新日期：2026-04-10
+> skill_name: python-service-capability
+> module_scope: app/services/
+> status: active
+> last_updated: 2026-04-10
 
-## 1. 文档定位
+## 1. Skill 定位
 
-本文件定义 `app/services/` 的职责、边界、结构约束、开发约束与 review 标准。  
-当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。  
-执行 services 相关任务时，必须先读根目录 `AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据 skill `skills/python-service-capability/` 执行。
+本 skill 用于指导 `vi_ai_core_service` 在 `app/services/` 模块中进行应用编排层的设计、实现、测试与增量演进。
 
-本文件不负责：
+本 skill 的目标不是生成“泛化的 chat service 示例”，而是约束在本项目文档治理体系下，按当前仓库真实代码结构实现：
 
-- 仓库级协作规则
-- 你和我之间的交互流程
-- 根目录阶段路线图
-- 根目录级总体架构说明
-- 根目录级 Code Review 总标准
-
-这些内容分别由：
-
-- 根目录 `AGENTS.md`
-- 根目录 `PROJECT_PLAN.md`
-- 根目录 `ARCHITECTURE.md`
-- 根目录 `CODE_REVIEW.md`
-- `CHAT_HANDOFF.md`
-
-承担。
+- 同步 chat 编排
+- 流式 chat 编排
+- request assembly
+- cancellation registry
+- assistant message lifecycle 收口
+- 与 context / prompts / providers 的稳定协作
 
 ---
 
-## 2. 模块定位
+## 2. Skill 适用范围
 
-`app/services/` 是系统的应用编排层。  
-它负责把 API、context、prompts、rag、providers 等能力组织成完整用例，并对同步聊天、流式聊天、取消、重置、知识增强接入等主链路行为进行统一编排。
+本 skill 适用于以下类型的工作：
 
-当前阶段建议围绕以下职责组织：
-
-- `chat_service.py`
-- `streaming_chat_service.py`
-- `request_assembler.py`
-- `cancellation_registry.py`
-- 其他与 chat / stream / reset / retrieval 编排直接相关的 service / helper
-
----
-
-## 3. 本模块职责
-
-1. 承接同步与流式两类会话用例
-2. 协调 context / prompts / rag / providers
-3. 管理 assistant message 生命周期推进
-4. 管理 started / delta / completed / error / cancelled 收口
-5. 在 completed 时触发 Phase 4 的 layered memory 标准更新
-6. 管理 cancel / timeout / failure 的业务编排
-7. 在 Phase 6 中协调 retrieval、knowledge block 注入与 citations 输出
-8. 对外提供清晰、稳定的应用层 service 入口
+1. `chat_service.py` / `llm_service.py`
+2. `streaming_chat_service.py`
+3. `request_assembler.py`
+4. `cancellation_registry.py`
+5. `prompt_service.py`
+6. service 级错误收敛
+7. service 相关测试
 
 ---
 
-## 4. 本模块不负责什么
+## 3. Skill 不适用范围
 
-1. 不负责 HTTP 路由与 SSE 文本协议
-2. 不负责 provider SDK / HTTP 适配细节
-3. 不负责 context store 的底层存储实现
-4. 不负责定义共享数据契约本身
-5. 不负责 parser / chunker / embedding / index 的底层实现
-6. 不负责向量库访问细节
-7. 不负责 Prompt 资产注册与模板渲染内部实现
+本 skill 不用于以下工作：
+
+1. HTTP 路由与 SSE 文本协议
+2. provider SDK 适配
+3. context store 底层实现
+4. Prompt 资产注册与模板渲染内部实现
+5. retrieval / chunking / embedding / index 运行时代码
+6. citation 生成逻辑
+7. 长期记忆平台
+8. Agent Runtime
+9. 审批流
+10. Case Workspace
+
+如任务超出上述边界，应转交对应模块 skill 处理。
 
 ---
 
-## 5. 依赖边界
+## 4. 本 skill 的核心原则
 
-### 允许依赖
+### 4.1 services 是编排层
+services 负责“何时调用谁、如何收口”，不负责底层存储、SDK 调用与协议输出。
+
+### 4.2 request_assembler 是唯一装配中枢
+当前代码中，装配顺序固定为：
+
+- system prompt
+- working memory block
+- rolling summary block
+- recent raw messages
+- current user input
+
+### 4.3 completed 才进入标准 memory update
+- completed：进入标准 update pipeline
+- failed / cancelled：只更新消息状态，不进入标准 memory update
+- delta：只做传输与聚合，不写 rolling summary / working memory
+
+### 4.4 流式生命周期必须收敛在 services
+`started / delta / heartbeat / completed / error / cancelled` 的业务语义由 services 统一调度。
+
+### 4.5 当前代码尚未落地 RAG 编排
+当前仓库中的 services 还没有 retrieval、knowledge block、citations 运行时逻辑。
+如后续开始实现，必须在本层统一编排，不能散落到 API / provider / context。
+
+---
+
+## 5. 默认阶段基线
+
+当前 skill 默认基线如下：
+
+- `ChatService` / `LLMService` 负责编排同步 chat
+- `StreamingChatService` 负责编排流式 chat
+- `ChatRequestAssembler` 负责上下文组装与请求规范化
+- `CancellationRegistry` 负责请求级取消
+- `PromptService` 负责消息装配辅助
+- 当前代码不包含 retrieval / citation 编排
+
+如需变更该基线，必须先更新根目录文档与模块 AGENTS，再进入实现。
+
+---
+
+## 6. 标准执行流程
+
+执行 `app/services/` 相关任务时，必须遵循以下顺序：
+
+1. 阅读根目录文档
+   - `AGENTS.md`
+   - `PROJECT_PLAN.md`
+   - `ARCHITECTURE.md`
+   - `CODE_REVIEW.md`
+
+2. 阅读模块文档
+   - `app/services/AGENTS.md`
+
+3. 阅读本 skill
+   - `skills/python-service-capability/SKILL.md`
+
+4. 按需阅读 assets / references
+   - `assets/capability-scope.md`
+   - `assets/delivery-workflow.md`
+   - `assets/acceptance-checklist.md`
+   - `references/module-boundaries.md`
+   - `references/data-contracts.md`
+   - `references/testing-matrix.md`
+
+5. 明确本轮任务边界
+6. 设计最小增量改动
+7. 补充测试
+8. 自检与回归验证
+
+---
+
+## 7. 标准交付物要求
+
+service 相关任务，至少应交付以下之一或多项：
+
+1. 同步 chat 编排更新
+2. 流式 chat 编排更新
+3. request assembly 更新
+4. cancellation registry 更新
+5. service 错误收敛更新
+6. service 相关测试更新
+
+仅给概念说明、不落代码、不补测试，不视为完成。
+
+---
+
+## 8. 实现约束
+
+### 8.1 同步链路约束
+同步链路必须继续保持：
+
+- provider / model 解析稳定
+- system prompt 注入稳定
+- context completed 收口稳定
+
+### 8.2 流式链路约束
+流式链路必须继续保持：
+
+- request_id / assistant_message_id 生成稳定
+- placeholder / delta / finalize 收口稳定
+- cancel / timeout / error 路径稳定
+
+### 8.3 装配约束
+`request_assembler` 之外的模块不得决定上下文装配顺序。
+
+### 8.4 依赖约束
+services 可依赖：
+
 - `app/context/`
 - `app/prompts/`
-- `app/rag/`
 - `app/providers/`
 - `app/schemas/`
+- `app/api/schemas/` 的用户请求模型
 - `app/observability/`
 
-### 禁止依赖
-- `app/api/`
-- Redis client、key 拼接、TTL 细节
-- 向量库底层 SDK 作为常规业务编排路径直接散落在 service 层
+不得直接散落访问 Redis client、向量库 SDK 或 provider 原始 SDK。
 
-### 原则
-`app/services/` 是编排层，不是协议层、不是状态层、不是知识实现层，也不是厂商接入层。
+### 8.5 Phase 6 约束
+当前代码尚未落地 retrieval / citations。
+任何声称新增这类能力的改动，都必须同时补真实代码与测试。
 
 ---
 
-## 6. 架构原则
+## 9. 与其他模块的协作约束
 
-### 6.1 编排优先，细节下沉
-services 负责“编排”，不负责“底层实现”。
+### 与 api 协作
+API 负责协议接入与 SSE 序列化；services 负责编排。
+services 不接管 route handler 职责。
 
-### 6.2 request_assembler 是上下文与知识装配中枢
-assembler 是唯一允许决定以下顺序的地方：
+### 与 context 协作
+context 负责状态与 memory update；services 负责何时更新、何时收口。
 
-1. system prompt
-2. working memory block
-3. rolling summary block
-4. retrieved knowledge block
-5. recent raw messages
-6. current user input
+### 与 prompts 协作
+prompts 负责模板资产；services 负责决定何时取默认 system prompt 并组装消息。
 
-### 6.3 生命周期调度必须收敛在 services
-API 不负责状态机；context 不负责流式业务编排；providers 不负责外部会话生命周期；rag 不负责 chat 主链路编排。
+### 与 providers 协作
+providers 负责厂商适配与 canonical result；services 负责调用时机与结果收口。
 
-### 6.4 completed 收口必须与 Phase 4 对齐
-- completed：执行标准 `update_after_chat_turn` / `update_after_stream_completion`
-- failed / cancelled：只更新消息状态，不走标准 memory update
-- delta：只负责传输与聚合，不写 rolling summary / working memory
-
-### 6.5 retrieval 是增强链路，不是主链路替代
-- retrieval 结果用于知识 grounding
-- retrieval 不替代 Phase 4 的 short-term memory
-- retrieval 失败时，services 必须支持可控降级，不拖垮主 chat 主链路
-
-### 6.6 同步与流式编排必须保持一致语义
-- `/chat` 与 `/chat_stream` 应共享尽量一致的业务语义
-- stream 只是交付方式不同，不应导致核心应用语义分裂
+### 与 rag 协作
+当前代码尚未接入 rag。
+后续若落地，rag 负责知识实现，services 负责编排。
 
 ---
 
-## 7. 当前阶段能力声明
+## 10. 测试要求
 
-当前本轮必须保持稳定：
+service 相关实现至少补以下测试之一或多项：
 
-- 同步 chat 主链路
-- 流式 chat 主链路
-- cancellation registry
-- request assembly
-- completed 才触发 context memory 标准更新
-- failed / cancelled 不污染后续装配
-
-当前本轮新增要求：
-
-- Knowledge + Citation Layer 的 service 侧编排接入
-- retrieval query 构建与 retrieval 调用入口
-- request_assembler 注入 retrieved knowledge block
-- `/chat` 响应附带 citations
-- `/chat_stream` 的 completed 事件附带 citations
-- retrieval 失败时的降级路径
-
-当前本轮不要求：
-
-- 独立 RAG 微服务编排
-- 长期记忆调度
-- Agentic workflow
-- 审批流编排
-- Case Workspace 业务流程编排
+1. 同步 chat 基础路径
+2. 流式 chat 生命周期路径
+3. cancel / timeout / error 路径
+4. request assembly 顺序与过滤路径
+5. completed 才进入标准 memory update 路径
+6. 默认 provider / model / system prompt 解析路径
 
 ---
 
-## 8. 文档维护规则（强约束）
+## 11. Review 要点
 
-本文件属于 `app/services/` 模块的治理模板资产。  
-后续任何更新，必须严格遵守以下规则：
+提交前至少自查：
 
-### 8.1 基线规则
-- 必须以当前文件内容为基线进行增量更新
-- 不涉及变动的内容不得改写
-- 未经明确确认，不得重写文件整体风格
-
-### 8.2 冻结规则
-未经明确确认，不得擅自改变以下内容：
-
-- 布局
-- 排版
-- 标题层级
-- 写法
-- 风格
-- 章节顺序
-
-### 8.3 允许的修改范围
-允许的修改仅包括：
-
-1. 在原有章节内补充当前阶段内容
-2. 新增当前阶段确实需要的新章节
-3. 更新日期、阶段、默认基线等必要信息
-4. 删除已明确确认废弃且必须移除的旧约束
-
-### 8.4 禁止事项
-禁止：
-
-1. 把原文档整体改写成另一种风格
-2. 把模块文档从“模块治理文件”改写成“泛项目说明书”
-3. 每次更新都擅自改变标题层级与章节结构
-4. 未经确认新增大段不属于本模块职责的内容
-
-### 8.5 模板升级规则
-如果未来需要升级 `app/services/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。  
-在未确认是“模板升级”前，默认只允许做增量更新，不允许重写模板。
+1. services 是否仍然只是编排层？
+2. request_assembler 是否仍是唯一装配中枢？
+3. completed / failed / cancelled 语义是否仍清晰？
+4. 是否没有把 route / SDK / store 细节混入 services？
+5. 是否没有把未落地的 retrieval / citations 写成已实现事实？
+6. 是否补了测试？
 
 ---
 
-## 9. 修改规则
+## 12. 关联文件
 
-1. 不允许在 service 层直接调用 Redis client
-2. 不允许手写 key / TTL / scope 逻辑
-3. 不允许让 `request_assembler` 之外的模块决定上下文与知识块顺序
-4. 不允许在 service 层直接实现 parser / chunker / embedding / index 细节
-5. 不允许把 citations 做成模型自由生成字符串，必须基于 retrieval 结果装配
-6. retrieval 相关改动必须同时考虑同步链路与流式 completed 收口
-7. 不允许在每个 delta 上更新 rolling summary / working memory
-
----
-
-## 10. Code Review 清单
-
-1. services 是否仍保持“编排层”定位？
-2. 是否把底层实现正确下沉到了 context / rag / providers / prompts？
-3. request_assembler 是否仍是唯一装配中枢？
-4. 装配顺序是否为：
-   - system
-   - working memory
-   - rolling summary
-   - retrieved knowledge
-   - recent raw
-   - user
-5. completed / failed / cancelled 收口是否仍符合 Phase 4 / Phase 5 约束？
-6. `/chat` 与 `/chat_stream` 是否都正确处理了 citations？
-7. retrieval 失败时是否具备可控降级？
-8. 是否没有把向量库或 embedding 厂商细节直接暴露到 service 业务逻辑中？
-9. 本次文档更新是否遵守了“文档维护规则”？
-10. 是否保持了原有布局、排版、标题层级、写法和风格？
+- `assets/capability-scope.md`
+- `assets/delivery-workflow.md`
+- `assets/acceptance-checklist.md`
+- `references/module-boundaries.md`
+- `references/data-contracts.md`
+- `references/testing-matrix.md`
 
 ---
 
-## 11. 测试要求
+## 13. 一句话总结
 
-至少覆盖：
-
-1. 同步聊天链路在启用 retrieval 后仍可正常工作
-2. 流式聊天 completed 事件可返回 citations
-3. delta 阶段不发送 citations
-4. retrieval 失败时可降级
-5. completed assistant message 才进入标准 memory update
-6. failed / cancelled assistant message 不污染后续 request assembly
-7. request_assembler 中 knowledge block 注入顺序正确
-8. cancel / timeout / error 路径行为稳定
-
----
-
-## 12. 一句话总结
-
-`app/services/` 在当前阶段是系统的应用编排中枢，负责在不破坏 Phase 4 / Phase 5 已有同步与流式会话主链路的前提下，把 context、prompts、providers 与 Phase 6 的 retrieval、knowledge block、citations 以统一编排方式接入 chat core，并在后续更新中严格遵守模块文档的模板冻结规则。
+本 skill 的目标，是确保 `app/services/` 在当前项目中持续作为应用编排层演进，稳定承接同步 / 流式 chat、request assembly 与生命周期收口，而不是把未落地的 RAG 规划误写成已存在的 services 能力。

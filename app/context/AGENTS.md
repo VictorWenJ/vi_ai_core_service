@@ -4,8 +4,8 @@
 
 ## 1. 文档定位
 
-本文件定义 `app/context/` 的职责、边界、结构约束、开发约束与 review 标准。  
-当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。  
+本文件定义 `app/context/` 的职责、边界、结构约束、开发约束与 review 标准。
+当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。
 执行 context 相关任务时，必须先读根目录 `AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据 skill `skills/python-context-capability/` 执行。
 
 本文件不负责：
@@ -30,7 +30,7 @@
 
 ## 2. 模块定位
 
-`app/context/` 是系统的短期会话上下文与短期记忆治理层。  
+`app/context/` 是系统的短期会话上下文与短期记忆治理层。
 它负责 provider-agnostic 的 conversation-scoped 状态表示、策略执行、store 抽象与会话生命周期管理。
 
 当前已完成：
@@ -39,10 +39,20 @@
 - Phase 3：持久化短期记忆
 - Phase 4：layered short-term memory
 
+当前目录下已有实现：
+
+- `models.py`
+- `manager.py`
+- `memory_reducer.py`
+- `rendering.py`
+- `policies/`
+- `stores/`
+- `__init__.py`
+
 当前阶段必须兼容：
 
 - **Phase 5：Streaming Chat & Conversation Lifecycle**
-- **Phase 6：Knowledge + Citation Layer**
+- **Phase 6：Knowledge + Citation Layer 的后续接入**
 
 ---
 
@@ -98,7 +108,7 @@ Phase 4 已建立：
 这些能力在 Phase 5 / Phase 6 继续保持不变。
 
 ### 6.2 context 不等于 RAG
-Phase 6 新增的 retrieval / knowledge block / citations 属于 `app/rag/` 与 `app/services/` 的协作结果，  
+Phase 6 新增的 retrieval / knowledge block / citations 属于 `app/rag/` 与 `app/services/` 的协作结果，
 不属于 `app/context/` 的职责范围。
 
 ### 6.3 completed 才进入标准 memory update
@@ -124,12 +134,15 @@ Phase 6 中引入的知识检索是外部 grounding，不得把 retrieval 结果
 - assistant message lifecycle 状态落盘
 - completed 才触发标准 memory update
 - non-completed assistant message 不参与后续 request assembly
+- `InMemoryContextStore` / `RedisContextStore`
+- `selection -> truncation -> deterministic summary -> serialization` 策略链
+- `RuleBasedWorkingMemoryReducer`
 
 当前本轮必须兼容：
 
-- `/chat` 的 knowledge-aware request assembly
+- `/chat` 当前的 request assembly
 - `/chat_stream` 的 completed / failed / cancelled 收口
-- retrieval 引入后 context 语义不被污染
+- 后续 retrieval 引入后 context 语义不被污染
 
 当前本轮不要求在 `context` 中新增：
 
@@ -143,7 +156,7 @@ Phase 6 中引入的知识检索是外部 grounding，不得把 retrieval 结果
 
 ## 8. 文档维护规则（强约束）
 
-本文件属于 `app/context/` 模块的治理模板资产。  
+本文件属于 `app/context/` 模块的治理模板资产。
 后续任何更新，必须严格遵守以下规则：
 
 ### 8.1 基线规则
@@ -178,7 +191,7 @@ Phase 6 中引入的知识检索是外部 grounding，不得把 retrieval 结果
 4. 未经确认新增大段不属于本模块职责的内容
 
 ### 8.5 模板升级规则
-如果未来需要升级 `app/context/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。  
+如果未来需要升级 `app/context/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。
 在未确认是“模板升级”前，默认只允许做增量更新，不允许重写模板。
 
 ---
@@ -218,7 +231,8 @@ Phase 6 中引入的知识检索是外部 grounding，不得把 retrieval 结果
 4. non-completed assistant message 不参与 request assembly
 5. completed 才触发 layered memory 更新
 6. reset_session / reset_conversation 在持久化 store 上行为正确
-7. 引入 retrieval 后，Phase 4 / Phase 5 原有上下文行为仍保持稳定
+7. `build_context_store` 的内存 / Redis 选择行为正确
+8. 引入 retrieval 后，Phase 4 / Phase 5 原有上下文行为仍保持稳定
 
 ---
 

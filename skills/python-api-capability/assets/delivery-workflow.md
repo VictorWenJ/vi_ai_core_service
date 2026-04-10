@@ -11,15 +11,12 @@
 ### 步骤 1：确认任务边界
 先确认本轮需求属于以下哪类：
 
-- chat route
-- stream route
-- cancel route
-- reset route
-- health route
-- schema
-- sse formatting
+- route
+- API schema
+- SSE serialization
 - error mapping
-- api tests
+- cancel / reset / health
+- API tests
 
 ### 步骤 2：阅读治理文档
 至少阅读：
@@ -32,25 +29,24 @@
 要求：
 - 不推倒重来
 - 不越界改动
-- 不改动无关模块风格
+- 不把未落地 citations 写成已实现字段
 
 ### 步骤 4：实现
 要求：
-- route 保持薄
+- route 薄
 - schema 清晰
-- 错误映射稳定
-- SSE 输出稳定
+- SSE 稳定
+- 错误映射可理解
 
 ### 步骤 5：补测试
 至少补当前改动直接相关的测试。
 
 ### 步骤 6：自检
 至少回答：
-- API 是否仍只做协议职责？
+- API 是否仍保持薄路由？
+- 是否仍与 `app/api/schemas/chat.py` 一致？
 - 是否没有混入 retrieval / context / provider 逻辑？
-- SSE 是否稳定？
-- citations 输出是否符合当前阶段边界？
-- 是否仍符合模块边界？
+- 是否没有凭空声明 citations？
 
 ---
 
@@ -60,4 +56,4 @@
 
 - 未读文档直接改代码
 - 不补测试直接提交
-- 未确认边界直接把 API 改成厚编排层
+- 在 API 层堆业务编排逻辑

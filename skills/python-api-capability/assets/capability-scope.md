@@ -15,10 +15,9 @@
 - `/chat_stream_cancel`
 - `/chat_reset`
 - `/health`
-- API 层 request / response schema
-- SSE 事件格式化
-- API 错误映射
-- API 层 HTTP / 集成测试
+- API schema
+- SSE 文本序列化
+- API 测试
 
 ---
 
@@ -27,11 +26,10 @@
 当前不在范围内的能力包括：
 
 - chat 主链路编排
-- assistant message lifecycle 实现
-- context memory 实现
-- retrieval / chunking / embedding / index 实现
-- provider 主链路实现
-- citation 生成逻辑
+- context memory
+- provider SDK 调用
+- retrieval / chunking / embedding / index
+- citation 生成
 - 长期记忆平台
 - 审批流
 - Case Workspace
@@ -40,13 +38,10 @@
 
 ## 4. 当前默认技术基线
 
-- 框架：FastAPI
-- 流式协议：SSE
-- `/chat_stream`：`text/event-stream`
-- `/chat_stream_cancel`：显式取消入口
-- `/chat_reset`：上下文重置入口
-- `/chat`：支持 citations
-- `/chat_stream`：仅 completed 事件支持 citations
+- FastAPI
+- SSE
+- `/chat_stream` 返回 `text/event-stream`
+- 当前不包含 citations
 
 ---
 

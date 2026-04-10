@@ -11,12 +11,9 @@
 ### 步骤 1：确认任务边界
 先确认本轮需求属于以下哪类：
 
-- structured logging
-- json-safe serialization
-- request trace
-- stream trace
-- retrieval trace
-- citation trace
+- `log_report`
+- JSON-safe 序列化
+- 事实型日志字段
 - observability tests
 
 ### 步骤 2：阅读治理文档
@@ -30,13 +27,13 @@
 要求：
 - 不推倒重来
 - 不越界改动
-- 不改动无关模块风格
+- 不把未落地 retrieval / citation 字段写成现有能力
 
 ### 步骤 4：实现
 要求：
-- 事实型记录
 - JSON-safe
-- 不侵入业务逻辑
+- 事实型日志
+- 不侵入主链路职责
 - 不泄漏敏感正文
 
 ### 步骤 5：补测试
@@ -44,11 +41,10 @@
 
 ### 步骤 6：自检
 至少回答：
-- 日志是否仍为结构化？
-- 是否 JSON-safe？
-- 是否没有把业务逻辑混进 observability？
-- retrieval / citation 字段是否齐全？
-- 是否仍符合模块边界？
+- 是否仍是基础设施层？
+- 是否保证 JSON-safe？
+- 是否没有把业务逻辑混进来？
+- 是否没有凭空声明未落地字段？
 
 ---
 
@@ -58,4 +54,4 @@
 
 - 未读文档直接改代码
 - 不补测试直接提交
-- 未确认边界直接把 observability 改成“全能调度层”
+- 用 observability 代码替代业务状态机

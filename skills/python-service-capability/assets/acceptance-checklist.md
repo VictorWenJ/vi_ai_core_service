@@ -2,38 +2,33 @@
 
 ## 1. 目的
 
-本文件用于在 `app/providers/` 相关任务完成后进行验收自检。
+本文件用于在 `app/services/` 相关任务完成后进行验收自检。
 
 ---
 
 ## 2. 验收清单
 
-### 抽象
-- [ ] chat completion 抽象清晰
-- [ ] stream completion 抽象清晰
-- [ ] embedding 抽象清晰
+### 编排
+- [ ] 同步 chat 编排语义清晰
+- [ ] 流式 chat 编排语义清晰
+- [ ] cancellation registry 行为清晰
+- [ ] request_assembler 仍是唯一装配中枢
 
-### contract
-- [ ] non-stream canonical response 稳定
-- [ ] stream canonical chunk 稳定
-- [ ] embedding 输出结构稳定
-- [ ] finish / usage / error 映射清晰
+### 生命周期
+- [ ] started / delta / heartbeat / completed / error / cancelled 路径清晰
+- [ ] only completed assistant message 进入标准 memory update
+- [ ] failed / cancelled 不污染后续 request assembly
 
 ### 边界
-- [ ] 未混入业务编排
-- [ ] 未混入 retrieval / citation
-- [ ] 未直接操作 context state
-- [ ] 未直接承担 API 职责
-
-### 当前阶段约束
-- [ ] embedding 已纳入 provider 域
-- [ ] 仅文本 embedding 为主
-- [ ] 未引入重复 provider skill 体系
+- [ ] 未混入 route 逻辑
+- [ ] 未混入 provider SDK 细节
+- [ ] 未混入 store / Redis 细节
+- [ ] 未把未落地 retrieval / citations 写成已实现事实
 
 ### 回归
 - [ ] 未破坏同步 chat 主链路
 - [ ] 未破坏流式 chat 主链路
-- [ ] 未破坏 retrieval 对 embedding 的接入需求
+- [ ] 未破坏 request assembly 顺序
 
 ### 文档治理
 - [ ] 改动符合模块 AGENTS

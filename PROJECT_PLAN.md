@@ -4,7 +4,7 @@
 
 ## 1. 文档定位
 
-本文件定义 `vi_ai_core_service` 的项目级阶段规划、路线图、阶段目标与验收口径。  
+本文件定义 `vi_ai_core_service` 的项目级阶段规划、路线图、阶段目标与验收口径。
 
 本文件只负责回答以下问题：
 
@@ -36,7 +36,7 @@
 
 ## 2. 项目定位
 
-`vi_ai_core_service` 是 VI AI Project 的 Python AI 核心服务。  
+`vi_ai_core_service` 是 VI AI Project 的 Python AI 核心服务。
 它的目标不是做一个简单的本地 demo，而是逐步构建一个对标主流 C 端企业级 AI 应用的核心能力后端。
 
 当前项目长期路线保持不变：
@@ -57,7 +57,7 @@
 - 正确的调用链
 - 稳定的上下文工程
 - 可交付的流式会话后端
-- 可引用知识的检索增强能力
+- 可引用知识的检索增强能力规划与子域预留
 - 可复现的本地运行方式
 
 当前阶段不把重点放在：
@@ -81,7 +81,9 @@
 
 ### 本轮必须完成
 
-- `app/rag/` 内部子域落地
+截至当前代码基线，以下内容仍为本轮待完成项：
+
+- `app/rag/` 内部子域运行时代码落地
 - 知识 ingest 与 retrieval 最小闭环
 - retrieval 接入 chat request assembly
 - `/chat` 返回 citations
@@ -192,7 +194,14 @@ Phase 6 的重点是：
 - Phase 5 Streaming Chat & Conversation Lifecycle
 - Docker / compose 本地运行方式
 
-当前阶段必须新增：
+当前代码事实补充：
+
+- `app/rag/` 当前仅有治理文档占位
+- retrieval 主链路尚未在代码中落地
+- `/chat` 与 `/chat_stream` 当前尚未返回 citations
+- retrieval observability 与对应测试当前尚未落地
+
+当前阶段待新增：
 
 - `app/rag/` 内部子域
 - retrieval 主链路
@@ -212,6 +221,7 @@ Phase 6 的重点是：
 ## 8. 当前轮次验收口径
 
 本轮交付的重点不是“更聪明地聊天”，而是“让回答开始具备知识依据与引用能力”。
+截至当前代码基线，仓库尚未达到以下 Phase 6 验收口径：
 
 验收优先级：
 

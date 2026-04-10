@@ -4,8 +4,8 @@
 
 ## 1. 文档定位
 
-本文件定义 `app/prompts/` 的职责、边界、结构约束、开发约束与 review 标准。  
-当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。  
+本文件定义 `app/prompts/` 的职责、边界、结构约束、开发约束与 review 标准。
+当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。
 执行 prompts 相关任务时，必须先读根目录 `AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据 skill `skills/python-prompt-capability/` 执行。
 
 本文件不负责：
@@ -30,7 +30,7 @@
 
 ## 2. 模块定位
 
-`app/prompts/` 是系统的 Prompt 资产层。  
+`app/prompts/` 是系统的 Prompt 资产层。
 它负责管理、组织、注册和渲染 Prompt 模板资产，为应用编排层提供可复用、可维护的提示词能力。
 
 当前目录下已有文件：
@@ -49,7 +49,7 @@
 3. 提供模板渲染能力
 4. 维护 Prompt 资产的命名、组织与引用规则
 5. 为上层提供稳定的 Prompt 使用入口
-6. 为未来版本化、场景化、组合化 Prompt 打基础
+6. 在当前代码基线中维护 `chat.default_system` 这一个已注册模板
 
 一句话：**prompts 层负责“Prompt 资产怎么存、怎么找、怎么渲染”。**
 
@@ -90,7 +90,7 @@
 ## 6. 架构原则
 
 ### 6.1 Prompt 是资产，不是随手字符串
-Prompt 不应散落在 service 或 provider 代码中。  
+Prompt 不应散落在 service 或 provider 代码中。
 需要复用、维护、审查的 Prompt，应尽量沉淀为模板资产。
 
 ### 6.2 注册与渲染分离
@@ -100,15 +100,15 @@ Prompt 不应散落在 service 或 provider 代码中。
 不要把模板查找和模板渲染杂糅成一个难维护的实现。
 
 ### 6.3 模板文件保持可读性
-模板要能让协作者直接读懂用途。  
+模板要能让协作者直接读懂用途。
 不要写成极难维护的大段混合文本。
 
 ### 6.4 尽量避免在模板中藏复杂逻辑
-复杂业务判断应放在应用编排层或上游准备阶段。  
+复杂业务判断应放在应用编排层或上游准备阶段。
 模板层以资产表达为主，而不是承担应用控制流。
 
 ### 6.5 provider-agnostic
-Prompt 层必须保持 provider-agnostic。  
+Prompt 层必须保持 provider-agnostic。
 不得在模板、registry、renderer 中绑定厂商私有协议细节。
 
 ---
@@ -121,11 +121,13 @@ Prompt 层必须保持 provider-agnostic。
 - registry + renderer 最小闭环
 - chat 默认 system prompt 资产
 - Prompt 资产与业务编排的边界清晰
+- `PROMPT_TEMPLATE_MAP` 的显式映射
+- 基于字符串替换的基础 renderer 行为
 
 当前本轮必须兼容：
 
 - Phase 4 / Phase 5 的 chat 主链路
-- Phase 6 的知识增强场景下 Prompt 资产继续稳定使用
+- 后续 Phase 6 知识增强接入时 Prompt 资产继续稳定使用
 
 当前本轮不要求完整落地：
 
@@ -139,7 +141,7 @@ Prompt 层必须保持 provider-agnostic。
 
 ## 8. 文档维护规则（强约束）
 
-本文件属于 `app/prompts/` 模块的治理模板资产。  
+本文件属于 `app/prompts/` 模块的治理模板资产。
 后续任何更新，必须严格遵守以下规则：
 
 ### 8.1 基线规则
@@ -174,7 +176,7 @@ Prompt 层必须保持 provider-agnostic。
 4. 未经确认新增大段不属于本模块职责的内容
 
 ### 8.5 模板升级规则
-如果未来需要升级 `app/prompts/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。  
+如果未来需要升级 `app/prompts/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。
 在未确认是“模板升级”前，默认只允许做增量更新，不允许重写模板。
 
 ---
@@ -188,6 +190,7 @@ Prompt 层必须保持 provider-agnostic。
 5. renderer 不要耦合具体业务流程
 6. 模板中不要嵌入与 provider 强绑定的传输协议细节
 7. 不允许把 retrieval、context、tool orchestration 逻辑写入 Prompt 层
+8. 不允许把当前不存在的 Prompt 版本体系写成已落地能力
 
 ---
 
@@ -211,14 +214,14 @@ Prompt 层必须保持 provider-agnostic。
 至少覆盖：
 
 1. 模板查找成功路径
-2. 模板渲染成功路径
-3. 缺失模板路径
-4. 缺失变量路径
+2. 未知模板失败路径
+3. 渲染结果基本断言
+4. 基础变量替换路径
 5. 默认 chat 模板可用性
-6. 渲染结果基本断言
+6. `PromptService.build_messages` / `build_chat_messages` 基础路径
 
 ---
 
 ## 12. 一句话总结
 
-`app/prompts/` 是系统的 Prompt 资产中心，负责模板资产管理、注册与渲染，而不是承担应用主流程逻辑，并在后续更新中严格遵守模块文档的模板冻结规则。
+`app/prompts/` 在当前代码基线中是系统的 Prompt 资产中心，当前以显式 registry、基础 renderer 与默认 system prompt 模板构成最小可用闭环，而不是承担应用主流程逻辑，并在后续更新中严格遵守模块文档的模板冻结规则。

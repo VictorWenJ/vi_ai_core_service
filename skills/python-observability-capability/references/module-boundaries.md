@@ -8,46 +8,32 @@
 
 ## 2. 与 services 的边界
 
-### observability 负责
-- 记录 request / stream / retrieval 事实
-- 提供 JSON-safe 日志能力
-
-### services 负责
-- chat / stream 编排
-- lifecycle 推进
-- cancel / reset 决策
-- retrieval 调度
+services 决定何时记录什么；
+observability 提供记录能力。
 
 ---
 
 ## 3. 与 api 的边界
 
-API 可调用 observability 输出 HTTP / SSE 相关事实。  
-observability 不负责 route、schema 或 SSE 协议实现。
+API 可以输出协议相关事实日志；
+observability 不负责 API 协议实现。
 
 ---
 
 ## 4. 与 context 的边界
 
-context 负责状态；observability 负责记录状态变化事实。  
-observability 不替代 context state 管理。
+context 可以记录 lifecycle 相关事实；
+observability 不负责 context 状态管理。
 
 ---
 
-## 5. 与 rag 的边界
+## 5. 与 providers / rag 的边界
 
-rag 负责知识实现；observability 负责记录检索事实。  
-observability 不实现 parser / chunker / embedding / index / retrieval。
-
----
-
-## 6. 与 providers 的边界
-
-providers 负责厂商调用；observability 负责记录厂商调用事实。  
-observability 不直接调用 provider SDK。
+providers 可以记录厂商调用事实；
+当前 rag 尚未落地运行时代码，RAG 观测不属于现有默认边界。
 
 ---
 
-## 7. 结论
+## 6. 结论
 
-`app/observability/` 是横切基础设施层，只提供观测能力，不承担业务决策与状态推进职责。
+`app/observability/` 是横切基础设施层，不是业务编排层，也不是当前代码中的 retrieval 观测子系统。

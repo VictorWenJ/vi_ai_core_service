@@ -8,43 +8,39 @@
 
 ## 2. 测试矩阵
 
-### A. chat
-- `/chat` 正常路径
-- `/chat` citations 路径
-- `/chat` 降级路径
-
-### B. stream
-- started / delta / completed 顺序
-- completed citations
-- delta 无 citations
-- error / cancelled 路径
-
-### C. cancel / reset
+### A. api
+- `/chat`
+- `/chat_stream`
 - `/chat_stream_cancel`
 - `/chat_reset`
+- `/health`
 
-### D. lifecycle
-- placeholder -> completed
-- placeholder -> failed
-- placeholder -> cancelled
-- only completed memory update
+### B. context
+- manager
+- policy pipeline
+- store / factory
+- memory reducer
 
-### E. assembly
-- request assembly 顺序
-- knowledge block 注入
-- non-completed assistant message 过滤
+### C. services
+- sync chat
+- stream lifecycle
+- request assembly
 
-### F. module regression
-- provider canonical contract
-- prompt registry / renderer
-- schema contract
-- context lifecycle
-- retrieval / citation
+### D. provider / prompt / config
+- provider normalization
+- prompt service
+- config
+
+### E. integration
+- HTTP smoke
+
+### F. future Phase 6
+- 若后续实现 retrieval / citation，再补对应测试矩阵
 
 ---
 
 ## 3. 原则
 
 - 以确定性测试为主
-- 重点验证契约、路径、差异与降级
-- 不让 tests 演化成一组不可维护的脆弱脚本
+- 先保护当前已落地测试面
+- 不把未落地能力写进现有完成态

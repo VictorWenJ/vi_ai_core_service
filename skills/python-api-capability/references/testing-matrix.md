@@ -9,40 +9,28 @@
 ## 2. 测试矩阵
 
 ### A. chat
-- `/chat` 正常响应
-- `/chat` citations 输出
-- `/chat` 错误映射
+- `/chat` 正常路径
+- error mapping
 
 ### B. stream
-- `/chat_stream` 返回 `text/event-stream`
-- started / delta / completed 顺序
-- completed citations 输出
-- delta 无 citations
-- error / cancelled 路径
+- started / delta / completed 事件
+- error / cancelled / heartbeat 路径
 
-### C. cancel
-- `/chat_stream_cancel` 命中有效流
-- `/chat_stream_cancel` 命中无效流
-- cancel 响应契约正确
+### C. cancel / reset / health
+- `/chat_stream_cancel`
+- `/chat_reset`
+- `/health`
 
-### D. reset
-- `/chat_reset` 重置整个 session
-- `/chat_reset` 重置 conversation
-- reset 响应契约正确
+### D. integration
+- HTTP smoke
 
-### E. health
-- `/health` 可用
-- 基础返回结构正确
-
-### F. integration
-- API 与 service 协作正常
-- retrieval 失败时 API 行为可控
-- 同步与流式主链路未被 Phase 6 改动破坏
+### E. future Phase 6
+- 若后续真实新增 citations，再补对应输出测试
 
 ---
 
 ## 3. 原则
 
-- API 主回归以 HTTP / 集成测试为主
-- 不把底层 provider / retrieval 真实外部依赖作为主回归前置
-- 重点验证契约、边界、协议与降级行为
+- 以确定性测试为主
+- 先保护当前已落地 API 契约
+- 不把未落地 citations 写进现有测试完成态

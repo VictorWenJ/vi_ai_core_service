@@ -4,8 +4,8 @@
 
 ## 1. 文档定位
 
-本文件定义 `tests/` 的职责、边界、结构约束、开发约束与 review 标准。  
-当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。  
+本文件定义 `tests/` 的职责、边界、结构约束、开发约束与 review 标准。
+当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。
 执行 tests 相关任务时，必须先读根目录 `AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据 skill `skills/python-test-capability/` 执行。
 
 本文件不负责：
@@ -30,8 +30,8 @@
 
 ## 2. 模块定位
 
-`tests/` 是系统的项目级回归保护层。  
-它负责为同步聊天、流式聊天、上下文工程、Prompt 资产、provider 抽象、共享契约以及 Phase 6 的 Knowledge + Citation Layer 提供稳定、可重复、可回归的测试保护。
+`tests/` 是系统的项目级回归保护层。
+它负责为同步聊天、流式聊天、上下文工程、Prompt 资产、provider 抽象、API 契约与 request assembly 提供稳定、可重复、可回归的测试保护。
 
 一句话：**tests 层负责“证明当前能力没被改坏”。**
 
@@ -43,7 +43,7 @@
 2. 为流式 chat 主链路提供回归保护
 3. 为 context lifecycle 与 layered memory 提供回归保护
 4. 为 prompts / providers / schemas 等基础模块提供回归保护
-5. 为 retrieval / citation / request assembly 提供回归保护
+5. 为 request assembly 提供回归保护
 6. 为错误路径、取消路径、降级路径提供验证
 7. 让阶段演进时具备稳定的验收基础
 
@@ -76,7 +76,7 @@
 - 大量与测试目的无关的运行时资源
 
 ### 原则
-`tests/` 负责验证，不负责实现。  
+`tests/` 负责验证，不负责实现。
 测试应以稳定、可重复、低噪音为优先。
 
 ---
@@ -105,15 +105,16 @@
 - cancel / reset
 - lifecycle 收口
 - request assembly
-- retrieval / citation
+- provider / prompt / context 的关键协作面
 
-### 6.4 Phase 6 必须把 retrieval / citation 纳入回归面
-当前阶段不允许只测 happy path，而忽略：
-- 空检索
-- 降级
-- citations 为空
-- delta 不带 citations
-- completed 带 citations
+### 6.4 当前代码中的回归重点
+当前代码尚未实现 retrieval / citation，因此主回归重点仍是：
+- started / delta / heartbeat / completed / error / cancelled
+- request assembly 顺序与过滤
+- context 持久化与 lifecycle
+- provider canonical contract
+
+若后续开始落地 Phase 6，再把 retrieval / citation 纳入主回归面。
 
 ### 6.5 测试不能掩盖架构问题
 如果实现层边界已经错了，不能靠写更多测试来掩盖。
@@ -130,14 +131,14 @@
 - provider canonical contract 测试
 - Prompt 基础资产测试
 - API contract 测试
+- request assembly 顺序与 trace 测试
+- HTTP smoke 测试
 
-当前本轮新增要求：
+当前代码事实补充：
 
-- retrieval / citation 测试
-- request assembly 中 knowledge block 顺序测试
-- `/chat` citation 输出测试
-- `/chat_stream` completed citation 输出测试
-- retrieval 失败降级测试
+- 当前仓库没有 retrieval / citation 测试对象
+- request assembly 当前测试的是：system -> working memory -> rolling summary -> recent raw -> user
+- 流式测试当前覆盖 completed / cancelled 路径与上下文更新
 
 当前本轮不要求：
 
@@ -150,7 +151,7 @@
 
 ## 8. 文档维护规则（强约束）
 
-本文件属于 `tests/` 模块的治理模板资产。  
+本文件属于 `tests/` 模块的治理模板资产。
 后续任何更新，必须严格遵守以下规则：
 
 ### 8.1 基线规则
@@ -185,7 +186,7 @@
 4. 未经确认新增大段不属于本模块职责的内容
 
 ### 8.5 模板升级规则
-如果未来需要升级 `tests/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。  
+如果未来需要升级 `tests/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。
 在未确认是“模板升级”前，默认只允许做增量更新，不允许重写模板。
 
 ---
@@ -195,7 +196,7 @@
 1. 不允许只写 happy path 测试
 2. 不允许把所有测试都绑定真实外部依赖
 3. 不允许用 fixture / mock 掩盖错误架构边界
-4. 不允许 Phase 6 改动却不补 retrieval / citation 测试
+4. 不允许把尚未存在的 Phase 6 测试写成已覆盖事实
 5. 不允许忽略 failed / cancelled / timeout / empty result / downgrade 等路径
 6. 不允许让 tests 成为项目中最难维护、最不可信的目录
 
@@ -208,7 +209,7 @@
 3. 是否保护了同步与流式两条主链路？
 4. 是否保护了 completed / failed / cancelled 的关键差异？
 5. 是否保护了 request assembly 顺序？
-6. 是否保护了 citations 的输出边界？
+6. 是否保护了 provider / prompt / context 的关键协作面？
 7. 是否没有过度依赖真实外部服务？
 8. 本次文档更新是否遵守了“文档维护规则”？
 9. 是否保持了原有布局、排版、标题层级、写法和风格？
@@ -225,13 +226,13 @@
 4. `/chat_reset` 路径
 5. context lifecycle 路径
 6. request assembly 顺序
-7. retrieval / citation 路径
-8. retrieval 失败降级路径
-9. provider canonical contract 路径
-10. Prompt registry / renderer 基础路径
+7. provider canonical contract 路径
+8. Prompt registry / renderer 基础路径
+9. config 与 HTTP smoke 基础路径
+10. 若未来进入 Phase 6，再补 retrieval / citation 路径
 
 ---
 
 ## 12. 一句话总结
 
-`tests/` 在当前阶段是系统的项目级回归保护层，负责以稳定、可重复、可演进的方式验证同步聊天、流式聊天、context lifecycle、共享契约与 Phase 6 retrieval / citation 能力没有被改坏，并在后续更新中严格遵守模块文档的模板冻结规则。
+`tests/` 在当前代码基线中是系统的项目级回归保护层，负责以稳定、可重复、可演进的方式验证同步聊天、流式聊天、context lifecycle、API 契约、provider 归一化与 request assembly 没有被改坏，而当前尚未包含 RAG / citation 回归面，并在后续更新中严格遵守模块文档的模板冻结规则。

@@ -4,7 +4,7 @@
 
 ## 1. 文档定位
 
-本文件定义 `vi_ai_core_service` 的仓库级协作与治理规则、开发约束、文档维护规则与 review 总要求。  
+本文件定义 `vi_ai_core_service` 的仓库级协作与治理规则、开发约束、文档维护规则与 review 总要求。
 
 根目录四个文件各自承担不同职责：
 
@@ -26,7 +26,7 @@
 
 ## 2. 项目定位
 
-`vi_ai_core_service` 是 VI AI Project 的 Python AI 核心服务。  
+`vi_ai_core_service` 是 VI AI Project 的 Python AI 核心服务。
 当前目标不是做“大而全”的平台，而是先把面向主流 C 端 AI 应用的核心会话后端打稳，并在此基础上逐步补齐可商用的知识增强能力。
 
 当前阶段聚焦：
@@ -39,7 +39,7 @@
 - 最小可观测性
 - 稳定数据契约
 - 本地运行与交付（`infra/`）
-- 内部 `rag` 子域的 Knowledge + Citation 基础能力
+- 内部 `rag` 子域的治理占位与后续 Knowledge + Citation 基础能力
 
 ---
 
@@ -68,7 +68,9 @@
 
 ### 本轮必须完成
 
-- 在 `vi_ai_core_service` 内新增 `app/rag/` 子域
+截至当前代码基线，以下内容仍属于本轮待完成项，尚未在仓库代码中落地：
+
+- 在 `vi_ai_core_service` 内新增 `app/rag/` 运行时代码子域
 - 先作为内部能力建设，不拆独立 RAG 微服务
 - 建立知识对象模型、chunk 模型、retrieval 结果模型、citation 模型
 - 建立最小 ingest pipeline：
@@ -107,7 +109,7 @@
 
 ## 5. 文档模板冻结规则（强约束）
 
-根目录四个核心文档、模块级 `AGENTS.md` 与 `skill` 文件均属于项目治理模板资产。  
+根目录四个核心文档、模块级 `AGENTS.md` 与 `skill` 文件均属于项目治理模板资产。
 后续任何更新都必须遵守以下规则：
 
 ### 5.1 基线规则
@@ -142,7 +144,7 @@
 4. 未经确认新增不属于该文件职责的大段内容
 
 ### 5.5 模板升级规则
-如果未来需要升级根目录文档模板、模块 `AGENTS.md` 模板或 `skill` 模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。  
+如果未来需要升级根目录文档模板、模块 `AGENTS.md` 模板或 `skill` 模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。
 在未确认是“模板升级”前，默认只允许做增量更新，不允许重写模板。
 
 ---
@@ -158,10 +160,10 @@
 - `api` 负责 HTTP / SSE 协议输出
 - `services` 负责同步与流式会话编排
 - `context` 负责会话状态与记忆收口规则
-- `rag` 负责知识导入、检索、引用装配
-- `providers` 负责模型与 embedding 厂商适配
-- `schemas` 负责共享契约
-- `observability` 负责结构化日志
+- `rag` 负责知识导入、检索、引用装配；截至当前代码基线该子域仅有治理文档占位，尚未落地运行时代码
+- `providers` 负责模型厂商适配；截至当前代码基线仅实现 chat / streaming provider，embedding 尚未落地
+- `schemas` 负责内部共享契约；当前 API 对外 request / response schema 位于 `app/api/schemas/`
+- `observability` 负责结构化日志；当前代码核心能力为 `log_report`
 
 任何新能力都不得破坏以上基础依赖方向。
 
@@ -197,6 +199,7 @@ Phase 6 中引入的知识增强能力，不得替代 Phase 4 已建立的：
 
 ### 7.5 citation 是本轮一等能力
 citation 必须来自 retrieval 结果，不得变成模型自由生成的装饰性文本。
+截至当前代码基线，citation 契约尚未在 `/chat` 与 `/chat_stream` 中落地。
 
 ---
 
@@ -211,7 +214,19 @@ citation 必须来自 retrieval 结果，不得变成模型自由生成的装饰
 - Phase 5 Streaming Chat & Conversation Lifecycle
 - Docker / compose 本地运行方式
 
-当前轮次必须新增：
+当前代码事实补充：
+
+- `app/rag/` 当前仅有模块治理文档占位
+- `/chat` 当前未返回 citations
+- `/chat_stream` 的 `response.completed` 当前未返回 citations
+- `request_assembler` 当前装配顺序为：
+  - system prompt
+  - working memory block
+  - rolling summary block
+  - recent raw messages
+  - current user input
+
+当前轮次待新增：
 
 - **Phase 6：Knowledge + Citation Layer**
 
@@ -245,7 +260,7 @@ citation 必须来自 retrieval 结果，不得变成模型自由生成的装饰
 4. 是否有跨层绕过、职责漂移、边界膨胀？
 5. 是否补了必要测试？
 6. 是否破坏了同步与流式主链路？
-7. 是否让 citation、retrieval、chunking、embedding 等 Phase 6 关键能力可审查、可回归？
+7. 若声称落地了 citation、retrieval、chunking、embedding 等 Phase 6 关键能力，是否真的已有代码、测试与可回归依据，而不是只停留在文档描述？
 
 ---
 

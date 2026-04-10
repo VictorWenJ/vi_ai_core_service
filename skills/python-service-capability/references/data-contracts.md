@@ -2,49 +2,57 @@
 
 ## 1. 目的
 
-本文件用于说明 `app/providers/` 中核心对象的最小契约要求。
+本文件用于说明 `app/services/` 当前会消费或产出的核心数据契约。
 
 ---
 
-## 2. chat completion contract
+## 2. 输入契约
 
-必须能表达：
+当前 services 会直接消费两类输入：
 
-- text / content
+- `app/api/schemas/chat.py` 中的用户请求模型
+- `app/schemas/` 中的 `LLMRequest`
+
+---
+
+## 3. 输出契约
+
+当前 services 主要输出：
+
+- 同步路径：`LLMResponse`，由 API 再转为 `ChatResponse`
+- 流式路径：canonical event dict，再由 API 序列化为 SSE
+
+---
+
+## 4. request assembly contract
+
+`ChatRequestAssembler` 当前必须保证：
+
+- system prompt 在前
+- working memory 在 rolling summary 前
+- recent raw messages 在用户输入前
+- user prompt 最后入列
+
+---
+
+## 5. 流式 completed contract
+
+当前 `response.completed` 相关数据至少包含：
+
+- request_id
+- assistant_message_id
+- status
 - finish_reason
-- usage
-- model
-- provider
-- metadata（如当前实现需要）
+- usage（按配置）
+- latency_ms
+- trace（按配置）
+
+当前不包含 citations。
 
 ---
 
-## 3. stream chunk contract
+## 6. 原则
 
-必须能表达：
-
-- delta
-- sequence（如当前实现需要）
-- finish_reason（结束时）
-- usage（结束时，如当前实现支持）
-- error 信息（异常路径）
-
----
-
-## 4. embedding contract
-
-必须能表达：
-
-- vectors
-- model
-- dimension
-- data type（float 语义）
-- batch 行为
-
----
-
-## 5. 原则
-
-- 不直接透传厂商原始响应
-- 上层只消费 canonical contract
-- contract 必须稳定、可测试、可扩展
+- services 不直接发明新的对外 contract
+- 未落地的 Phase 6 字段不得写入当前 contract
+- contract 变更必须同步补测试

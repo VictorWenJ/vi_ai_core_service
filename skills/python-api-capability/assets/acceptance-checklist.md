@@ -8,34 +8,26 @@
 
 ## 2. 验收清单
 
-### 路由
-- [ ] `/chat` 可用
-- [ ] `/chat_stream` 可用
-- [ ] `/chat_stream_cancel` 可用
-- [ ] `/chat_reset` 可用
-- [ ] `/health` 可用
+### 接入
+- [ ] `/chat` 路径清晰
+- [ ] `/chat_stream` 路径清晰
+- [ ] `/chat_stream_cancel` 路径清晰
+- [ ] `/chat_reset` 路径清晰
+- [ ] `/health` 路径清晰
 
 ### 契约
-- [ ] request / response schema 清晰
-- [ ] SSE 事件格式稳定
-- [ ] `/chat` citations 可输出
-- [ ] `/chat_stream` completed citations 可输出
-- [ ] delta 阶段不输出 citations
-
-### 错误处理
-- [ ] 错误已做 HTTP 映射
-- [ ] 不直接向客户端泄漏底层异常细节
-- [ ] retrieval 失败可配合 service 做降级
+- [ ] API schema 清晰
+- [ ] SSE 事件稳定
+- [ ] error mapping 清晰
 
 ### 边界
-- [ ] API 仍为薄路由
-- [ ] 未混入 retrieval / context / provider 逻辑
-- [ ] 未直接访问底层向量库或 embedding SDK
+- [ ] 未混入业务编排
+- [ ] 未混入 retrieval / provider SDK 逻辑
+- [ ] 未把未落地 citations 写成已实现事实
 
 ### 回归
-- [ ] 未破坏同步 chat 主链路
-- [ ] 未破坏流式 chat 主链路
-- [ ] 未破坏 cancel / reset 行为
+- [ ] 已补对应测试
+- [ ] HTTP 集成路径稳定
 
 ### 文档治理
 - [ ] 改动符合模块 AGENTS

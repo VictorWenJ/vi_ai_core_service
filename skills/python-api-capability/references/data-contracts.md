@@ -2,38 +2,26 @@
 
 ## 1. 目的
 
-本文件用于说明 `app/api/` 中关键数据契约的最小要求。
+本文件用于说明 `app/api/` 当前对外契约的最小要求。
 
 ---
 
-## 2. ChatRequest / ChatResponse
+## 2. `/chat`
 
-必须能表达：
+当前至少应能表达：
 
-- 用户输入
-- 会话标识
-- provider / model 选择（如当前项目支持）
-- stream 标记（如当前项目支持）
-- answer
-- usage / finish_reason（如当前契约已有）
-- citations（Phase 6）
-
----
-
-## 3. ChatStreamRequest
-
-必须能表达：
-
-- 用户输入
-- 会话标识
-- stream_options
-- 其他与流式会话必要相关的字段
+- user_prompt
+- provider / model 覆盖
+- temperature / max_tokens 覆盖
+- session_id / conversation_id / request_id
+- metadata
+- 返回 `content / provider / model / usage / finish_reason / metadata / raw_response`
 
 ---
 
-## 4. SSE 事件契约
+## 3. `/chat_stream`
 
-至少应包含：
+当前至少应能表达：
 
 - `response.started`
 - `response.delta`
@@ -42,33 +30,20 @@
 - `response.cancelled`
 - `response.heartbeat`
 
-要求：
+---
 
-- event name 稳定
-- payload 结构稳定
-- completed 可附带 citations
-- delta 不附带 citations
+## 4. cancel / reset / health
+
+当前至少应能表达：
+
+- cancel 身份字段校验
+- reset scope
+- health 基础探活
 
 ---
 
-## 5. Cancel / Reset 契约
+## 5. 原则
 
-### cancel
-必须能表达：
-- request_id
-- assistant_message_id（如当前实现支持）
-- session / conversation 信息
-
-### reset
-必须能表达：
-- session_id
-- conversation_id（可选）
-- reset 结果
-
----
-
-## 6. 原则
-
-- 不允许无 schema 追加对外字段
-- 不允许泄漏底层实现细节
-- citations 是对外可展示结构，不是内部 retrieval 对象透传
+- 当前不承诺 citations
+- 不暴露底层 Qdrant / embedding / SDK 细节
+- contract 变更必须同步补测试

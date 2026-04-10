@@ -4,8 +4,8 @@
 
 ## 1. 文档定位
 
-本文件定义 `app/providers/` 的职责、边界、结构约束、开发约束与 review 标准。  
-当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。  
+本文件定义 `app/providers/` 的职责、边界、结构约束、开发约束与 review 标准。
+当前阶段，本文件临时同时承担该模块的 `AGENTS / PROJECT_PLAN / ARCHITECTURE / CODE_REVIEW` 职责。
 执行 providers 相关任务时，必须先读根目录 `AGENTS.md`、`PROJECT_PLAN.md`、`ARCHITECTURE.md`、`CODE_REVIEW.md`，再读本文件，再根据 skill `skills/python-llm-provider-capability/` 执行。
 
 本文件不负责：
@@ -30,16 +30,16 @@
 
 ## 2. 模块定位
 
-`app/providers/` 是系统的模型与厂商接入层。  
-它负责对接不同模型厂商，向上层提供统一的 chat completion、stream completion 与 embedding 能力，不承担业务编排职责。
+`app/providers/` 是系统的模型与厂商接入层。
+它负责对接不同模型厂商，向上层提供统一的 chat completion 与 stream completion 能力，不承担业务编排职责。
 
 当前阶段建议围绕以下职责组织：
 
-- chat completion provider
-- streaming completion provider
-- canonical response / canonical stream chunk
-- embedding provider 抽象与实现
-- provider registry / factory（如当前仓库已有）
+- `base.py`：Provider 抽象与共享异常
+- `openai_compatible_base.py`：OpenAI 兼容调用基类
+- `openai_provider.py` / `deepseek_provider.py`：已实现 Provider
+- `gemini_provider.py` / `doubao_provider.py` / `tongyi_provider.py`：脚手架 Provider
+- `registry.py`：集中式 Provider 注册与成熟度描述
 
 ---
 
@@ -49,8 +49,8 @@
 2. 对接不同厂商的流式 completion 能力
 3. 输出统一的非流式结果结构
 4. 输出统一的流式 chunk 结构
-5. 在 Phase 6 中提供文本 embedding 抽象与实现
-6. 管理 provider 级配置、错误映射与兼容层
+5. 管理 provider 级配置、错误映射与兼容层
+6. 维护已实现 Provider 与脚手架 Provider 的统一注册入口
 
 ---
 
@@ -91,14 +91,16 @@
 ### 6.1 provider 只输出能力，不决定业务
 providers 只负责“怎么调用厂商”，不负责“何时调用、怎么编排”。
 
-### 6.2 chat 与 embedding 都应通过抽象暴露
-当前阶段不仅 chat provider 要抽象，embedding provider 也必须抽象。
+### 6.2 当前代码的抽象边界
+- `BaseLLMProvider` 当前定义 chat 与可选 stream 的稳定接口
+- `OpenAICompatibleBaseProvider` 负责 OpenAI 兼容厂商的共性适配
+- 当前代码尚未落地 embedding provider 抽象与实现
 
 ### 6.3 canonical contract 优先
 无论不同厂商返回什么结构，provider 层都必须向上层暴露稳定的统一结构。
 
 ### 6.4 provider 不关心 citations
-provider 只负责生成与 embedding，不负责 retrieval、citation 或外部知识增强逻辑。
+provider 只负责生成，不负责 retrieval、citation 或外部知识增强逻辑。
 
 ### 6.5 streaming 与 non-streaming 都必须可替换
 同一 provider 能力应尽量保持：
@@ -116,15 +118,18 @@ provider 只负责生成与 embedding，不负责 retrieval、citation 或外部
 - 流式 chat completion
 - stream chunk 归一化
 - finish / usage / error 归一化
+- `openai` / `deepseek` 已实现 Provider 行为
+- `gemini` / `doubao` / `tongyi` 脚手架行为与错误语义
 
-当前本轮新增要求：
+当前代码事实补充：
 
-- embedding provider 抽象
-- 至少一个文本 embedding 基线实现
-- embedding 返回结果维度、数据类型、错误映射稳定可测
+- `ProviderRegistry` 通过 `maturity=implemented|scaffolded` 描述 Provider 成熟度
+- 当前仓库没有 embedding provider 抽象、实现或测试
+- Phase 6 中若要引入 embedding，必须先在代码中真实落地，再同步更新文档
 
 当前本轮不要求：
 
+- embedding 主链路
 - 多模态 embedding 主链路
 - 图像 / 音频 / 视频 embedding 主链路
 - provider 层直接参与 retrieval
@@ -134,7 +139,7 @@ provider 只负责生成与 embedding，不负责 retrieval、citation 或外部
 
 ## 8. 文档维护规则（强约束）
 
-本文件属于 `app/providers/` 模块的治理模板资产。  
+本文件属于 `app/providers/` 模块的治理模板资产。
 后续任何更新，必须严格遵守以下规则：
 
 ### 8.1 基线规则
@@ -169,7 +174,7 @@ provider 只负责生成与 embedding，不负责 retrieval、citation 或外部
 4. 未经确认新增大段不属于本模块职责的内容
 
 ### 8.5 模板升级规则
-如果未来需要升级 `app/providers/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。  
+如果未来需要升级 `app/providers/AGENTS.md` 的模板，必须先明确说明这是一次“模板升级”，并在确认后再统一应用。
 在未确认是“模板升级”前，默认只允许做增量更新，不允许重写模板。
 
 ---
@@ -180,7 +185,7 @@ provider 只负责生成与 embedding，不负责 retrieval、citation 或外部
 2. 不允许在 provider 层直接组织 retrieval query
 3. 不允许在 provider 层生成 citations
 4. 不允许让厂商原始响应直接泄漏给 services / rag
-5. 不允许把 retrieval 逻辑混进 chat provider 或 embedding provider
+5. 不允许把 retrieval 逻辑混进 chat provider
 6. 不允许在 provider 层承担 request assembly 或 context update
 
 ---
@@ -188,10 +193,10 @@ provider 只负责生成与 embedding，不负责 retrieval、citation 或外部
 ## 10. Code Review 清单
 
 1. providers 是否仍然保持为“厂商接入层”？
-2. chat 与 embedding 是否都通过抽象暴露？
+2. chat / stream 是否都通过稳定抽象暴露？
 3. 是否没有将 retrieval / context / citation 逻辑写进 provider 层？
 4. canonical non-stream / stream contract 是否稳定？
-5. embedding 维度与返回类型是否稳定？
+5. `openai` / `deepseek` 与脚手架 Provider 的成熟度声明是否与代码一致？
 6. 错误映射是否合理？
 7. 是否没有把底层厂商响应结构直接泄漏给上层？
 8. 本次文档更新是否遵守了“文档维护规则”？
@@ -206,14 +211,13 @@ provider 只负责生成与 embedding，不负责 retrieval、citation 或外部
 1. chat provider 基础行为
 2. stream provider 基础行为
 3. canonical chunk / response 结构稳定性
-4. embedding provider 基础行为
-5. 维度与数据类型稳定性
-6. timeout / error 映射
-7. config 加载
-8. 不同 provider 的 canonical contract 稳定性
+4. timeout / error 映射
+5. config 加载
+6. `ProviderRegistry` 的实现态 / 脚手架态选择
+7. 不同 provider 的 canonical contract 稳定性
 
 ---
 
 ## 12. 一句话总结
 
-`app/providers/` 在当前阶段是系统的模型与厂商接入层，负责以统一抽象对接 chat completion、stream completion 与 embedding 能力，而不参与业务编排、知识检索或 citation 逻辑，并在后续更新中严格遵守模块文档的模板冻结规则。
+`app/providers/` 在当前代码基线中是系统的模型与厂商接入层，负责以统一抽象对接 chat completion 与 stream completion，并通过注册表管理已实现与脚手架 Provider，而不参与业务编排、知识检索或 citation 逻辑，并在后续更新中严格遵守模块文档的模板冻结规则。

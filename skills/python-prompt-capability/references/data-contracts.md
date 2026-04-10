@@ -2,56 +2,39 @@
 
 ## 1. 目的
 
-本文件用于说明 `app/prompts/` 中核心对象的最小契约要求。
+本文件用于说明 `app/prompts/` 当前核心对象的最小契约要求。
 
 ---
 
-## 2. template_id
+## 2. registry contract
 
-必须满足：
+当前 registry 至少应能表达：
 
-- 全局可读
-- 场景明确
-- 稳定可追踪
-
-例如：
-- `chat.default_system`
+- 稳定的 `template_id`
+- 显式的 template path 映射
 
 ---
 
-## 3. template file
+## 3. renderer contract
 
-必须满足：
+当前 renderer 至少应能表达：
 
-- 位于 `templates/` 目录下
-- 文件名可读
-- 内容是可维护的 Prompt 文本
-- 不混入复杂业务逻辑
-
----
-
-## 4. registry mapping
-
-必须满足：
-
-- 显式 template_id -> file path 映射
-- 失败路径明确
-- 错误信息可理解
+- `template_id`
+- 可选 `variables`
+- 返回渲染后的字符串
 
 ---
 
-## 5. renderer input / output
+## 4. template contract
 
-必须满足：
+当前默认模板至少包括：
 
-- 输入：template_id + variables
-- 输出：渲染后的最终 Prompt 文本
-- 缺失模板或缺失变量的行为明确
+- `templates/chat/default_system.md`
 
 ---
 
-## 6. 原则
+## 5. 原则
 
-- Prompt 资产不是随意字符串
-- registry 不是隐式路径猜测器
-- renderer 不是业务编排器
+- 当前不承诺 Prompt 版本化平台
+- 当前不承诺 RAG 专用 knowledge block 模板体系
+- contract 变更必须同步补测试

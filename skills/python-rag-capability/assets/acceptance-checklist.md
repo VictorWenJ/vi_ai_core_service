@@ -8,42 +8,27 @@
 
 ## 2. 验收清单
 
-### 模型
-- [ ] KnowledgeDocument 已定义
-- [ ] KnowledgeChunk 已定义
-- [ ] RetrievedChunk 已定义
-- [ ] Citation 已定义
+### 首次落地
+- [ ] `app/rag/` 已新增运行时代码
+- [ ] 目录结构与职责清晰
+- [ ] 不是只改文档、不落代码
 
-### ingest
-- [ ] parser 可用
-- [ ] cleaner 行为稳定（如实现）
-- [ ] chunker 使用结构感知 + token-aware + overlap
-- [ ] metadata 继承正确
+### 模型 / 链路
+- [ ] 知识对象模型清晰
+- [ ] ingest / retrieval 边界清晰
+- [ ] citation 来源清晰
 
-### embedding / index
-- [ ] embedding 抽象存在
-- [ ] 向量维度与索引契约一致
-- [ ] index 抽象存在
-- [ ] 默认基线符合当前阶段约束
-
-### retrieval
-- [ ] retrieval service 可用
-- [ ] top-k 可配置
-- [ ] filter 可工作
-- [ ] retrieval 失败有降级
-
-### citation
-- [ ] citation 来源于 retrieval 结果
-- [ ] `/chat` 可返回 citations
-- [ ] `/chat_stream` completed 可返回 citations
-- [ ] delta 阶段不返回 citations
+### 边界
+- [ ] 未侵入 API 路由
+- [ ] 未侵入 chat 主链路编排
+- [ ] 未替代 short-term memory
 
 ### 回归
-- [ ] 未破坏同步 chat 主链路
-- [ ] 未破坏流式 chat 主链路
-- [ ] 未破坏 Phase 4 short-term memory 语义
+- [ ] 有对应测试
+- [ ] 失败路径可验证
+- [ ] 未破坏已落地的 Phase 2~5 主链路
 
 ### 文档治理
 - [ ] 改动符合模块 AGENTS
 - [ ] 改动符合本 skill
-- [ ] 未无故改变其他文件风格
+- [ ] 未把未落地能力继续写成完成态

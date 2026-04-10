@@ -15,9 +15,7 @@
 - API contract tests
 - lifecycle tests
 - request assembly tests
-- retrieval / citation tests
-- provider / prompt / schema 基础测试
-- fake / mock / in-memory 测试支撑
+- provider / prompt / config tests
 
 ---
 
@@ -26,21 +24,18 @@
 当前不在范围内的能力包括：
 
 - 业务实现本身
-- HTTP route 实现
-- provider SDK 接入
 - retrieval / chunking / embedding / index 实现
+- 用测试替代文档治理
 - 性能压测平台
 - 混沌工程平台
-- 测试替代架构设计
 
 ---
 
 ## 4. 当前默认技术基线
 
-- 主回归优先确定性
-- 同步 / 流式主链路测试并存
-- Phase 6 retrieval / citation 纳入主测试面
-- 外部依赖集成测试只做补充
+- 保护已落地的 Phase 2~5 主链路
+- 主回归优先 fake / in-memory
+- 当前不包含 retrieval / citation 测试面
 
 ---
 
