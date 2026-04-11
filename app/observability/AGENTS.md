@@ -1,6 +1,6 @@
 # app/observability/AGENTS.md
 
-> 更新日期：2026-04-10
+> 更新日期：2026-04-12
 
 ## 1. 文档定位
 
@@ -32,6 +32,7 @@
 
 `app/observability/` 是系统的可观测性基础设施层。
 它负责为同步聊天、流式聊天、上下文工程与 provider 调用提供统一的结构化日志与调试支撑能力。
+Phase 7 中，本模块还负责承接 RAG benchmark 与离线构建的事实型日志字段。
 
 当前阶段建议围绕以下职责组织：
 
@@ -49,7 +50,8 @@
 4. 为流式 chat 提供可观测性支撑
 5. 为 context lifecycle 提供可观测性支撑
 6. 为 provider / request assembly 等关键步骤提供事实型记录能力
-7. 为问题排查、回归验证、联调调试提供事实型记录能力
+7. 为 benchmark、build 统计与质量门禁提供事实型记录能力
+8. 为问题排查、回归验证、联调调试提供事实型记录能力
 
 ---
 
@@ -111,6 +113,7 @@ observability 记录的内容应以当前代码真实可得的字段为准，例
 - context 组装与过滤
 - provider 调用结果与错误
 - retrieval / citation 相关 trace、降级与失败
+- benchmark / offline build 相关统计与失败
 - JSON-safe 输出稳定性
 
 ### 6.5 observability 是横切支撑，不反向驱动业务
@@ -136,6 +139,11 @@ observability 记录的内容应以当前代码真实可得的字段为准，例
 - 当前仓库已包含 retrieval / ingestion 专项可观测性实现
 - 当前仓库没有 metrics / tracing / alerting 平台
 - RAG 观测字段必须继续以真实代码实现为准，不得只写文档字段名
+
+当前本轮新增目标：
+
+- benchmark 运行结果的事实型日志字段
+- 离线构建批次、质量门禁与统计的事实型日志字段
 
 当前本轮不要求：
 
@@ -195,6 +203,7 @@ observability 记录的内容应以当前代码真实可得的字段为准，例
 3. 不允许输出过量 chunk 原文正文或敏感内容
 4. 不允许凭空约定代码中并不存在的 retrieval / citation 字段
 5. 不允许用日志替代正式状态存储
+6. 不允许把 benchmark 评分逻辑写死在 observability 层
 
 ---
 
@@ -222,6 +231,7 @@ observability 记录的内容应以当前代码真实可得的字段为准，例
 5. 流式场景下 observability 不因不可序列化对象崩溃
 6. 若后续新增 retrieval 观测字段，再补对应测试
 7. retrieval disabled / succeeded / degraded / failed 区分日志路径测试
+8. benchmark / build 统计字段输出测试（若本轮新增）
 
 ---
 

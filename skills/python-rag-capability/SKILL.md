@@ -3,14 +3,14 @@
 > skill_name: python-rag-capability
 > module_scope: app/rag/
 > status: active
-> last_updated: 2026-04-10
+> last_updated: 2026-04-12
 
 ## 1. Skill 定位
 
-本 skill 用于指导 `vi_ai_core_service` 在 `app/rag/` 子域中进行 Phase 6：Knowledge + Citation Layer 的实现约束整理。
+本 skill 用于指导 `vi_ai_core_service` 在 `app/rag/` 子域中进行 Phase 6 已落地主链路之上的 Phase 7：RAG Evaluation + Offline Build Foundation 演进约束整理。
 
 当前代码事实是：`app/rag/` 已有 Python 运行时代码并完成最小闭环。
-因此，本 skill 的首要目标是约束后续迭代如何在当前仓库内持续演进，而不是越界扩张。
+因此，本 skill 的首要目标是约束后续迭代如何在当前仓库内持续演进离线构建与评估基础，而不是越界扩张。
 
 ---
 
@@ -24,6 +24,8 @@
 4. retrieval service 设计与实现
 5. citation 结构设计与实现
 6. RAG 相关测试与 observability 补充
+7. 离线构建元数据与构建质量门禁补充
+8. 为 benchmark 提供稳定知识对象与标签支撑
 
 ---
 
@@ -64,6 +66,10 @@ citation 必须来自 retrieval 结果，不得由模型自由生成。
 RAG 是增强层。
 retrieval / embedding / index 异常不应无条件拖垮 chat 主链路。
 
+### 4.6 Phase 7 先做评估与构建基础
+Phase 7 优先做 benchmark、黄金集、build 元数据与质量门禁；
+不把本轮扩张成独立知识平台、复杂 hybrid retrieval 平台或 agentic retrieval 系统。
+
 ---
 
 ## 5. 默认技术基线
@@ -76,6 +82,10 @@ retrieval / embedding / index 异常不应无条件拖垮 chat 主链路。
 - chunking：结构感知 + token-aware + overlap
 - retrieval：top-k + metadata filter
 - citation：由 retrieval 结果派生
+- 评估：query / retrieval / citation / answer 分层标签
+- 离线构建：build / version / strategy 元数据可追踪
+- 当前代码已提供 `app/rag/evaluation/` 数据集模型、runner 与结果落盘
+- 当前代码已提供离线构建 `build_documents`、manifest 增量约束与质量门禁
 
 以上基线当前已在代码中落地并通过测试覆盖。
 
@@ -123,6 +133,7 @@ RAG 相关实现任务，至少应交付以下之一或多项：
 5. citation 结构
 6. RAG 相关测试
 7. RAG 相关 observability 字段
+8. benchmark / build metadata 支撑
 
 仅给概念说明、不落代码、不补测试，不视为完成。
 
@@ -154,7 +165,14 @@ RAG 相关实现任务，至少应交付以下之一或多项：
 ### 8.5 编排约束
 RAG 负责知识实现；chat 主链路编排仍由 services 负责。
 
-### 8.6 中文字段注释与默认配置说明约束
+### 8.6 Phase 7 构建元数据约束
+若本轮新增构建能力，必须保证 `build_id`、`version_id`、`chunk_strategy_version`、`embedding_model_version` 等字段具备明确语义与可追踪性。
+
+### 8.7 评估支撑约束
+RAG 模块可为 benchmark 提供可引用的数据对象与检索结果支撑，但不在本模块内实现完整 benchmark runner。
+
+
+### 8.8 中文字段注释与默认配置说明约束
 
 1. 本模块中所有 `@dataclass` 定义的结构化对象，必须为每一个字段补充中文注释，说明字段含义。
 2. 本模块中所有默认配置常量、默认阈值或默认限制项，必须补充中文注释；涉及 token、chars、seconds、ttl、size、top-k、threshold 等值时，必须明确单位或语义。
@@ -194,6 +212,7 @@ rag 只提供内部知识数据。
 5. retrieval service 测试
 6. citation 格式化测试
 7. retrieval 失败降级测试
+8. 构建元数据或质量门禁测试（若本轮新增）
 
 ---
 

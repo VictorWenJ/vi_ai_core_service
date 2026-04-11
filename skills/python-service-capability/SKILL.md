@@ -3,7 +3,7 @@
 > skill_name: python-service-capability
 > module_scope: app/services/
 > status: active
-> last_updated: 2026-04-10
+> last_updated: 2026-04-12
 
 ## 1. Skill 定位
 
@@ -17,6 +17,7 @@
 - cancellation registry
 - assistant message lifecycle 收口
 - 与 context / prompts / providers 的稳定协作
+- 为 benchmark 复用在线能力提供稳定入口
 
 ---
 
@@ -84,6 +85,9 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 同步聊天正式入口以 `chat_with_citations_from_user_prompt` 为准。
 不得为了历史测试长期保留旧同步入口双轨兼容。
 
+### 4.7 Phase 7 边界
+benchmark runner 可以复用 services 的正式在线入口，但 services 不承担黄金集定义、评分逻辑与离线构建逻辑。
+
 ---
 
 ## 5. 默认阶段基线
@@ -96,6 +100,7 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 - `CancellationRegistry` 负责请求级取消
 - `PromptService` 负责消息装配辅助
 - 当前代码包含 retrieval / citation 编排
+- 当前阶段 services 继续作为 benchmark 复用的在线能力入口
 
 如需变更该基线，必须先更新根目录文档与模块 AGENTS，再进入实现。
 
@@ -226,6 +231,7 @@ service 相关实现至少补以下测试之一或多项：
 5. completed 才进入标准 memory update 路径
 6. 默认 provider / model / system prompt 解析路径
 7. retrieval degrade 不拖垮 chat/stream 主链路
+8. benchmark 复用 services 时不引入实验性双轨接口
 
 ---
 

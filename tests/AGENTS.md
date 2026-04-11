@@ -1,6 +1,6 @@
 # tests/AGENTS.md
 
-> 更新日期：2026-04-10
+> 更新日期：2026-04-12
 
 ## 1. 文档定位
 
@@ -46,6 +46,7 @@
 5. 为 request assembly 提供回归保护
 6. 为错误路径、取消路径、降级路径提供验证
 7. 让阶段演进时具备稳定的验收基础
+8. 为 RAG benchmark、黄金评估集与离线构建门禁提供测试与数据集支撑
 
 ---
 
@@ -115,6 +116,7 @@
 - provider canonical contract
 - rag ingestion / retrieval / citation
 - retrieval failure degrade
+- retrieval / citation / answer benchmark
 
 ### 6.5 测试不能掩盖架构问题
 如果实现层边界已经错了，不能靠写更多测试来掩盖。
@@ -128,7 +130,7 @@
 
 ## 7. 当前阶段能力声明
 
-当前本轮必须保持稳定：
+当前前置必须保持稳定：
 
 - 同步 chat 主链路测试
 - 流式 chat 主链路测试
@@ -144,6 +146,13 @@
 - 当前仓库已包含 retrieval / citation 测试对象
 - request assembly 当前测试的是：system -> knowledge -> working memory -> rolling summary -> recent raw -> user
 - 流式测试当前覆盖 completed / cancelled 路径、completed citations 与降级行为
+- 当前仓库已新增 `test_rag_evaluation.py` 与 `test_rag_offline_build.py`
+
+当前本轮新增（本轮已落地）：
+
+- retrieval / citation / answer 三层 benchmark
+- 黄金评估集与标签集校验
+- 构建质量门禁测试
 
 当前本轮不要求：
 
@@ -206,6 +215,7 @@
 6. 不允许让 tests 成为项目中最难维护、最不可信的目录
 7. 不允许新增仅用于维持历史兼容分支的测试
 8. 不允许保留只覆盖旧方法名或旧 response shape 的过时测试
+9. 不允许把纯 LLM 合成样本直接当作唯一正式黄金集而不做分层标注
 
 ---
 
@@ -237,6 +247,7 @@
 8. Prompt registry / renderer 基础路径
 9. config 与 HTTP smoke 基础路径
 10. retrieval / citation / degrade 路径
+11. benchmark runner、评估数据集 schema 与构建质量门禁路径
 
 ---
 

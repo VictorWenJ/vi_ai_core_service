@@ -1,6 +1,6 @@
 # app/rag/AGENTS.md
 
-> 更新日期：2026-04-10
+> 更新日期：2026-04-12
 
 ## 1. 文档定位
 
@@ -41,7 +41,7 @@
 ## 2. 模块定位
 
 `app/rag/` 是系统在 Phase 6 落地的内部知识与检索子域。
-截至当前代码基线，模块已具备 Python 运行时代码与最小 ingest/retrieval/citation 闭环。
+截至当前代码基线，模块已具备 Python 运行时代码与最小 ingest/retrieval/citation 闭环，并进入 Phase 7 的离线构建与评估基础增强阶段。
 
 当前阶段建议围绕以下职责组织：
 
@@ -60,6 +60,8 @@
 2. 提供最小 ingest pipeline（parser / cleaner / chunker / embedding / index）
 3. 提供 retrieval service 与 knowledge block 渲染
 4. 提供 citation-ready retrieval 结果与可降级 runtime
+5. 提供离线构建元数据与构建批次相关数据支撑
+6. 为 RAG 评估数据集与 benchmark 提供可引用的知识对象与检索依据
 
 ---
 
@@ -72,6 +74,7 @@
 5. 不负责 request assembly 最终顺序决策
 6. 不负责 `/chat` 或 `/chat_stream` 的最终响应封装
 7. 不负责长期记忆平台、审批流、Case Workspace
+8. 不负责完整知识运营后台或独立评估平台 UI
 
 ---
 
@@ -131,6 +134,11 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - 当前 `/chat` 与 `/chat_stream` completed 已接入本模块并返回 citations
 - 当前 retrieval 失败路径支持可降级，主 chat 链路不被拖垮
 
+### 6.7 Phase 7 演进原则
+- 本轮优先补齐离线构建元数据与构建质量门禁
+- 本轮允许为 benchmark 与评估标签提供稳定数据支撑
+- 本轮不把 `app/rag/` 扩张成独立知识运营平台或复杂 agentic retrieval 层
+
 ---
 
 ## 7. 当前阶段能力声明
@@ -142,7 +150,7 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - `/chat` 与 `/chat_stream` completed 已接入 citations
 - `tests/` 已具备 RAG / citation 测试
 
-当前本轮已落地目标：
+当前前置已落地目标：
 
 - `app/rag/` 子域运行时代码
 - 知识对象模型
@@ -154,7 +162,7 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - citation-ready retrieval 结果
 - 与 `/chat` 和 `/chat_stream` completed 收口兼容的 citation 数据支撑
 
-当前本轮默认基线：
+当前前置默认基线：
 
 - 向量数据库：**Qdrant**
 - 相似度度量：**Cosine**
@@ -162,11 +170,19 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - 检索：top-k + metadata filter
 - retrieval 结果进入 request assembly 的位置由 `services / request_assembler` 决定
 
+当前本轮新增（本轮已落地）：
+
+- 构建批次与版本元数据（build_id / version_id / chunk_strategy_version / embedding_model_version）
+- 增量构建 / 局部重建边界（manifest + content hash + force rebuild ids）
+- 基础质量门禁与构建统计（failure ratio / empty chunk ratio / upsert 一致性）
+- 与 retrieval / citation / answer benchmark 对齐的数据支撑（`app/rag/evaluation/`）
+
 当前本轮不要求落地：
 
 - 独立 RAG 微服务
 - complex rerank
 - hybrid retrieval
+- 重型 rerank 体系
 - graph retrieval
 - agentic retrieval
 - 多模态检索主链路
@@ -241,6 +257,15 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - `updated_at`
 - `metadata`
 
+### 8.5 Phase 7 构建元数据要求
+如本轮新增离线构建能力，至少应考虑以下元数据：
+- `build_id`
+- `version_id`
+- `chunk_strategy_version`
+- `embedding_model_version`
+
+这些字段可按当前代码结构选择落位到文档对象、chunk 对象、构建结果对象或专用构建元数据对象中，但必须保证可追踪、可比较、可回归。
+
 ---
 
 ## 9. 文档维护规则（强约束）
@@ -293,10 +318,11 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 4. 不允许回退为“按字符硬切分”作为正式主 chunking 策略
 5. 不允许把 Qdrant SDK 调用散落到多个无边界业务文件中
 6. 不允许把 citation 做成模型自由输出字符串
-7. 不允许在当前轮次中把长期记忆、审批流、Case Workspace、Agent runtime 混入 `rag` 子域
-8. `app/rag/` 中的知识对象模型、chunk 模型、retrieval 结果模型、citation 模型，其 dataclass 字段必须逐项补充中文注释。
-9. 涉及 score、token_count、updated_at、effective_at、metadata、filter 等字段时，注释中必须明确语义，不得含糊。
-10. 不允许删除仍在使用的 RAG 模型字段中文注释。
+7. 不允许在当前轮次中把 Tool Calling、长期记忆、审批流、Case Workspace、Agent runtime 混入 `rag` 子域
+8. 不允许把评估 runner 直接塞进 `app/rag/` 运行时主路径并污染在线链路
+9. `app/rag/` 中的知识对象模型、chunk 模型、retrieval 结果模型、citation 模型，其 dataclass 字段必须逐项补充中文注释。
+10. 涉及 score、token_count、updated_at、effective_at、metadata、filter 等字段时，注释中必须明确语义，不得含糊。
+11. 不允许删除仍在使用的 RAG 模型字段中文注释。
 
 ---
 
@@ -337,6 +363,7 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 9. citation 格式化正确
 10. retrieval 失败可降级
 11. 不依赖真实外部向量服务做主回归时，仍可用 in-memory / fake 实现保障测试稳定
+12. 若本轮新增离线构建元数据或质量门禁，必须补对应测试
 
 ---
 

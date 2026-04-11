@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 
-> 更新日期：2026-04-10
+> 更新日期：2026-04-12
 
 ## 1. 文档定位
 
@@ -11,7 +11,7 @@
 - 当前系统总体分层是什么
 - 各层分别负责什么
 - 各层之间如何依赖
-- 同步、流式、知识导入三条主链路如何协作
+- 同步、流式、知识导入、离线构建与评估链路如何协作
 - 当前阶段有哪些架构级约束
 
 本文件不负责：
@@ -45,6 +45,7 @@
 - 让系统具备前端可接入的流式会话交付能力
 - 为基于受控知识源进行 grounding 与 citation 提供运行时子域
 - 为后续 Tool、Case Workspace、Agent 预留清晰边界
+- 为 RAG 评估与离线构建提供可演进的工程基础
 
 ---
 
@@ -97,6 +98,7 @@
 职责：
 - 统一结构化日志
 - 通过 `log_report` 提供 JSON-safe 的事实型日志输出
+- 承接离线构建与 benchmark 运行的事实型日志字段
 
 ### 数据模型层（`app/schemas/`）
 职责：
@@ -211,6 +213,38 @@
 4. embedding provider 抽象调用
 5. vector index upsert（in-memory / qdrant 封装）
 
+### 6.4 离线构建链路
+
+当前阶段离线构建链路应在不破坏在线主链路的前提下持续增强：
+
+1. 文档导入进入 `app/rag/ingestion/`
+2. parser / cleaner / chunker 完成标准化处理
+3. embedding provider 生成向量表达
+4. index 写入向量存储
+5. 构建产物补充 `build_id`、`version_id`、`chunk_strategy_version`、`embedding_model_version` 等元数据
+6. 构建阶段执行最小质量门禁与统计输出
+
+当前代码事实补充：
+
+- `KnowledgeIngestionPipeline` 已提供 `build_documents` 离线构建入口
+- 构建链路已支持 build metadata 透传至 chunk metadata
+- 增量/局部重建当前通过 manifest + content hash + force document ids 约束
+- 构建统计与质量门禁当前已覆盖 failure ratio、empty chunk ratio、upsert 一致性
+
+### 6.5 评估链路
+
+当前阶段评估链路应围绕已落地的 Phase 6 主链路构建：
+
+1. 使用固定 query set 与标签集作为输入
+2. 分别运行 retrieval、citation、answer 三层评估
+3. 输出结构化 benchmark 结果
+4. 不允许让评估 runner 反向侵入在线 chat / stream 主链路
+
+当前代码事实补充：
+
+- `app/rag/evaluation/` 已提供数据集模型、runner 与结构化结果落盘能力
+- 评估执行仅消费 `RAGRuntime`，不侵入在线 `/chat`、`/chat_stream` 主链路
+
 ---
 
 ## 7. 分层衔接原则
@@ -244,6 +278,7 @@
 
 ## 8. 当前阶段架构约束
 
+
 ### 8.1 RAG 先做内部子域，不拆独立服务
 - `app/rag/` 是当前唯一知识与检索实现域
 - 若后续需要 ingestion worker，可作为同仓库独立运行角色演进
@@ -270,14 +305,19 @@
 - ingestion 失败不应拖垮在线 chat 主链路
 - embedding/index 故障需可定位、可回归、可审查
 
-### 8.5 架构边界约束
-当前阶段不得以 Phase 6 名义扩展为：
+### 8.5 Phase 7 约束
+- 当前轮次允许增强离线构建与评估，不允许把在线主链路改造成实验脚手架
+- 评估 runner 与评估数据集应服务于现有 RAG 主链路，不得重新定义新的回答契约
+- 构建批次、版本、质量门禁等能力应围绕 `app/rag/` 与 `tests/` 组织，不得提前扩张成独立知识平台
+
+### 8.6 架构边界约束
+当前阶段不得以 Phase 7 名义扩展为：
 
 - 独立 RAG 微服务
+- Tool Calling / Agent Runtime
 - 长期记忆平台
 - 审批流
 - Case Workspace
-- Agent Runtime
 - 多模态检索主链路
 
 ---
@@ -294,4 +334,4 @@
 
 ## 10. 一句话总结
 
-`ARCHITECTURE.md` 在当前阶段的职责，是作为项目总体架构文件，明确 `vi_ai_core_service` 的分层结构、依赖方向，以及当前已落地的同步 / 流式 / Knowledge + Citation 主链路，确保系统在后续迭代中仍保持整体分层清晰、职责稳定、演进可控。
+`ARCHITECTURE.md` 在当前阶段的职责，是作为项目总体架构文件，明确 `vi_ai_core_service` 的分层结构、依赖方向，以及当前已落地的同步 / 流式 / Knowledge + Citation 主链路，以及当前阶段的离线构建与评估支撑链路，确保系统在后续迭代中仍保持整体分层清晰、职责稳定、演进可控。

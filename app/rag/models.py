@@ -4,12 +4,30 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+import hashlib
 from typing import Any
 from uuid import uuid4
 
 
 def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _generate_prefixed_id(prefix: str) -> str:
+    return f"{prefix}_{uuid4().hex}"
+
+
+def generate_run_id() -> str:
+    return _generate_prefixed_id("run")
+
+
+def generate_build_id() -> str:
+    return _generate_prefixed_id("build")
+
+
+def compute_content_hash(content: str) -> str:
+    normalized_content = content.strip().encode("utf-8")
+    return hashlib.sha1(normalized_content).hexdigest()
 
 
 def _normalize_optional_text(value: str | None) -> str | None:
@@ -295,3 +313,192 @@ class IngestionResult:
     chunks: list[KnowledgeChunk]
     # 导入链路追踪信息。
     trace: IngestionTrace
+
+
+@dataclass
+class OfflineBuildMetadata:
+    # 构建批次唯一标识。
+    build_id: str
+    # 构建版本号，用于跨批次回归比较。
+    version_id: str
+    # chunk 策略版本标识。
+    chunk_strategy_version: str
+    # embedding 模型版本标识。
+    embedding_model_version: str
+    # 构建模式（full / incremental / partial）。
+    build_mode: str
+    # 构建开始时间，UTC ISO 字符串。
+    started_at: str
+    # 构建完成时间，UTC ISO 字符串。
+    completed_at: str
+
+    def __post_init__(self) -> None:
+        self.build_id = _normalize_optional_text(self.build_id) or generate_build_id()
+        self.version_id = _normalize_optional_text(self.version_id) or "v0"
+        self.chunk_strategy_version = (
+            _normalize_optional_text(self.chunk_strategy_version)
+            or "chunk-unknown"
+        )
+        self.embedding_model_version = (
+            _normalize_optional_text(self.embedding_model_version)
+            or "embedding-unknown"
+        )
+        self.build_mode = (_normalize_optional_text(self.build_mode) or "full").lower()
+        if self.build_mode not in {"full", "incremental", "partial"}:
+            raise ValueError("OfflineBuildMetadata.build_mode must be full/incremental/partial.")
+        self.started_at = _normalize_optional_text(self.started_at) or now_utc_iso()
+        self.completed_at = _normalize_optional_text(self.completed_at) or now_utc_iso()
+
+
+@dataclass
+class OfflineBuildStatistics:
+    # 请求构建的文档总数，单位为篇（count）。
+    requested_document_count: int
+    # 实际处理的文档数，单位为篇（count）。
+    processed_document_count: int
+    # 因增量判定被跳过的文档数，单位为篇（count）。
+    skipped_document_count: int
+    # 构建失败的文档数，单位为篇（count）。
+    failed_document_count: int
+    # 本次生成 chunk 总数，单位为块（count）。
+    chunk_count: int
+    # 本次写入向量索引条数，单位为条（count）。
+    upserted_count: int
+    # 本次 embedding 批次数，单位为批（count）。
+    embedding_batch_count: int
+    # 构建总耗时，单位为毫秒（ms）。
+    latency_ms: float
+
+    def __post_init__(self) -> None:
+        integer_fields = (
+            "requested_document_count",
+            "processed_document_count",
+            "skipped_document_count",
+            "failed_document_count",
+            "chunk_count",
+            "upserted_count",
+            "embedding_batch_count",
+        )
+        for field_name in integer_fields:
+            if getattr(self, field_name) < 0:
+                raise ValueError(f"OfflineBuildStatistics.{field_name} must be >= 0.")
+        if self.latency_ms < 0:
+            raise ValueError("OfflineBuildStatistics.latency_ms must be >= 0.")
+
+
+@dataclass
+class OfflineBuildQualityGate:
+    # 构建质量门禁是否通过。
+    passed: bool
+    # 未通过的规则列表。
+    failed_rules: list[str] = field(default_factory=list)
+    # 文档失败率（failed / requested），取值区间 [0, 1]。
+    failure_ratio: float = 0.0
+    # 空 chunk 率（processed 但无 chunk 的文档占比），取值区间 [0, 1]。
+    empty_chunk_ratio: float = 0.0
+    # 允许的最大失败率阈值，取值区间 [0, 1]。
+    max_failure_ratio: float = 0.0
+    # 允许的最大空 chunk 率阈值，取值区间 [0, 1]。
+    max_empty_chunk_ratio: float = 0.0
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "failure_ratio",
+            "empty_chunk_ratio",
+            "max_failure_ratio",
+            "max_empty_chunk_ratio",
+        ):
+            field_value = getattr(self, field_name)
+            if field_value < 0 or field_value > 1:
+                raise ValueError(f"OfflineBuildQualityGate.{field_name} must be in [0, 1].")
+        self.failed_rules = [str(rule).strip() for rule in self.failed_rules if str(rule).strip()]
+
+
+@dataclass
+class OfflineBuildDocumentRecord:
+    # 文档唯一标识。
+    document_id: str
+    # 文档内容哈希，用于增量构建判定。
+    content_hash: str
+    # 文档最近构建时间，UTC ISO 字符串。
+    built_at: str
+
+    def __post_init__(self) -> None:
+        self.document_id = _normalize_optional_text(self.document_id) or ""
+        self.content_hash = _normalize_optional_text(self.content_hash) or ""
+        self.built_at = _normalize_optional_text(self.built_at) or now_utc_iso()
+        if not self.document_id:
+            raise ValueError("OfflineBuildDocumentRecord.document_id cannot be empty.")
+        if not self.content_hash:
+            raise ValueError("OfflineBuildDocumentRecord.content_hash cannot be empty.")
+
+
+@dataclass
+class OfflineBuildManifest:
+    # manifest 关联的版本号。
+    version_id: str
+    # 文档构建记录映射，键为 document_id。
+    records: dict[str, OfflineBuildDocumentRecord] = field(default_factory=dict)
+    # manifest 生成时间，UTC ISO 字符串。
+    generated_at: str = field(default_factory=now_utc_iso)
+
+    def __post_init__(self) -> None:
+        self.version_id = _normalize_optional_text(self.version_id) or "v0"
+        self.records = {
+            str(document_id): record
+            for document_id, record in dict(self.records or {}).items()
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "version_id": self.version_id,
+            "generated_at": self.generated_at,
+            "records": {
+                document_id: asdict(record)
+                for document_id, record in self.records.items()
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "OfflineBuildManifest":
+        records = {}
+        for document_id, record_payload in dict(payload.get("records") or {}).items():
+            record_dict = dict(record_payload or {})
+            if "document_id" not in record_dict:
+                record_dict["document_id"] = str(document_id)
+            records[str(document_id)] = OfflineBuildDocumentRecord(**record_dict)
+        return cls(
+            version_id=str(payload.get("version_id") or "v0"),
+            records=records,
+            generated_at=str(payload.get("generated_at") or now_utc_iso()),
+        )
+
+
+@dataclass
+class OfflineBuildResult:
+    # 离线构建元数据。
+    metadata: OfflineBuildMetadata
+    # 离线构建统计信息。
+    statistics: OfflineBuildStatistics
+    # 质量门禁执行结果。
+    quality_gate: OfflineBuildQualityGate
+    # 本次构建后的 manifest 快照。
+    manifest: OfflineBuildManifest
+    # 本次成功处理的文档导入结果列表。
+    ingestion_results: list[IngestionResult] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "metadata": asdict(self.metadata),
+            "statistics": asdict(self.statistics),
+            "quality_gate": asdict(self.quality_gate),
+            "manifest": self.manifest.to_dict(),
+            "ingestion_results": [
+                {
+                    "document_id": result.document.document_id,
+                    "chunk_count": len(result.chunks),
+                    "trace": asdict(result.trace),
+                }
+                for result in self.ingestion_results
+            ],
+        }

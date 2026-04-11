@@ -1,6 +1,6 @@
 # CODE_REVIEW.md
 
-> 更新日期：2026-04-10
+> 更新日期：2026-04-12
 
 ## 1. 文档定位
 
@@ -61,7 +61,8 @@ Code Review 不只是检查“能不能运行”，还要检查：
 ### 当前阶段额外原则
 
 - 当前已落地主链路覆盖 Phase 2~6，不得被不受控改动破坏
-- 若改动声称落地 retrieval / citation，必须同时给出真实代码与测试依据
+- Phase 7 只能增强评估与离线构建基础，不得借机改坏在线 chat / stream / context / citation 契约
+- 若改动声称新增 benchmark、构建批次、版本元数据或质量门禁，必须同时给出真实代码、测试与结果依据
 - 未落地能力不得继续在模块文档、skill、测试矩阵中写成完成态
 - 引入知识能力时，不得混淆 short-term memory 与 external knowledge
 
@@ -80,8 +81,8 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 ### 当前阶段补充问题
 
-7. 当前改动是在维护已落地的 Phase 2~5，还是在真实新增 Phase 6 代码？
-8. 若涉及 retrieval、citation、chunking、embedding，是否真的有对应代码落位在正确模块？
+7. 当前改动是在维护已落地的 Phase 2~6，还是在真实新增 Phase 7 评估 / 构建能力？
+8. 若涉及 retrieval、citation、chunking、embedding、benchmark、build 元数据，是否真的有对应代码落位在正确模块？
 9. 是否保持了根目录四文档与模块文档各自职责清晰？
 
 ---
@@ -161,7 +162,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - Context 行为改动
 - Schema 契约改动
 - 流式事件顺序、生命周期、取消与失败路径改动
-- retrieval、citation、ingest、chunking、embedding、index 改动
+- retrieval、citation、ingest、chunking、embedding、index、benchmark、offline build 改动
 
 ### 当前阶段补充要求
 
@@ -180,6 +181,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - `/chat_stream` completed citation 输出测试
 - retrieval 失败降级测试
 - 历史兼容测试清理后，主链路测试仍覆盖当前正式接口与正式 contract
+- 黄金评估集、benchmark runner、build 质量门禁测试
 
 ---
 
@@ -223,6 +225,12 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - retrieval 失败时 chat / stream 是否仍可运行
 - embedding / index / ingest 异常是否可定位
 
+### 9.7 评估与离线构建
+- 评估数据集是否明确区分 query、retrieval、citation、answer 标签
+- benchmark runner 是否没有反向侵入在线聊天主链路
+- build_id、version_id、chunk_strategy_version、embedding_model_version 等元数据是否定义清晰
+- 质量门禁是否能覆盖空 chunk、metadata 缺失、embedding 失败率、构建统计异常等基础问题
+
 ---
 
 ## 10. 常见应拒绝的问题改动
@@ -236,6 +244,8 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 继续使用按字符硬切分作为正式 chunking 主策略
 - 在没有抽象边界的前提下直接把 Qdrant/embedding 细节写死进业务层
 - 把尚未落地能力写进文档、skill 或测试完成态
+- 为了做评估或离线构建，直接把实验脚本逻辑塞进在线 chat / stream 主链路
+- 没有 query/label 分层就把 LLM 合成问答直接当正式黄金集
 
 ### 当前阶段补充拒绝项
 

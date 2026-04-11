@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> 更新日期：2026-04-10
+> 更新日期：2026-04-12
 
 ## 1. 文档定位
 
@@ -64,9 +64,9 @@
 
 当前轮次为：
 
-**Phase 6：Knowledge + Citation Layer**
+**Phase 7：RAG Evaluation + Offline Build Foundation**
 
-### 本轮已落地（当前代码事实）
+### 前置已落地基线（当前代码事实）
 
 截至当前代码基线，Phase 6 已在仓库中完成以下能力：
 
@@ -84,12 +84,25 @@
 - `/chat_stream` 的 `response.completed` 已返回 citations
 - retrieval observability 与基础测试闭环已落地
 
+### 本轮目标
+
+当前轮次聚焦在“不破坏 Phase 6 在线主链路”的前提下，为 RAG 建立可持续优化的工程基础。
+本轮应优先补齐：
+
+- RAG 评估数据集结构（query / retrieval / citation / answer 分层标签）
+- retrieval / citation / answer 评估执行器与基准输出
+- 离线构建元数据（如 `build_id`、`version_id`、`chunk_strategy_version`、`embedding_model_version`）
+- 基础增量构建与局部重建约束
+- 构建质量门禁与最小构建统计
+- 评估与离线构建相关 observability
+
 ### 本轮默认技术基线
 
 - 向量数据库：**Qdrant**
 - 相似度度量：**Cosine**
-- embedding：先采用单一文本 embedding 基线，并通过 provider 抽象封装
+- embedding：单一文本 embedding 基线，并通过 provider 抽象封装
 - chunking：**结构感知 + token-aware + overlap**
+- 评估集：优先人工黄金集 + 规则扩展，不以大规模纯 LLM 合成集作为第一交付
 - RAG 定位：**外部知识 grounding 与 citation，不替代 Phase 4 的短期记忆**
 
 ### 本轮明确不做
@@ -101,6 +114,7 @@
 - 长期记忆平台
 - 审批流
 - Case Workspace
+- Tool Calling / Agent Runtime
 - 多模态检索主链路
 - Web 爬虫平台化
 
@@ -236,12 +250,17 @@ citation 必须来自 retrieval 结果，不得变成模型自由生成的装饰
   - recent raw messages
   - current user input
 
-当前轮次待新增：
+当前轮次新增（本轮已落地）：
 
-- **Phase 6：Knowledge + Citation Layer**
+- RAG 评估数据集主表与标签集（query / retrieval / citation / answer 分层标签）
+- retrieval / citation / answer benchmark runner 与结构化评估结果输出
+- 离线构建元数据与构建批次概念（build_id / version_id / chunk_strategy_version / embedding_model_version）
+- 增量构建与局部重建约束（manifest + 内容哈希）
+- 基础质量门禁与构建统计（failure ratio / empty chunk ratio / upsert 一致性）
 
 当前轮次所有实现，必须严格限制在当前阶段边界内，不得提前扩展到：
 
+- Tool Calling / Action Layer
 - 长期记忆平台
 - 审批流
 - Case Workspace

@@ -3,7 +3,7 @@
 > skill_name: python-observability-capability
 > module_scope: app/observability/
 > status: active
-> last_updated: 2026-04-10
+> last_updated: 2026-04-12
 
 ## 1. Skill 定位
 
@@ -14,6 +14,7 @@
 - `log_report`
 - JSON-safe 序列化
 - request / stream / context / provider 相关事实型日志
+- benchmark / offline build 相关事实型日志
 
 ---
 
@@ -26,6 +27,7 @@
 3. JSON-safe 序列化辅助
 4. observability 相关测试
 5. 调试辅助输出与日志字段组织
+6. benchmark / build 统计字段组织
 
 ---
 
@@ -64,6 +66,9 @@ observability 是支撑层，不得因为日志报错而打断同步或流式主
 ### 4.5 日志不是状态存储
 日志用于排查，不用于替代数据库、上下文 store 或正式契约。
 
+### 4.6 Phase 7 事实型评估日志
+benchmark 结果、构建批次统计、质量门禁失败应继续以事实型日志表达，不在 observability 层实现评分逻辑本身。
+
 ---
 
 ## 5. 默认阶段基线
@@ -75,6 +80,8 @@ observability 是支撑层，不得因为日志报错而打断同步或流式主
 - `log_report` 为核心入口
 - 当前不建设 tracing / metrics 平台
 - 当前包含 retrieval / citation 专项可观测性
+- 当前阶段允许新增 benchmark / build 统计可观测性
+- 当前代码已落地 `rag.evaluation.*` 与 `rag.offline_build.*` 事件日志路径
 
 如需变更该基线，必须先更新根目录文档与模块 AGENTS，再进入实现。
 
@@ -119,6 +126,7 @@ observability 相关任务，至少应交付以下之一或多项：
 2. JSON-safe 序列化更新
 3. 事实型日志字段更新
 4. observability 相关测试更新
+5. benchmark / build 统计字段更新
 
 仅给概念说明、不落代码、不补测试，不视为完成。
 
@@ -174,6 +182,7 @@ observability 相关实现至少补以下测试之一或多项：
 2. dataclass / pydantic / dict / list 输入归一化测试
 3. 未知复杂对象退化为字符串测试
 4. 流式场景不崩溃测试
+5. benchmark / build 统计字段输出测试（若本轮新增）
 
 ---
 

@@ -3,7 +3,7 @@
 > skill_name: python-test-capability
 > module_scope: tests/
 > status: active
-> last_updated: 2026-04-10
+> last_updated: 2026-04-12
 
 ## 1. Skill 定位
 
@@ -15,6 +15,7 @@
 - 同步 / 流式差异路径验证
 - context lifecycle 验证
 - provider / prompt / API / request assembly 验证
+- retrieval / citation / answer benchmark 与离线构建门禁验证
 
 ---
 
@@ -30,6 +31,7 @@
 6. provider normalization tests
 7. prompt asset tests
 8. fake / mock / in-memory test support
+9. benchmark runner 与黄金集标签校验
 
 ---
 
@@ -71,6 +73,9 @@
 测试应围绕当前正式接口与正式 contract 收敛。
 历史接口、历史返回结构、历史兼容分支对应的测试与 fake/stub/mock 应直接删除或改写，不保留双轨。
 
+### 4.7 Phase 7 评估与门禁
+本轮应开始为 retrieval / citation / answer benchmark、黄金集校验与离线构建质量门禁提供稳定测试保护。
+
 ---
 
 ## 5. 默认阶段基线
@@ -83,6 +88,8 @@
 - provider canonical contract 测试
 - Prompt / API 基础能力测试
 - 包含 retrieval / citation 主回归
+- 包含 benchmark / 质量门禁测试入口
+- 当前代码已新增 `tests/test_rag_evaluation.py` 与 `tests/test_rag_offline_build.py`
 
 如需变更该基线，必须先更新根目录文档与模块 AGENTS，再进入实现。
 
@@ -194,6 +201,7 @@ test 相关实现至少补以下测试之一或多项：
 6. prompt registry / renderer 测试
 7. config / HTTP smoke 测试
 8. rag ingestion / retrieval / citation / degrade 测试
+9. benchmark runner、数据集 schema、构建质量门禁测试
 
 ---
 
