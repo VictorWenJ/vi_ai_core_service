@@ -10,25 +10,25 @@ from app.context.policies.tokenizer import BaseTokenCounter, build_default_token
 from app.context.policies.truncation import TokenAwareTruncationPolicy
 from app.context.policies.window_selection import TokenAwareWindowSelectionPolicy
 
-# 默认 token 预算：用于 token-aware 窗口选择。
+# 历史窗口选择阶段默认 token 预算上限，单位为 token。
 DEFAULT_HISTORY_WINDOW_TOKEN_BUDGET = 1200
-# 默认 token 预算：用于 token-aware 截断（需小于等于最大预算）。
+# 历史截断阶段默认 token 预算上限，单位为 token。
 DEFAULT_HISTORY_TRUNCATION_TOKEN_BUDGET = 900
-# 是否默认启用确定性 summary/compaction 策略。
+# 默认是否启用摘要/压缩策略。
 DEFAULT_HISTORY_SUMMARY_ENABLED = True
-# 确定性 summary 策略的摘要文本最大字符数。
+# 默认摘要最大长度，单位为字符数（chars）。
 DEFAULT_HISTORY_SUMMARY_MAX_CHARS = 320
-# 摘要后仍不满足预算约束时的回退行为。
+# 摘要后仍超预算时的默认回退策略。
 DEFAULT_HISTORY_FALLBACK_BEHAVIOR = "summary_then_drop_oldest"
-# 估算消息 token 时的固定消息开销（工程近似值）。
+# 估算单条消息 token 时的默认固定开销，单位为 token。
 DEFAULT_HISTORY_MESSAGE_OVERHEAD_TOKENS = 4
 
 
 def build_default_context_policy_pipeline(
-        context_config: ContextPolicyConfig | None = None,
-        token_counter: BaseTokenCounter | None = None,
+    context_config: ContextPolicyConfig | None = None,
+    token_counter: BaseTokenCounter | None = None,
 ) -> ContextPolicyPipeline:
-    """装配默认上下文策略配置"""
+    """装配默认上下文策略管线。"""
 
     resolved_context = context_config or ContextPolicyConfig(
         windows_token_budget=DEFAULT_HISTORY_WINDOW_TOKEN_BUDGET,

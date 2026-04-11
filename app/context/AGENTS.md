@@ -204,6 +204,8 @@ Phase 6 中引入的知识检索是外部 grounding，不得把 retrieval 结果
 4. 不允许在 delta 阶段执行标准 layered memory 更新
 5. `ContextWindow.messages` 仍只表示 recent raw messages
 6. 不允许把 retrieval 结果直接写入 working memory 或 rolling summary
+7. `app/context/` 中的 dataclass 模型字段必须补充中文注释，尤其是 lifecycle、token budget、summary、working memory 相关字段，必须写清语义与单位。
+8. 不允许删除仍在使用的 context 字段中文注释。
 
 ---
 

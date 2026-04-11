@@ -20,8 +20,11 @@ class EmbeddingProviderInvocationError(EmbeddingProviderError):
 
 @dataclass
 class EmbeddingResult:
+    # 与输入文本一一对应的向量数组。
     vectors: list[list[float]]
+    # 生成向量所使用的模型标识。
     model: str
+    # 向量维度大小，单位为维（dimension）。
     dimensions: int
 
 

@@ -21,19 +21,29 @@ from app.observability.log_until import log_report
 
 @dataclass(frozen=True)
 class ContextPolicyExecutionResult:
+    # 窗口选择阶段结果。
     selection: ContextSelectionResult
+    # 截断阶段结果。
     truncation: ContextTruncationResult
+    # 摘要/压缩阶段结果。
     summary: ContextSummaryResult
+    # 最终序列化策略名称。
     serialization_policy: str
+    # 本次策略管道使用的 token_counter 名称；不可解析时为空。
     token_counter: str | None
+    # 提供给 LLM 的规范化消息序列。
     serialized_messages: list[dict[str, str]]
 
 
 @dataclass(frozen=True)
 class ContextPolicyPipeline:
+    # 历史窗口选择策略实现。
     selection_policy: WindowSelectionPolicy
+    # token 截断策略实现。
     truncation_policy: TruncationPolicy
+    # 摘要/压缩策略实现。
     summary_policy: SummaryPolicy
+    # 历史消息序列化策略实现。
     serialization_policy: HistorySerializationPolicy
 
     def run(self, window: ContextWindow) -> ContextPolicyExecutionResult:

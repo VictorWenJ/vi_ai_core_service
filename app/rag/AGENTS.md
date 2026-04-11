@@ -293,6 +293,9 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 5. 不允许把 Qdrant SDK 调用散落到多个无边界业务文件中
 6. 不允许把 citation 做成模型自由输出字符串
 7. 不允许在当前轮次中把长期记忆、审批流、Case Workspace、Agent runtime 混入 `rag` 子域
+8. `app/rag/` 中的知识对象模型、chunk 模型、retrieval 结果模型、citation 模型，其 dataclass 字段必须逐项补充中文注释。
+9. 涉及 score、token_count、updated_at、effective_at、metadata、filter 等字段时，注释中必须明确语义，不得含糊。
+10. 不允许删除仍在使用的 RAG 模型字段中文注释。
 
 ---
 

@@ -42,7 +42,9 @@ class BaseVectorStore(ABC):
 
 @dataclass
 class _InMemoryEntry:
+    # 入库向量数据。
     vector: list[float]
+    # 与向量绑定的业务 payload。
     payload: dict[str, Any]
 
 

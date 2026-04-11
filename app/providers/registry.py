@@ -18,8 +18,11 @@ from app.providers.tongyi_provider import TongyiProvider
 class ProviderDescriptor:
     """用于治理友好查询的 Provider 成熟度与能力描述。"""
 
+    # Provider 对应的具体实现类。
     provider_class: type[BaseLLMProvider]
+    # Provider 成熟度状态，如 implemented/scaffolded。
     maturity: str
+    # Provider 能力开关映射，用于治理和路由决策。
     capabilities: dict[str, Any] = field(default_factory=dict)
 
 

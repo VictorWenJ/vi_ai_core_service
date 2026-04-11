@@ -27,7 +27,9 @@ class BaseWorkingMemoryReducer(ABC):
 
 @dataclass(frozen=True)
 class WorkingMemoryReducerLimits:
+    # 每个工作记忆分区允许保留的最大条目数，单位为条（count）。
     max_items_per_section: int
+    # 单条工作记忆文本允许保留的最大长度，单位为字符数（chars）。
     max_value_chars: int
 
 

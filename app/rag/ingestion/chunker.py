@@ -6,13 +6,16 @@ import re
 from uuid import uuid4
 
 from app.context.policies.tokenizer import BaseTokenCounter, build_default_token_counter
+from app.observability import log_report
 from app.rag.models import KnowledgeChunk, KnowledgeDocument
 
 
 class StructuredTokenChunker:
     """Chunk markdown/text with structure-first and token budget fallback."""
 
+    # 按 Markdown 标题边界预切分（匹配 1~6 级标题行的起始位置）。
     _HEADING_SPLIT = re.compile(r"(?m)(?=^#{1,6}\s)")
+    # 按空行段落边界切分（一个或多个空白行视为段落分隔）。
     _PARAGRAPH_SPLIT = re.compile(r"\n\s*\n")
 
     def __init__(self, token_counter: BaseTokenCounter | None = None) -> None:
@@ -34,10 +37,13 @@ class StructuredTokenChunker:
             raise ValueError("overlap_token_size must be smaller than chunk_token_size.")
 
         structural_blocks = self._split_structural_blocks(document.content)
+        log_report("StructuredTokenChunker.chunk_document.structural_blocks", structural_blocks)
+
         merged_blocks = self._merge_blocks_by_token_budget(
             blocks=structural_blocks,
             token_budget=chunk_token_size,
         )
+        log_report("StructuredTokenChunker.chunk_document.merged_blocks", merged_blocks)
 
         finalized_texts: list[str] = []
         for block in merged_blocks:
@@ -48,6 +54,7 @@ class StructuredTokenChunker:
                     overlap_tokens=overlap_token_size,
                 )
             )
+        log_report("StructuredTokenChunker.chunk_document.finalized_texts", finalized_texts)
 
         chunks: list[KnowledgeChunk] = []
         for index, chunk_text in enumerate(finalized_texts):
@@ -78,21 +85,26 @@ class StructuredTokenChunker:
         return chunks
 
     def _split_structural_blocks(self, content: str) -> list[str]:
+        # 1) 先做首尾空白裁剪；空内容直接返回空列表。
         text = content.strip()
         if not text:
             return []
 
+        # 2) 先按 Markdown 标题边界进行一级切分，尽量保留结构语义。
         sections = self._HEADING_SPLIT.split(text)
         blocks: list[str] = []
         for section in sections:
             stripped_section = section.strip()
             if not stripped_section:
                 continue
+            # 3) 再按空行做二级段落切分，得到更细粒度逻辑块。
             paragraphs = self._PARAGRAPH_SPLIT.split(stripped_section)
             for paragraph in paragraphs:
                 stripped_paragraph = paragraph.strip()
                 if stripped_paragraph:
+                    # 4) 仅保留非空段落块，避免注入噪音空块。
                     blocks.append(stripped_paragraph)
+        # 5) 理论上 blocks 不应为空；若为空则退回原文本作为兜底块。
         return blocks or [text]
 
     def _merge_blocks_by_token_budget(

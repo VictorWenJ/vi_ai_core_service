@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 from app.context.models import ContextMessage
 
+# 默认单条消息固定开销，参与 token 估算，单位为 token。
 DEFAULT_MESSAGE_OVERHEAD_TOKENS = 4
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.prompts.renderer import render_prompt
 from app.schemas.llm_request import LLMMessage
 
+# 聊天场景默认 system prompt 模板 ID。
 DEFAULT_CHAT_SYSTEM_TEMPLATE_ID = "chat.default_system"
 
 

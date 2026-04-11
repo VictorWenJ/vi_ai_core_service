@@ -24,10 +24,15 @@ from app.observability import log_report
 
 @dataclass(frozen=True)
 class RecentRawCompactionResult:
+    # 是否实际发生了 recent raw 压缩。
     applied: bool
+    # 被压出 recent raw 层的旧消息列表。
     compacted_messages: list[ContextMessage]
+    # 压缩后保留在 recent raw 层的消息列表。
     recent_raw_messages: list[ContextMessage]
+    # 压缩后 recent raw 消息 token 总数，单位为 token。
     recent_raw_token_count: int
+    # 压缩完成后是否仍超出预算上限。
     budget_exceeded_after_compaction: bool
 
 

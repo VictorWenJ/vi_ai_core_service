@@ -42,17 +42,21 @@ class KnowledgeIngestionPipeline:
 
     def ingest_text(self, *, content: str, **document_kwargs) -> IngestionResult:
         document = self._parser.parse_text(content=content, **document_kwargs)
-        return self._ingest_document(document)
+        return self.ingest_document(document)
 
     def ingest_file(self, file_path: str | Path, **document_kwargs) -> IngestionResult:
         document = self._parser.parse_file(file_path, **document_kwargs)
-        return self._ingest_document(document)
+        return self.ingest_document(document)
 
-    def _ingest_document(self, document):
+    def ingest_document(self, document):
         started_at = perf_counter()
-        log_report("KnowledgeIngestionPipeline._ingest_document.document", document)
+        log_report("KnowledgeIngestionPipeline.ingest_document.document", document)
 
+        # 数据清洗
         cleaned_content = self._cleaner.clean(document.content)
+        log_report("KnowledgeIngestionPipeline.ingest_document.cleaned_content", cleaned_content)
+
+        # 数据分块
         document.content = cleaned_content
         chunks = self._chunker.chunk_document(
             document,
@@ -60,6 +64,7 @@ class KnowledgeIngestionPipeline:
             overlap_token_size=self._overlap_token_size,
             embedding_model=self._embedding_model,
         )
+        log_report("KnowledgeIngestionPipeline.ingest_document.chunks", chunks)
 
         vectors: list[list[float]] = []
         embedding_batch_count = 0
@@ -80,6 +85,7 @@ class KnowledgeIngestionPipeline:
             chunks=chunks,
             vectors=vectors,
         )
+
         latency_ms = round((perf_counter() - started_at) * 1000, 2)
         trace = IngestionTrace(
             status="succeeded",
@@ -91,7 +97,7 @@ class KnowledgeIngestionPipeline:
             latency_ms=latency_ms,
         )
         log_report(
-            "rag.ingestion.completed",
+            "KnowledgeIngestionPipeline.ingest_document.completed_data",
             {
                 "document_id": document.document_id,
                 "document_count": trace.document_count,

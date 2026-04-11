@@ -9,13 +9,21 @@ from time import perf_counter
 
 @dataclass
 class StreamTaskHandle:
+    # 流式请求唯一 ID。
     request_id: str
+    # 对应 assistant 消息 ID，用于消息维度取消。
     assistant_message_id: str
+    # 会话 ID。
     session_id: str
+    # 会话作用域 ID。
     conversation_id: str
+    # 请求使用的 provider 名称；缺省时为空。
     provider: str | None
+    # 请求使用的模型名称；缺省时为空。
     model: str | None
+    # 任务启动时间戳，基于 perf_counter，单位为秒。
     started_at: float
+    # 取消信号事件对象；被置位表示任务应中止。
     cancel_event: Event
 
 
