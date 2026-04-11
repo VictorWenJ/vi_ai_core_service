@@ -1,0 +1,123 @@
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { ApiClientError } from "@/api/errors";
+import { knowledgeApi } from "@/api/knowledgeApi";
+import type { BuildCreatePayload } from "@/types/console";
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof ApiClientError) {
+    const prefix = error.status ? `HTTP ${error.status}: ` : "";
+    return `${prefix}${error.message}`;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Unknown request error.";
+};
+
+const parseOptionalNumber = (value: string): number | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+export function useKnowledgeIngest() {
+  const queryClient = useQueryClient();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [documentId, setDocumentId] = useState("");
+  const [sourceType, setSourceType] = useState("");
+  const [tags, setTags] = useState("");
+  const [versionId, setVersionId] = useState("");
+  const [maxFailureRatio, setMaxFailureRatio] = useState("");
+  const [maxEmptyChunkRatio, setMaxEmptyChunkRatio] = useState("");
+  const [selectedBuildId, setSelectedBuildId] = useState<string | null>(null);
+  const [message, setMessage] = useState("Ready.");
+
+  const buildsQuery = useQuery({
+    queryKey: ["knowledge-builds"],
+    queryFn: () => knowledgeApi.listBuilds(),
+  });
+
+  const buildDetailQuery = useQuery({
+    queryKey: ["knowledge-build-detail", selectedBuildId],
+    queryFn: () => knowledgeApi.getBuild(selectedBuildId as string),
+    enabled: Boolean(selectedBuildId),
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedFile) {
+        throw new Error("请选择要上传的文档。");
+      }
+      return knowledgeApi.uploadDocument(selectedFile, {
+        title,
+        documentId,
+        sourceType,
+        tags,
+      });
+    },
+    onSuccess: (response) => {
+      setMessage(`上传成功：${response.document_id}`);
+      queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] }).catch(() => undefined);
+    },
+    onError: (error) => setMessage(getErrorMessage(error)),
+  });
+
+  const buildMutation = useMutation({
+    mutationFn: () => {
+      const payload: BuildCreatePayload = {
+        version_id: versionId.trim() || undefined,
+        max_failure_ratio: parseOptionalNumber(maxFailureRatio),
+        max_empty_chunk_ratio: parseOptionalNumber(maxEmptyChunkRatio),
+      };
+      return knowledgeApi.createBuild(payload);
+    },
+    onSuccess: (result) => {
+      setMessage(`构建完成：${result.metadata.build_id}`);
+      setSelectedBuildId(result.metadata.build_id);
+      queryClient.invalidateQueries({ queryKey: ["knowledge-builds"] }).catch(() => undefined);
+      queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] }).catch(() => undefined);
+    },
+    onError: (error) => setMessage(getErrorMessage(error)),
+  });
+
+  const latestBuild = useMemo(() => buildsQuery.data?.[0] ?? null, [buildsQuery.data]);
+
+  return {
+    selectedFile,
+    setSelectedFile,
+    title,
+    setTitle,
+    documentId,
+    setDocumentId,
+    sourceType,
+    setSourceType,
+    tags,
+    setTags,
+    versionId,
+    setVersionId,
+    maxFailureRatio,
+    setMaxFailureRatio,
+    maxEmptyChunkRatio,
+    setMaxEmptyChunkRatio,
+    selectedBuildId,
+    setSelectedBuildId,
+    message,
+    setMessage,
+    builds: buildsQuery.data ?? [],
+    buildsLoading: buildsQuery.isLoading,
+    buildsError: buildsQuery.error ? getErrorMessage(buildsQuery.error) : null,
+    buildDetail: buildDetailQuery.data ?? null,
+    buildDetailLoading: buildDetailQuery.isFetching,
+    latestBuild,
+    uploadDocument: () => uploadMutation.mutate(),
+    uploadPending: uploadMutation.isPending,
+    triggerBuild: () => buildMutation.mutate(),
+    buildPending: buildMutation.isPending,
+  };
+}

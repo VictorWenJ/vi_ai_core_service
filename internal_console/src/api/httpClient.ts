@@ -8,6 +8,7 @@ type HttpClientRequestOptions = {
   body?: unknown;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  isFormData?: boolean;
 };
 
 const buildUrl = (path: string): string => {
@@ -38,14 +39,24 @@ export async function httpRequest<TResponse>(
   path: string,
   options: HttpClientRequestOptions = {},
 ): Promise<TResponse> {
-  const { method = "GET", body, headers = {}, signal } = options;
+  const { method = "GET", body, headers = {}, signal, isFormData = false } = options;
+  const baseHeaders: Record<string, string> = {};
+  if (body !== undefined && !isFormData) {
+    baseHeaders["Content-Type"] = "application/json";
+  }
+  const resolvedBody =
+    body !== undefined
+      ? isFormData
+        ? (body as FormData)
+        : JSON.stringify(body)
+      : undefined;
   const response = await fetch(buildUrl(path), {
     method,
     headers: {
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...baseHeaders,
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: resolvedBody,
     signal,
   });
 

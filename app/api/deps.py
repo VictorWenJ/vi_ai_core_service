@@ -7,6 +7,7 @@ from functools import lru_cache
 from app.config import AppConfig
 from app.context.manager import ContextManager
 from app.providers.chat.registry import ProviderRegistry
+from app.rag.console_service import InternalConsoleRAGService
 from app.rag.runtime import RAGRuntime
 from app.services.cancellation_registry import CancellationRegistry
 from app.services.chat_service import ChatService
@@ -54,6 +55,14 @@ def get_rag_runtime() -> RAGRuntime:
     if not app_config.rag_config.enabled:
         return RAGRuntime.disabled(default_top_k=app_config.rag_config.retrieval_top_k)
     return RAGRuntime.from_app_config(app_config)
+
+
+@lru_cache(maxsize=1)
+def get_internal_console_rag_service() -> InternalConsoleRAGService:
+    return InternalConsoleRAGService(
+        app_config=get_app_config(),
+        rag_runtime=get_rag_runtime(),
+    )
 
 
 @lru_cache(maxsize=1)

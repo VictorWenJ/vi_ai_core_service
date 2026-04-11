@@ -1,15 +1,31 @@
-import { Link, Outlet } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAppConfig } from "@/hooks/useAppConfig";
 
 export function AppLayout(): JSX.Element {
   const appConfig = useAppConfig();
+  const navClassName = ({ isActive }: { isActive: boolean }): string | undefined =>
+    isActive ? "active" : undefined;
 
   return (
     <div className="shell">
       <aside className="sidebar">
         <h1>VI AI Console</h1>
         <nav>
-          <Link to="/">Chat Playground</Link>
+          <NavLink to="/chat-playground" className={navClassName}>
+            Chat Playground
+          </NavLink>
+          <NavLink to="/knowledge-ingest" className={navClassName}>
+            Knowledge Ingest
+          </NavLink>
+          <NavLink to="/chunk-inspector" className={navClassName}>
+            Chunk Inspector
+          </NavLink>
+          <NavLink to="/evaluation-dashboard" className={navClassName}>
+            Evaluation Dashboard
+          </NavLink>
+          <NavLink to="/runtime-config" className={navClassName}>
+            Runtime Config
+          </NavLink>
         </nav>
       </aside>
 
