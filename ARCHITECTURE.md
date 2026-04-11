@@ -221,9 +221,9 @@
   `selection -> truncation -> deterministic summary -> serialization`
 - Phase 5 的 message lifecycle 与 SSE 协议不变
 - Phase 6 不改变 completed 才进入标准 memory update 的规则
-- Phase 6 若后续新增 knowledge block，不替代 working memory / rolling summary
+- Phase 6 中 knowledge block 已纳入装配，不替代 working memory / rolling summary
 - non-completed assistant message 默认不参与后续 request assembly
-- citation 若后续落地，只来自 retrieval 结果，不来自模型自由生成
+- citation 已落地并且只来自 retrieval 结果，不来自模型自由生成
 
 ### 7.2 memory 与 retrieval 的分层原则
 
@@ -266,9 +266,9 @@
 - delta 阶段不返回 citation 增量
 
 ### 8.4 降级约束
-- 后续 retrieval 失败时，系统可退化为无知识增强聊天
-- 后续 ingestion 失败不应拖垮在线 chat 主链路
-- 后续 embedding/index 故障需可定位、可回归、可审查
+- retrieval 失败时，系统可退化为无知识增强聊天
+- ingestion 失败不应拖垮在线 chat 主链路
+- embedding/index 故障需可定位、可回归、可审查
 
 ### 8.5 架构边界约束
 当前阶段不得以 Phase 6 名义扩展为：
@@ -294,4 +294,4 @@
 
 ## 10. 一句话总结
 
-`ARCHITECTURE.md` 在当前阶段的职责，是作为项目总体架构文件，明确 `vi_ai_core_service` 的分层结构、依赖方向、当前已落地的同步 / 流式主链路，以及仍处于待实现状态的 Phase 6 架构边界，确保系统在后续引入 Knowledge + Citation Layer 时仍保持整体分层清晰、职责稳定、演进可控。
+`ARCHITECTURE.md` 在当前阶段的职责，是作为项目总体架构文件，明确 `vi_ai_core_service` 的分层结构、依赖方向，以及当前已落地的同步 / 流式 / Knowledge + Citation 主链路，确保系统在后续迭代中仍保持整体分层清晰、职责稳定、演进可控。

@@ -21,7 +21,7 @@ from app.services.errors import (
     ServiceNotImplementedError,
     ServiceValidationError,
 )
-from app.services.llm_service import LLMService
+from app.services.chat_service import ChatService
 
 try:
     import fakeredis
@@ -561,7 +561,7 @@ class APIRouteTests(unittest.TestCase):
                 redis_client=redis_client,
             )
         )
-        llm_service = LLMService(
+        llm_service = ChatService(
             app_config=app_config,
             registry=registry,
             context_manager=context_manager,

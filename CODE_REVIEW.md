@@ -60,7 +60,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 ### 当前阶段额外原则
 
-- 当前已落地主链路仍是 Phase 2~5，不得被“计划中的 Phase 6”改坏
+- 当前已落地主链路覆盖 Phase 2~6，不得被不受控改动破坏
 - 若改动声称落地 retrieval / citation，必须同时给出真实代码与测试依据
 - 未落地能力不得继续在模块文档、skill、测试矩阵中写成完成态
 - 引入知识能力时，不得混淆 short-term memory 与 external knowledge
@@ -148,7 +148,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 - 当前流式取消、失败、完成路径是否仍各自收口清晰
 - 当前同步链路 provider/config 错误是否仍映射稳定
-- 若未来新增 Phase 6，ingest / retrieval 失败是否不会拖垮在线 chat 主链路
+- Phase 6 下 ingest / retrieval 失败是否不会拖垮在线 chat 主链路
 
 ---
 
@@ -188,13 +188,13 @@ Code Review 不只是检查“能不能运行”，还要检查：
 ### 9.1 RAG 边界
 - `app/rag/` 是否保持为内部子域，而不是无计划扩展成新平台
 - 当前代码是否如实反映已落地的 `models / ingestion / retrieval / citation / runtime`
-- 若开始新增 RAG 代码，retrieval 是否没有入侵 context 语义
+- 新增或修改 RAG 代码时，retrieval 是否没有入侵 context 语义
 - knowledge retrieval 是否没有替代 working memory / rolling summary
 
 ### 9.2 数据与模型
 - 当前 `app/schemas/` 中的 `LLMMessage` / `LLMRequest` / `LLMResponse` / `LLMStreamChunk` 是否职责清晰
 - API 对外契约是否仍位于 `app/api/schemas/`
-- 若开始新增 `KnowledgeDocument` / `KnowledgeChunk` / `RetrievedChunk` / `Citation`，是否职责清晰
+- 修改 `KnowledgeDocument` / `KnowledgeChunk` / `RetrievedChunk` / `Citation` 时，是否职责清晰
 
 ### 9.3 Chunking 与 Ingest
 - chunking / ingest 实现是否与代码一致
@@ -256,4 +256,4 @@ Code Review 不只是检查“能不能运行”，还要检查：
 
 ## 11. 一句话总结
 
-`CODE_REVIEW.md` 在当前阶段的职责，是作为项目级审查标准文件，明确 `vi_ai_core_service` 在当前代码基线下的通用 review 原则、跨模块检查点、专项审查清单与应拒绝改动类型，既保护已落地的 Phase 2~5 主链路，也约束未来 Phase 6 实现必须以真实代码与测试为准。
+`CODE_REVIEW.md` 在当前阶段的职责，是作为项目级审查标准文件，明确 `vi_ai_core_service` 在当前代码基线下的通用 review 原则、跨模块检查点、专项审查清单与应拒绝改动类型，既保护已落地的 Phase 2~6 主链路，也约束后续 Phase 6 迭代必须以真实代码与测试为准。

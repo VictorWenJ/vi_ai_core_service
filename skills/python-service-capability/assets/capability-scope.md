@@ -41,7 +41,7 @@
 
 ## 4. 当前默认技术基线
 
-- 同步入口：`ChatService` / `LLMService`
+- 同步入口：`ChatService`
 - 流式入口：`StreamingChatService`
 - 装配中枢：`ChatRequestAssembler`
 - 取消协调：`CancellationRegistry`

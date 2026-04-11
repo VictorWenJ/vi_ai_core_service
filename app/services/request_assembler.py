@@ -153,7 +153,6 @@ class ChatRequestAssembler:
             ignored_non_completed_assistant_count=ignored_non_completed_assistant_count,
         )
         request_metadata["context_assembly"] = context_trace
-        request_metadata["used_context_history"] = context_trace
         return request_metadata
 
     @staticmethod
@@ -343,14 +342,4 @@ def build_context_assembly_trace(
         "serialization_policy": policy_result.serialization_policy,
         "token_counter": policy_result.token_counter,
         "serialized_message_count": serialized_count,
-        # 为现有调用方/测试保留兼容别名。
-        "total_messages_before_selection": selection.source_message_count,
-        "raw_message_count": selection.source_message_count,
-        "selected_message_count": selection.selected_message_count,
-        "dropped_message_count": total_dropped_message_count,
-        "truncated_message_count": truncation.truncated_message_count,
-        "token_budget": selection.token_budget,
-        "selected_token_count": selection.selected_token_count,
-        "final_token_count_after_truncation": truncation.final_token_count,
-        "final_token_count_after_summary": summary.final_token_count,
     }

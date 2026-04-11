@@ -17,7 +17,7 @@ from app.services.errors import (
     ServiceNotImplementedError,
     ServiceValidationError,
 )
-from app.services.llm_service import LLMService
+from app.services.chat_service import ChatService
 from app.services.prompt_service import PromptService
 
 try:
@@ -127,7 +127,7 @@ class StubRAGRuntime:
         return self._retrieval_result
 
 
-class LLMServiceTests(unittest.TestCase):
+class ChatServiceTests(unittest.TestCase):
     def setUp(self) -> None:
         providers = {
             "openai": ProviderConfig(name="openai", api_key="k1", default_model="gpt-test"),
@@ -155,7 +155,7 @@ class LLMServiceTests(unittest.TestCase):
             config=self.config,
             provider_overrides=self.providers,
         )
-        self.service = LLMService(app_config=self.config, registry=self.registry)
+        self.service = ChatService(app_config=self.config, registry=self.registry)
 
     def test_chat_uses_default_provider_and_default_model(self) -> None:
         response = self.service.chat(
@@ -244,7 +244,7 @@ class LLMServiceTests(unittest.TestCase):
             config=config,
             provider_overrides={"openai": FakeOpenAIProvider(providers["openai"])},
         )
-        service = LLMService(app_config=config, registry=registry)
+        service = ChatService(app_config=config, registry=registry)
 
         response = service.chat(
             LLMRequest(messages=[LLMMessage(role="user", content="hello")])
@@ -254,7 +254,7 @@ class LLMServiceTests(unittest.TestCase):
 
     def test_chat_with_citations_from_user_prompt_uses_context_and_persists_turns(self) -> None:
         fake_context_manager = FakeContextManager()
-        service = LLMService(
+        service = ChatService(
             app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
@@ -288,18 +288,18 @@ class LLMServiceTests(unittest.TestCase):
         self.assertEqual(sent_roles, ["system", "assistant", "user"])
         self.assertEqual(self.providers["openai"].last_request.temperature, 0.2)
         self.assertEqual(self.providers["openai"].last_request.max_tokens, 128)
-        used_context_history = self.providers["openai"].last_request.metadata["used_context_history"]
-        self.assertTrue(used_context_history["enabled"])
-        self.assertEqual(used_context_history["raw_message_count"], 1)
-        self.assertEqual(used_context_history["selected_message_count"], 1)
-        self.assertEqual(used_context_history["dropped_message_count"], 0)
-        self.assertEqual(used_context_history["serialized_message_count"], 1)
-        self.assertIn("token_counter", used_context_history)
-        self.assertNotIn("messages", used_context_history)
+        context_assembly = self.providers["openai"].last_request.metadata["context_assembly"]
+        self.assertTrue(context_assembly["enabled"])
+        self.assertEqual(context_assembly["source_message_count"], 1)
+        self.assertEqual(context_assembly["selection_selected_message_count"], 1)
+        self.assertEqual(context_assembly["total_dropped_message_count"], 0)
+        self.assertEqual(context_assembly["serialized_message_count"], 1)
+        self.assertIn("token_counter", context_assembly)
+        self.assertNotIn("messages", context_assembly)
 
     def test_chat_with_citations_from_user_prompt_without_session_does_not_access_context(self) -> None:
         fake_context_manager = FakeContextManager()
-        service = LLMService(
+        service = ChatService(
             app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
@@ -345,7 +345,7 @@ class LLMServiceTests(unittest.TestCase):
             ),
         )
         rag_runtime = StubRAGRuntime(retrieval_result)
-        service = LLMService(
+        service = ChatService(
             app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
@@ -385,7 +385,7 @@ class LLMServiceTests(unittest.TestCase):
                 latency_ms=8.2,
             )
         )
-        service = LLMService(
+        service = ChatService(
             app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
@@ -411,7 +411,7 @@ class LLMServiceTests(unittest.TestCase):
 
     def test_reset_context_clears_session_window(self) -> None:
         fake_context_manager = FakeContextManager()
-        service = LLMService(
+        service = ChatService(
             app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
@@ -426,7 +426,7 @@ class LLMServiceTests(unittest.TestCase):
 
     def test_reset_context_by_conversation_keeps_scope(self) -> None:
         fake_context_manager = FakeContextManager()
-        service = LLMService(
+        service = ChatService(
             app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),
@@ -453,7 +453,7 @@ class LLMServiceTests(unittest.TestCase):
                 redis_client=redis_client,
             )
         )
-        service = LLMService(
+        service = ChatService(
             app_config=self.config,
             registry=self.registry,
             prompt_service=PromptService(),

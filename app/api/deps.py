@@ -9,7 +9,7 @@ from app.context.manager import ContextManager
 from app.providers.chat.registry import ProviderRegistry
 from app.rag.runtime import RAGRuntime
 from app.services.cancellation_registry import CancellationRegistry
-from app.services.llm_service import LLMService
+from app.services.chat_service import ChatService
 from app.services.prompt_service import PromptService
 from app.services.request_assembler import ChatRequestAssembler
 from app.services.streaming_chat_service import StreamingChatService
@@ -57,8 +57,8 @@ def get_rag_runtime() -> RAGRuntime:
 
 
 @lru_cache(maxsize=1)
-def get_chat_service() -> LLMService:
-    return LLMService(
+def get_chat_service() -> ChatService:
+    return ChatService(
         app_config=get_app_config(),
         registry=get_provider_registry(),
         prompt_service=get_prompt_service(),

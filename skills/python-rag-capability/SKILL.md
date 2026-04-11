@@ -18,7 +18,7 @@
 
 本 skill 适用于以下类型的工作：
 
-1. `app/rag/` 运行时代码的首次落地
+1. `app/rag/` 运行时代码的持续迭代
 2. 知识对象模型设计
 3. ingest pipeline 设计与实现
 4. retrieval service 设计与实现
@@ -51,18 +51,18 @@
 代码事实优先：已落地能力写清楚，未落地能力不得写成完成态。
 
 ### 4.2 先做内部子域，不拆独立服务
-后续若开始实现，RAG 仍必须作为 `vi_ai_core_service` 内部子域落地。
+RAG 必须持续作为 `vi_ai_core_service` 内部子域落地。
 
 ### 4.3 retrieval 不替代 short-term memory
 RAG 负责 external knowledge grounding；
 Phase 4 的 recent raw / rolling summary / working memory 继续独立存在。
 
-### 4.4 citation 是后续实现的一等能力
-一旦开始实现，citation 必须来自 retrieval 结果，不得由模型自由生成。
+### 4.4 citation 是已落地的一等能力
+citation 必须来自 retrieval 结果，不得由模型自由生成。
 
 ### 4.5 失败可降级
 RAG 是增强层。
-后续 retrieval / embedding / index 异常不应无条件拖垮 chat 主链路。
+retrieval / embedding / index 异常不应无条件拖垮 chat 主链路。
 
 ---
 
@@ -130,11 +130,11 @@ RAG 相关实现任务，至少应交付以下之一或多项：
 
 ## 8. 实现约束
 
-### 8.1 首次落地约束
+### 8.1 运行时代码约束
 新增能力时，必须先确认当前提交不只是文档补丁，而是真的在 `app/rag/` 新增或完善运行时代码。
 
 ### 8.2 模型约束
-一旦开始实现，必须显式区分：
+必须显式区分：
 
 - KnowledgeDocument
 - KnowledgeChunk

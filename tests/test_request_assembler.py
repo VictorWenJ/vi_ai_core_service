@@ -128,7 +128,6 @@ class RequestAssemblerTests(unittest.TestCase):
         self.assertEqual(trace["truncation_policy"], "truncation.token_aware")
         self.assertEqual(trace["summary_policy"], "summary.deterministic_compaction")
         self.assertEqual(trace["serialization_policy"], "serialization.default_history")
-        self.assertEqual(request.metadata["used_context_history"], trace)
 
     def test_assemble_layered_memory_order_is_system_then_layers_then_recent_then_user(self) -> None:
         manager = ContextManager(store=InMemoryContextStore())
@@ -249,7 +248,7 @@ class RequestAssemblerTests(unittest.TestCase):
 
         trace = request.metadata["context_assembly"]
         self.assertNotIn("messages", trace)
-        self.assertGreaterEqual(trace["dropped_message_count"], 0)
+        self.assertGreaterEqual(trace["total_dropped_message_count"], 0)
         self.assertEqual(
             trace["total_dropped_message_count"],
             trace["selection_dropped_message_count"]

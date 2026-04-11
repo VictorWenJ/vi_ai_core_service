@@ -24,7 +24,7 @@
 
 本 skill 适用于以下类型的工作：
 
-1. `chat_service.py` / `llm_service.py`
+1. `chat_service.py`
 2. `streaming_chat_service.py`
 3. `request_assembler.py`
 4. `cancellation_registry.py`
@@ -90,7 +90,7 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 
 当前 skill 默认基线如下：
 
-- `ChatService` / `LLMService` 负责编排同步 chat
+- `ChatService` 负责编排同步 chat
 - `StreamingChatService` 负责编排流式 chat
 - `ChatRequestAssembler` 负责上下文组装与请求规范化
 - `CancellationRegistry` 负责请求级取消
