@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from app.context.policies.tokenizer import CharacterTokenCounter
-from app.providers.embedding_base import BaseEmbeddingProvider, EmbeddingResult
+from app.providers.embeddings.base import BaseEmbeddingProvider, EmbeddingResult
 from app.rag.ingestion.chunker import StructuredTokenChunker
 from app.rag.ingestion.cleaner import DocumentCleaner
 from app.rag.ingestion.parser import DocumentParser

@@ -1,30 +1,30 @@
-"""Provider 包导出。"""
+"""Provider capability exports with chat/embeddings layering."""
 
-from app.providers.base import (
+from app.providers.chat import (
     BaseLLMProvider,
+    DeepSeekProvider,
+    DoubaoProvider,
+    GeminiProvider,
+    OpenAICompatibleBaseProvider,
+    OpenAIProvider,
     ProviderConfigurationError,
     ProviderError,
     ProviderInvocationError,
     ProviderNotImplementedError,
+    ProviderRegistry,
     StreamNotImplementedError,
+    TongyiProvider,
 )
-from app.providers.embedding_base import (
+from app.providers.embeddings import (
     BaseEmbeddingProvider,
+    DeterministicEmbeddingProvider,
     EmbeddingProviderConfigurationError,
     EmbeddingProviderError,
     EmbeddingProviderInvocationError,
     EmbeddingResult,
+    OpenAIEmbeddingProvider,
+    build_embedding_provider,
 )
-from app.providers.embedding_registry import build_embedding_provider
-from app.providers.deterministic_embedding_provider import DeterministicEmbeddingProvider
-from app.providers.openai_embedding_provider import OpenAIEmbeddingProvider
-from app.providers.deepseek_provider import DeepSeekProvider
-from app.providers.doubao_provider import DoubaoProvider
-from app.providers.gemini_provider import GeminiProvider
-from app.providers.openai_compatible_base import OpenAICompatibleBaseProvider
-from app.providers.openai_provider import OpenAIProvider
-from app.providers.registry import ProviderRegistry
-from app.providers.tongyi_provider import TongyiProvider
 
 __all__ = [
     "BaseLLMProvider",

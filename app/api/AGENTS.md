@@ -98,6 +98,7 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 - `/chat_stream` 当前输出：`response.started`、`response.delta`、`response.completed`、`response.error`、`response.cancelled`、`response.heartbeat`
 - `response.completed` 当前可携带 `usage`、`latency_ms`、`trace`、`citations`
 - delta 阶段不输出 citation 增量
+- `/chat` 当前统一调用 `chat_with_citations_from_user_prompt`，不再保留历史 `hasattr` 兼容分支
 
 ### 6.4 外部契约不泄漏内部实现细节
 不应把：
@@ -192,6 +193,7 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 4. 不允许在 API 层生成 citations 内容
 5. 若未来新增 citations，不允许以无 schema、临时拼接字段的方式输出
 6. 不允许在 API 层直接做 context reset / cancel / stream 之外的状态机编排
+7. 不允许为历史测试保留旧 service 方法名的双轨调用分支
 
 ---
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 
-from app.providers.embedding_base import BaseEmbeddingProvider, EmbeddingResult
+from app.providers.embeddings.base import BaseEmbeddingProvider, EmbeddingResult
 
 
 class DeterministicEmbeddingProvider(BaseEmbeddingProvider):
@@ -40,15 +40,20 @@ class DeterministicEmbeddingProvider(BaseEmbeddingProvider):
         )
 
     def _embed_text(self, text: str) -> list[float]:
+        # 1) 先去掉首尾空白并转为 UTF-8 字节，作为稳定哈希输入。
         payload = text.strip().encode("utf-8")
+        # 2) 计算 SHA-256 摘要，得到固定长度字节序列。
         digest = hashlib.sha256(payload).digest()
         values: list[float] = []
+        # 3) 按目标维度循环取摘要字节，并把 [0,255] 线性映射到 [-1,1]。
         for index in range(self._dimension):
             byte = digest[index % len(digest)]
             shifted = ((byte / 255.0) * 2.0) - 1.0
             values.append(shifted)
 
+        # 4) 对向量做 L2 归一化，避免长度差异影响余弦相似度。
         norm = math.sqrt(sum(value * value for value in values))
+        # 极端情况下范数为 0 时直接返回原向量，避免除零错误。
         if norm == 0:
             return values
         return [value / norm for value in values]

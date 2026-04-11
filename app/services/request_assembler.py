@@ -19,7 +19,7 @@ from app.context.rendering import (
     render_working_memory_block,
 )
 from app.observability.log_until import log_report
-from app.providers.registry import ProviderRegistry
+from app.providers.chat.registry import ProviderRegistry
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.services.errors import ServiceNotImplementedError, ServiceValidationError
 from app.services.prompt_service import PromptService
@@ -92,6 +92,7 @@ class ChatRequestAssembler:
         resolved_system_prompt = request.system_prompt
         if resolved_system_prompt is None:
             resolved_system_prompt = self._prompt_service.get_default_system_prompt()
+        log_report("ChatRequestAssembler.assemble_from_user_prompt.resolved_system_prompt", resolved_system_prompt)
 
         assembled_messages = self._prompt_service.build_messages(
             system_prompt=resolved_system_prompt,

@@ -6,7 +6,7 @@ from pathlib import Path
 from time import perf_counter
 
 from app.observability.log_until import log_report
-from app.providers.embedding_base import BaseEmbeddingProvider
+from app.providers.embeddings.base import BaseEmbeddingProvider
 from app.rag.ingestion.chunker import StructuredTokenChunker
 from app.rag.ingestion.cleaner import DocumentCleaner
 from app.rag.ingestion.parser import DocumentParser

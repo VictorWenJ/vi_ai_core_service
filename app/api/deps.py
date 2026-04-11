@@ -6,7 +6,7 @@ from functools import lru_cache
 
 from app.config import AppConfig
 from app.context.manager import ContextManager
-from app.providers.registry import ProviderRegistry
+from app.providers.chat.registry import ProviderRegistry
 from app.rag.runtime import RAGRuntime
 from app.services.cancellation_registry import CancellationRegistry
 from app.services.llm_service import LLMService

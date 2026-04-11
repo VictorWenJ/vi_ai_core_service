@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.providers.embedding_base import BaseEmbeddingProvider, EmbeddingResult
+from app.providers.embeddings.base import BaseEmbeddingProvider, EmbeddingResult
 from app.rag.citation.formatter import build_citations
 from app.rag.models import KnowledgeChunk, KnowledgeDocument, RetrievedChunk
 from app.rag.retrieval.service import KnowledgeRetrievalService

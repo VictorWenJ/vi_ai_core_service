@@ -6,8 +6,8 @@ from app.api.schemas import ChatCancelRequest, ChatStreamRequest
 from app.config import AppConfig, ProviderConfig
 from app.context.manager import ContextManager
 from app.context.stores.in_memory import InMemoryContextStore
-from app.providers.base import BaseLLMProvider
-from app.providers.registry import ProviderRegistry
+from app.providers.chat.base import BaseLLMProvider
+from app.providers.chat.registry import ProviderRegistry
 from app.rag.models import Citation, RetrievalResult, RetrievalTrace
 from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse, LLMStreamChunk

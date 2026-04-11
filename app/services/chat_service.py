@@ -10,13 +10,13 @@ from app.api.schemas import ChatRequest
 from app.config import AppConfig, ConfigError
 from app.context.manager import ContextManager
 from app.observability.log_until import log_report
-from app.providers.base import (
+from app.providers.chat.base import (
     ProviderConfigurationError,
     ProviderInvocationError,
     ProviderNotImplementedError,
     StreamNotImplementedError,
 )
-from app.providers.registry import ProviderRegistry
+from app.providers.chat.registry import ProviderRegistry
 from app.rag.models import RetrievalResult
 from app.rag.runtime import RAGRuntime
 from app.schemas.llm_request import LLMRequest
@@ -126,16 +126,15 @@ class ChatService:
             )
             raise ServiceValidationError(str(exc)) from exc
 
-    def chat_from_user_prompt(self, chat_request: ChatRequest) -> LLMResponse:
-        result = self.chat_with_citations_from_user_prompt(chat_request)
-        return result.llm_response
-
     def chat_with_citations_from_user_prompt(self, chat_request: ChatRequest) -> ChatServiceResult:
         retrieval_filter = _extract_retrieval_filter(chat_request.metadata)
+
         retrieval_result = self._rag_runtime.retrieve_for_chat(
             query_text=chat_request.user_prompt,
             metadata_filter=retrieval_filter,
         )
+        log_report("ChatService.chat_with_citations_from_user_prompt.retrieval_result", retrieval_result)
+
         llm_request = (
             self._request_assembler.assemble_from_user_prompt(
                 request=chat_request,
@@ -143,10 +142,10 @@ class ChatService:
                 knowledge_block=retrieval_result.knowledge_block,
             ))
         llm_request.metadata["retrieval"] = retrieval_result.trace.to_dict()
-        log_report("ChatService.chat_from_user_prompt.llm_request", llm_request)
+        log_report("ChatService.chat_with_citations_from_user_prompt.llm_request", llm_request)
 
         llm_response = self.chat(llm_request)
-        log_report("ChatService.chat_from_user_prompt.llm_response", llm_response)
+        log_report("ChatService.chat_with_citations_from_user_prompt.llm_response", llm_response)
 
         self._write_context_after_response(
             llm_request,

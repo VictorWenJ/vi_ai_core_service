@@ -67,6 +67,7 @@ API 层负责收请求、校验、调 service、返回 JSON / SSE。
 ### 4.4 当前代码已落地 citations 输出
 当前 `/chat` 与 `/chat_stream` completed 已有 citations 字段。
 citation 业务语义不得在 API 层自行生成。
+`/chat` 入口应直接调用当前正式 service 接口，不保留历史方法名兼容分支。
 
 ### 4.5 错误必须映射为清晰 HTTP 语义
 API 层负责将 service / provider 层错误转换成可理解的 HTTP 错误响应。
@@ -138,6 +139,7 @@ API 相关任务，至少应交付以下之一或多项：
 
 ### 8.1 薄路由约束
 API 层必须保持薄路由，不得把 business orchestration 写进 route handler。
+不允许在 route 中保留“新旧 service 方法名双轨调用”的历史兼容逻辑。
 
 ### 8.2 SSE 约束
 - SSE 文本格式化留在 API 层

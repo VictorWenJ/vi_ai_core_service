@@ -4,8 +4,8 @@ import unittest
 from types import SimpleNamespace
 
 from app.config import ProviderConfig
-from app.providers.deepseek_provider import DeepSeekProvider
-from app.providers.openai_provider import OpenAIProvider
+from app.providers.chat.deepseek_provider import DeepSeekProvider
+from app.providers.chat.openai_provider import OpenAIProvider
 from app.schemas.llm_request import LLMMessage, LLMRequest
 
 

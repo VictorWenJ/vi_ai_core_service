@@ -13,13 +13,13 @@ from app.config import AppConfig
 from app.context.manager import ContextManager
 from app.context.models import normalize_conversation_scope, now_utc_iso
 from app.observability.log_until import log_report
-from app.providers.base import (
+from app.providers.chat.base import (
     ProviderConfigurationError,
     ProviderInvocationError,
     ProviderNotImplementedError,
     StreamNotImplementedError,
 )
-from app.providers.registry import ProviderRegistry
+from app.providers.chat.registry import ProviderRegistry
 from app.rag.models import Citation, RetrievalResult
 from app.rag.runtime import RAGRuntime
 from app.schemas.llm_response import LLMStreamChunk, LLMUsage

@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 from app.config import AppConfig, ProviderConfig
 from app.context.manager import ContextManager
 from app.context.stores.redis_store import RedisContextStore
-from app.providers.base import BaseLLMProvider
-from app.providers.registry import ProviderRegistry
+from app.providers.chat.base import BaseLLMProvider
+from app.providers.chat.registry import ProviderRegistry
 from app.rag.models import Citation, RetrievalTrace
 from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse
@@ -34,13 +34,23 @@ class FakeChatService:
         self.last_chat_request = None
         self.last_reset_payload: dict[str, object] | None = None
 
-    def chat_from_user_prompt(self, chat_request):
+    def chat_with_citations_from_user_prompt(self, chat_request):
         self.last_chat_request = chat_request
-        return LLMResponse(
-            content="ok",
-            provider="openai",
-            model="gpt-test",
-            metadata={"trace_id": "trace-1"},
+        return ChatServiceResult(
+            llm_response=LLMResponse(
+                content="ok",
+                provider="openai",
+                model="gpt-test",
+                metadata={"trace_id": "trace-1"},
+            ),
+            citations=[],
+            retrieval_trace=RetrievalTrace(
+                status="disabled",
+                query_text=chat_request.user_prompt,
+                top_k=0,
+                hit_count=0,
+                citation_count=0,
+            ),
         )
 
     def reset_context(self, *, session_id: str, conversation_id: str | None = None):
@@ -323,7 +333,7 @@ class APIRouteTests(unittest.TestCase):
 
     def test_chat_maps_service_validation_error_to_400(self) -> None:
         class ValidationErrorService:
-            def chat_from_user_prompt(self, chat_request):
+            def chat_with_citations_from_user_prompt(self, chat_request):
                 del chat_request
                 raise ServiceValidationError("invalid request")
 
@@ -335,7 +345,7 @@ class APIRouteTests(unittest.TestCase):
 
     def test_chat_maps_service_configuration_error_to_400(self) -> None:
         class ConfigErrorService:
-            def chat_from_user_prompt(self, chat_request):
+            def chat_with_citations_from_user_prompt(self, chat_request):
                 del chat_request
                 raise ServiceConfigurationError("missing provider config")
 
@@ -347,7 +357,7 @@ class APIRouteTests(unittest.TestCase):
 
     def test_chat_maps_service_not_implemented_error_to_501(self) -> None:
         class NotImplementedService:
-            def chat_from_user_prompt(self, chat_request):
+            def chat_with_citations_from_user_prompt(self, chat_request):
                 del chat_request
                 raise ServiceNotImplementedError("stream not ready")
 
@@ -359,7 +369,7 @@ class APIRouteTests(unittest.TestCase):
 
     def test_chat_maps_service_dependency_error_to_502(self) -> None:
         class UpstreamErrorService:
-            def chat_from_user_prompt(self, chat_request):
+            def chat_with_citations_from_user_prompt(self, chat_request):
                 del chat_request
                 raise ServiceDependencyError("upstream failure")
 
@@ -371,7 +381,7 @@ class APIRouteTests(unittest.TestCase):
 
     def test_chat_maps_unexpected_error_to_500_without_internal_detail(self) -> None:
         class UnexpectedErrorService:
-            def chat_from_user_prompt(self, chat_request):
+            def chat_with_citations_from_user_prompt(self, chat_request):
                 del chat_request
                 raise RuntimeError("sensitive internals")
 

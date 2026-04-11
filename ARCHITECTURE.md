@@ -91,6 +91,7 @@
 - 归一化非流式结果
 - 归一化流式 chunk / finish / usage / error
 - 通过独立 embedding provider 抽象承接文本 embedding 能力
+- 模块内部按能力分层为 `app/providers/chat/` 与 `app/providers/embeddings/`，并分别维护 chat registry 与 embedding registry
 
 ### 可观测性基础设施层（`app/observability/`）
 职责：

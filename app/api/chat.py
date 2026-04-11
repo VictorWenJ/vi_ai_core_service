@@ -22,7 +22,6 @@ from app.api.schemas.chat import (
 )
 from app.api.sse import format_sse_event
 from app.observability.log_until import log_report
-from app.schemas import LLMResponse
 from app.services.chat_result import ChatServiceResult
 
 router = APIRouter(tags=["chat"])
@@ -39,10 +38,7 @@ def chat(chat_request: ChatRequest) -> ChatResponse:
     log_report("Chat.chat.chat_request", chat_request)
 
     try:
-        if hasattr(llm_service, "chat_with_citations_from_user_prompt"):
-            service_result = llm_service.chat_with_citations_from_user_prompt(chat_request)
-        else:
-            service_result = llm_service.chat_from_user_prompt(chat_request)
+        service_result = llm_service.chat_with_citations_from_user_prompt(chat_request)
     except Exception as exc:
         raise build_chat_http_exception(
             exc,
@@ -157,19 +153,7 @@ def _remove_none_fields(data: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in data.items() if value is not None}
 
 
-def _to_chat_response(result: ChatServiceResult | LLMResponse) -> ChatResponse:
-    if isinstance(result, LLMResponse):
-        return ChatResponse(
-            content=result.content,
-            provider=result.provider,
-            model=result.model,
-            usage=_usage_to_dict(result.usage),
-            finish_reason=result.finish_reason,
-            metadata=result.metadata,
-            raw_response=result.raw_response,
-            citations=[],
-        )
-
+def _to_chat_response(result: ChatServiceResult) -> ChatResponse:
     llm_response = result.llm_response
     citations = [ChatCitation(**citation.to_dict()) for citation in result.citations]
     return ChatResponse(

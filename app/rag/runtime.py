@@ -7,7 +7,7 @@ from typing import Any
 
 from app.config import AppConfig
 from app.observability.log_until import log_report
-from app.providers.embedding_registry import build_embedding_provider
+from app.providers.embeddings.registry import build_embedding_provider
 from app.rag.models import RetrievalResult
 from app.rag.retrieval.service import KnowledgeRetrievalService
 from app.rag.retrieval.vector_store import InMemoryVectorStore, QdrantVectorStore
@@ -92,15 +92,12 @@ class RAGRuntime:
         top_k: int | None = None,
     ) -> RetrievalResult:
         resolved_top_k = top_k or self._default_top_k
+
         if not self._enabled or self._retrieval_service is None:
             result = RetrievalResult.disabled(
                 query_text=query_text,
                 top_k=resolved_top_k,
                 metadata_filter=metadata_filter,
-            )
-            log_report(
-                "rag.retrieval.disabled",
-                result.trace.to_dict(),
             )
             return result
 

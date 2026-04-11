@@ -22,13 +22,14 @@
 
 本 skill 适用于以下类型的工作：
 
-1. `base.py`
-2. `openai_compatible_base.py`
-3. `openai_provider.py`
-4. `deepseek_provider.py`
-5. 脚手架 provider
-6. `registry.py`
-7. provider 相关测试
+1. `chat/base.py`
+2. `chat/openai_compatible_base.py`
+3. `chat/openai_provider.py`
+4. `chat/deepseek_provider.py`
+5. `chat/gemini_provider.py` / `chat/doubao_provider.py` / `chat/tongyi_provider.py`
+6. `chat/registry.py`
+7. `embeddings/base.py` / `embeddings/deterministic_provider.py` / `embeddings/openai_provider.py` / `embeddings/registry.py`
+8. provider 相关测试
 
 ---
 
@@ -65,6 +66,7 @@ provider 负责调用厂商、归一化返回、映射错误；
 
 ### 4.4 embedding 通过独立抽象落地
 当前代码已通过独立 embedding provider 抽象落地，不污染 `BaseLLMProvider`。
+当前目录分层为 `app/providers/chat/` 与 `app/providers/embeddings/`，两类 registry 分别维护。
 
 ### 4.5 成熟度显式化
 `ProviderRegistry` 当前通过 `implemented / scaffolded` 描述 Provider 成熟度。

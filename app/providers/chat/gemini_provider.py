@@ -1,8 +1,8 @@
-"""Gemini Provider 脚手架。"""
+﻿"""Gemini Provider 脚手架。"""
 
 from __future__ import annotations
 
-from app.providers.base import BaseLLMProvider, ProviderNotImplementedError
+from app.providers.chat.base import BaseLLMProvider, ProviderNotImplementedError
 from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse
 

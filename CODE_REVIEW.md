@@ -179,6 +179,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - `/chat` citation 输出测试
 - `/chat_stream` completed citation 输出测试
 - retrieval 失败降级测试
+- 历史兼容测试清理后，主链路测试仍覆盖当前正式接口与正式 contract
 
 ---
 
@@ -243,6 +244,8 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 在 API 层直接组织 retrieval 或 citation 业务逻辑
 - 在 delta 阶段输出 citation 增量
 - 未补测试就提交 Phase 6 相关主链路改动
+- 为了让旧测试继续通过而保留历史方法名兼容分支
+- 保留仅覆盖旧 contract 的过时 fake/stub/mock 与测试用例
 - 删除仍在使用的 dataclass 字段中文注释
 - 删除仍在使用的默认配置常量中文注释
 - 新增 dataclass 字段但未补中文字段说明

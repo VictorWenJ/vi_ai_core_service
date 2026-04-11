@@ -78,7 +78,7 @@
 ## 5. 依赖边界
 
 ### 允许依赖
-- `app/providers/`（embedding provider abstraction）
+- `app/providers/embeddings/`（embedding provider abstraction）
 - `app/observability/`
 - `app/context/policies/tokenizer.py`（token counter 复用）
 
@@ -90,6 +90,7 @@
 ### 原则
 `app/rag/` 是被编排方，不是主链路编排方。
 在线 retrieval 由 `services` 调用，`rag` 不反向驱动 chat 或 context。
+`rag` 只依赖 `app/providers/embeddings/` 的抽象与工厂入口，不持有任何 embedding 厂商实现代码。
 
 ---
 

@@ -6,12 +6,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.config import AppConfig
-from app.providers.base import BaseLLMProvider, ProviderConfigurationError
-from app.providers.deepseek_provider import DeepSeekProvider
-from app.providers.doubao_provider import DoubaoProvider
-from app.providers.gemini_provider import GeminiProvider
-from app.providers.openai_provider import OpenAIProvider
-from app.providers.tongyi_provider import TongyiProvider
+from app.providers.chat.base import BaseLLMProvider, ProviderConfigurationError
+from app.providers.chat.deepseek_provider import DeepSeekProvider
+from app.providers.chat.doubao_provider import DoubaoProvider
+from app.providers.chat.gemini_provider import GeminiProvider
+from app.providers.chat.openai_provider import OpenAIProvider
+from app.providers.chat.tongyi_provider import TongyiProvider
 
 
 @dataclass(frozen=True)

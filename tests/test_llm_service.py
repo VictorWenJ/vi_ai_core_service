@@ -7,8 +7,8 @@ from app.config import AppConfig, ProviderConfig
 from app.context.manager import ContextManager
 from app.context.models import ContextMessage, ContextWindow
 from app.context.stores.redis_store import RedisContextStore
-from app.providers.base import BaseLLMProvider, ProviderNotImplementedError
-from app.providers.registry import ProviderRegistry
+from app.providers.chat.base import BaseLLMProvider, ProviderNotImplementedError
+from app.providers.chat.registry import ProviderRegistry
 from app.rag.models import Citation, RetrievalResult, RetrievalTrace
 from app.schemas.llm_request import LLMMessage, LLMRequest
 from app.schemas.llm_response import LLMResponse
@@ -252,7 +252,7 @@ class LLMServiceTests(unittest.TestCase):
 
         self.assertEqual(response.provider, "openai")
 
-    def test_chat_from_user_prompt_uses_context_and_persists_turns(self) -> None:
+    def test_chat_with_citations_from_user_prompt_uses_context_and_persists_turns(self) -> None:
         fake_context_manager = FakeContextManager()
         service = LLMService(
             app_config=self.config,
@@ -261,7 +261,7 @@ class LLMServiceTests(unittest.TestCase):
             context_manager=fake_context_manager,
         )
 
-        response = service.chat_from_user_prompt(
+        result = service.chat_with_citations_from_user_prompt(
             ChatRequest(
                 user_prompt="new question",
                 session_id="session-1",
@@ -272,7 +272,8 @@ class LLMServiceTests(unittest.TestCase):
             )
         )
 
-        self.assertEqual(response.provider, "openai")
+        self.assertEqual(result.llm_response.provider, "openai")
+        self.assertEqual(result.citations, [])
         self.assertEqual(fake_context_manager.last_get_session_id, "session-1")
         self.assertEqual(fake_context_manager.last_get_conversation_id, None)
         self.assertIsNotNone(fake_context_manager.last_update_payload)
@@ -296,7 +297,7 @@ class LLMServiceTests(unittest.TestCase):
         self.assertIn("token_counter", used_context_history)
         self.assertNotIn("messages", used_context_history)
 
-    def test_chat_from_user_prompt_without_session_does_not_access_context(self) -> None:
+    def test_chat_with_citations_from_user_prompt_without_session_does_not_access_context(self) -> None:
         fake_context_manager = FakeContextManager()
         service = LLMService(
             app_config=self.config,
@@ -305,7 +306,7 @@ class LLMServiceTests(unittest.TestCase):
             context_manager=fake_context_manager,
         )
 
-        response = service.chat_from_user_prompt(
+        result = service.chat_with_citations_from_user_prompt(
             ChatRequest(
                 user_prompt="stateless question",
                 provider="openai",
@@ -313,7 +314,8 @@ class LLMServiceTests(unittest.TestCase):
             )
         )
 
-        self.assertEqual(response.provider, "openai")
+        self.assertEqual(result.llm_response.provider, "openai")
+        self.assertEqual(result.citations, [])
         self.assertIsNone(fake_context_manager.last_get_session_id)
         self.assertIsNone(fake_context_manager.last_update_payload)
 
@@ -458,7 +460,7 @@ class LLMServiceTests(unittest.TestCase):
             context_manager=redis_context_manager,
         )
 
-        response = service.chat_from_user_prompt(
+        result = service.chat_with_citations_from_user_prompt(
             ChatRequest(
                 user_prompt="persist me",
                 session_id="session-redis",
@@ -467,7 +469,8 @@ class LLMServiceTests(unittest.TestCase):
                 stream=False,
             )
         )
-        self.assertEqual(response.provider, "openai")
+        self.assertEqual(result.llm_response.provider, "openai")
+        self.assertEqual(result.citations, [])
         window = redis_context_manager.get_context("session-redis", "conversation-redis")
         self.assertEqual(window.message_count, 2)
         self.assertEqual(window.messages[0].role, "user")

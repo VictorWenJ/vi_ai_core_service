@@ -9,7 +9,7 @@ from typing import Any
 
 from app.config import ProviderConfig
 from app.observability.log_until import log_report
-from app.providers.base import (
+from app.providers.chat.base import (
     BaseLLMProvider,
     ProviderConfigurationError,
     ProviderInvocationError,

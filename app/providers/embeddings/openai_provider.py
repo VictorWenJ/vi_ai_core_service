@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.providers.embedding_base import (
+from app.providers.embeddings.base import (
     BaseEmbeddingProvider,
     EmbeddingProviderConfigurationError,
     EmbeddingProviderInvocationError,

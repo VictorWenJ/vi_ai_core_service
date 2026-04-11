@@ -80,6 +80,10 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 当前仓库中的 services 已有 retrieval、knowledge block、citations 运行时编排逻辑。
 后续迭代必须继续在本层统一编排，不能散落到 API / provider / context。
 
+### 4.6 同步入口收敛
+同步聊天正式入口以 `chat_with_citations_from_user_prompt` 为准。
+不得为了历史测试长期保留旧同步入口双轨兼容。
+
 ---
 
 ## 5. 默认阶段基线
@@ -178,7 +182,10 @@ services 可依赖：
 当前代码已落地 retrieval / citations。
 新增这类能力的改动，必须同时补真实代码与测试。
 
-### 8.6 中文字段注释与默认配置说明约束
+### 8.6 历史兼容清理约束
+当确认旧接口仅用于历史测试兼容时，应在 services 层移除对应分支，并同步更新测试到当前正式接口。
+
+### 8.7 中文字段注释与默认配置说明约束
 
 1. 本模块中所有 `@dataclass` 定义的结构化对象，必须为每一个字段补充中文注释，说明字段含义。
 2. 本模块中所有默认配置常量、默认阈值或默认限制项，必须补充中文注释；涉及 token、chars、seconds、ttl、size、top-k、threshold 等值时，必须明确单位或语义。

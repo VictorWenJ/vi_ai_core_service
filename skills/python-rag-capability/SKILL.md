@@ -174,6 +174,7 @@ context 管 short-term memory；rag 管 external knowledge grounding。
 ### 与 providers 协作
 如后续需要 embedding，可通过 providers 能力接入；
 rag 不负责 chat provider 主链路。
+rag 依赖路径应指向 `app/providers/embeddings/` 抽象与工厂入口，不在 `app/rag/` 内维护 embedding 厂商实现。
 
 ### 与 api / schemas 协作
 citation 最终如何对外返回，由 `api/services` 与对外 schema 共同完成；

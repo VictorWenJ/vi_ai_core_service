@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from app.config import AppConfig
-from app.providers.deterministic_embedding_provider import DeterministicEmbeddingProvider
-from app.providers.embedding_base import (
+from app.providers.embeddings.base import (
     BaseEmbeddingProvider,
     EmbeddingProviderConfigurationError,
 )
-from app.providers.openai_embedding_provider import OpenAIEmbeddingProvider
+from app.providers.embeddings.deterministic_provider import DeterministicEmbeddingProvider
+from app.providers.embeddings.openai_provider import OpenAIEmbeddingProvider
 
 
 def build_embedding_provider(app_config: AppConfig) -> BaseEmbeddingProvider:

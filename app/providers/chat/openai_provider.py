@@ -1,17 +1,17 @@
-"""DeepSeek Provider 实现。"""
+"""OpenAI Provider 实现。"""
 
 from __future__ import annotations
 
 from typing import Any
 
 from app.config import ProviderConfig
-from app.providers.openai_compatible_base import OpenAICompatibleBaseProvider
+from app.providers.chat.openai_compatible_base import OpenAICompatibleBaseProvider
 
 
-class DeepSeekProvider(OpenAICompatibleBaseProvider):
-    """基于 OpenAI 兼容接口的 DeepSeek Provider。"""
+class OpenAIProvider(OpenAICompatibleBaseProvider):
+    """OpenAI 聊天补全 Provider。"""
 
-    provider_name = "deepseek"
+    provider_name = "openai"
 
     def __init__(
         self,
