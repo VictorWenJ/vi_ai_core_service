@@ -62,6 +62,12 @@ export function useChunkInspector() {
     enabled: Boolean(selectedChunkId),
   });
 
+  const chunkVectorDetailQuery = useQuery({
+    queryKey: ["knowledge-chunk-vector-detail", selectedChunkId],
+    queryFn: () => knowledgeApi.getChunkVectorDetail(selectedChunkId as string),
+    enabled: Boolean(selectedChunkId),
+  });
+
   const retrievalDebugMutation = useMutation({
     mutationFn: () =>
       knowledgeApi.retrievalDebug({
@@ -96,6 +102,11 @@ export function useChunkInspector() {
     chunksLoading: chunksQuery.isLoading || chunksQuery.isFetching,
     chunkDetail: chunkDetailQuery.data ?? null,
     chunkDetailLoading: chunkDetailQuery.isFetching,
+    chunkVectorDetail: chunkVectorDetailQuery.data ?? null,
+    chunkVectorDetailLoading: chunkVectorDetailQuery.isFetching,
+    chunkVectorDetailError: chunkVectorDetailQuery.error
+      ? getErrorMessage(chunkVectorDetailQuery.error)
+      : null,
     retrievalDebugResult: retrievalDebugMutation.data ?? null,
     retrievalDebugPending: retrievalDebugMutation.isPending,
     retrievalDebugError: retrievalDebugMutation.error

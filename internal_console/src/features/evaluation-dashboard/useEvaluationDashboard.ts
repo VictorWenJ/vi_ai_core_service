@@ -24,7 +24,7 @@ const parseCsv = (raw: string): string[] =>
 
 export function useEvaluationDashboard() {
   const queryClient = useQueryClient();
-  const [datasetId, setDatasetId] = useState("console-rag-dataset");
+  const [datasetId, setDatasetId] = useState("");
   const [versionId, setVersionId] = useState("");
   const [queryText, setQueryText] = useState("");
   const [expectedDocumentIds, setExpectedDocumentIds] = useState("");

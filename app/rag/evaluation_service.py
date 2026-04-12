@@ -299,8 +299,8 @@ class RAGEvaluationService:
         version_id: str | None,
         samples: list[dict[str, Any]],
     ) -> EvaluationDataset:
-        normalized_dataset_id = (dataset_id or "").strip() or "console-rag-dataset"
-        normalized_version_id = (version_id or "").strip() or f"console-{_utc_version_suffix()}"
+        normalized_dataset_id = (dataset_id or "").strip() or "runtime-generated-dataset"
+        normalized_version_id = (version_id or "").strip() or f"runtime-{_utc_version_suffix()}"
         if samples:
             dataset_samples = [
                 self._sample_from_payload(index, sample)

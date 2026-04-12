@@ -39,7 +39,7 @@ export function EvaluationDashboardPage(): JSX.Element {
         <div className="form-grid">
           <div className="inline-grid">
             <label>
-              Dataset ID
+              Dataset ID (optional)
               <input value={datasetId} onChange={(event) => setDatasetId(event.target.value)} />
             </label>
             <label>
@@ -48,7 +48,7 @@ export function EvaluationDashboardPage(): JSX.Element {
             </label>
           </div>
           <label>
-            Query Text (optional, leave empty to use backend auto dataset)
+            Query Text (optional, leave empty to auto-generate samples from documents)
             <input value={queryText} onChange={(event) => setQueryText(event.target.value)} />
           </label>
           <div className="inline-grid">
@@ -108,7 +108,7 @@ export function EvaluationDashboardPage(): JSX.Element {
                 >
                   <strong>{run.run_id}</strong>
                   <small>
-                    dataset={run.dataset_id} version={run.dataset_version_id}
+                    dataset={run.dataset_id ?? "-"} version={run.dataset_version_id ?? "-"}
                   </small>
                 </button>
               </li>

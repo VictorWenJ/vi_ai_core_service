@@ -4,6 +4,7 @@ import type {
   BuildDetail,
   BuildSummary,
   KnowledgeChunkDetail,
+  KnowledgeChunkVectorDetail,
   KnowledgeChunkSummary,
   KnowledgeDocumentDetail,
   KnowledgeDocumentSummary,
@@ -97,6 +98,10 @@ export const knowledgeApi = {
 
   getChunk(chunkId: string): Promise<KnowledgeChunkDetail> {
     return httpRequest<KnowledgeChunkDetail>(`/knowledge/chunks/${chunkId}`);
+  },
+
+  getChunkVectorDetail(chunkId: string): Promise<KnowledgeChunkVectorDetail> {
+    return httpRequest<KnowledgeChunkVectorDetail>(`/knowledge/chunks/${chunkId}/vector`);
   },
 
   retrievalDebug(payload: RetrievalDebugPayload): Promise<RetrievalDebugResponse> {

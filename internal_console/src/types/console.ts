@@ -97,6 +97,16 @@ export type KnowledgeChunkDetail = {
   metadata: Record<string, unknown>;
 };
 
+export type KnowledgeChunkVectorDetail = {
+  chunk_id: string;
+  vector_point_id: string;
+  vector_collection: string;
+  found: boolean;
+  vector: number[];
+  vector_dimension: number;
+  payload: Record<string, unknown>;
+};
+
 export type RetrievalDebugPayload = {
   query_text: string;
   metadata_filter?: Record<string, unknown>;
@@ -163,8 +173,8 @@ export type EvaluationRunCreatePayload = {
 
 export type EvaluationRunSummary = {
   run_id: string;
-  dataset_id: string;
-  dataset_version_id: string;
+  dataset_id: string | null;
+  dataset_version_id: string | null;
   started_at: string;
   completed_at: string;
   summary: Record<string, unknown>;

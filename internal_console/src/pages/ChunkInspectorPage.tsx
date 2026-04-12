@@ -21,11 +21,18 @@ export function ChunkInspectorPage(): JSX.Element {
     chunks,
     chunksLoading,
     chunkDetail,
+    chunkDetailLoading,
+    chunkVectorDetail,
+    chunkVectorDetailLoading,
+    chunkVectorDetailError,
     retrievalDebugResult,
     retrievalDebugPending,
     retrievalDebugError,
     runRetrievalDebug,
   } = useChunkInspector();
+  const vectorPreview = chunkVectorDetail?.vector.slice(0, 16) ?? [];
+  const hasTruncatedVector =
+    (chunkVectorDetail?.vector.length ?? 0) > vectorPreview.length;
 
   return (
     <section className="chat-grid">
@@ -150,7 +157,70 @@ export function ChunkInspectorPage(): JSX.Element {
       </article>
 
       <KeyValueTable title="Document Detail" value={documentDetail} />
-      <KeyValueTable title="Chunk Detail" value={chunkDetail} />
+      <KeyValueTable
+        title="Chunk Detail"
+        value={chunkDetailLoading ? { loading: true } : chunkDetail}
+      />
+      <article className="panel">
+        <h3>Chunk Vector Detail</h3>
+        {!selectedChunkId ? <p className="muted">Select a chunk to inspect vector detail.</p> : null}
+        {selectedChunkId && chunkVectorDetailLoading ? (
+          <p className="muted">Loading vector detail...</p>
+        ) : null}
+        {chunkVectorDetailError ? <p className="error-text">{chunkVectorDetailError}</p> : null}
+        {chunkVectorDetail ? (
+          <>
+            <table className="kv-table">
+              <tbody>
+                <tr>
+                  <th>vector_point_id</th>
+                  <td>
+                    <code>{chunkVectorDetail.vector_point_id}</code>
+                  </td>
+                </tr>
+                <tr>
+                  <th>vector_dimension</th>
+                  <td>{chunkVectorDetail.vector_dimension}</td>
+                </tr>
+                <tr>
+                  <th>embedding_model_name</th>
+                  <td>{chunkDetail?.embedding_model ?? "-"}</td>
+                </tr>
+                <tr>
+                  <th>vector_collection</th>
+                  <td>{chunkVectorDetail.vector_collection}</td>
+                </tr>
+                <tr>
+                  <th>found</th>
+                  <td>{String(chunkVectorDetail.found)}</td>
+                </tr>
+              </tbody>
+            </table>
+            {chunkVectorDetail.found ? (
+              <>
+                <details open>
+                  <summary>
+                    Vector Preview (first {vectorPreview.length} / {chunkVectorDetail.vector.length})
+                  </summary>
+                  <pre>{JSON.stringify(vectorPreview, null, 2)}</pre>
+                </details>
+                {hasTruncatedVector ? (
+                  <details>
+                    <summary>Expand Full Vector</summary>
+                    <pre>{JSON.stringify(chunkVectorDetail.vector, null, 2)}</pre>
+                  </details>
+                ) : null}
+                <details>
+                  <summary>Vector Payload</summary>
+                  <pre>{JSON.stringify(chunkVectorDetail.payload, null, 2)}</pre>
+                </details>
+              </>
+            ) : (
+              <p className="muted">Vector point was not found in Qdrant.</p>
+            )}
+          </>
+        ) : null}
+      </article>
       <KeyValueTable title="Retrieval Trace" value={retrievalDebugResult?.trace ?? null} />
     </section>
   );

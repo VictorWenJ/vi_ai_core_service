@@ -249,8 +249,24 @@ class RAGPersistenceAPIIntegrationTests(unittest.TestCase):
             },
         )
         self.assertEqual(nullable_run_response.status_code, 200)
+        nullable_run_id = nullable_run_response.json()["run_id"]
         self.assertIsNone(nullable_run_response.json()["dataset_id"])
         self.assertIsNone(nullable_run_response.json()["dataset_version_id"])
+        self.assertEqual(nullable_run_response.json()["case_count"], 1)
+
+        nullable_run_detail_response = self.client.get(
+            f"/evaluation/rag/runs/{nullable_run_id}"
+        )
+        self.assertEqual(nullable_run_detail_response.status_code, 200)
+        self.assertIsNone(nullable_run_detail_response.json()["dataset_id"])
+        self.assertIsNone(nullable_run_detail_response.json()["dataset_version_id"])
+        self.assertEqual(nullable_run_detail_response.json()["summary"]["sample_count"], 1)
+
+        nullable_run_cases_response = self.client.get(
+            f"/evaluation/rag/runs/{nullable_run_id}/cases"
+        )
+        self.assertEqual(nullable_run_cases_response.status_code, 200)
+        self.assertEqual(len(nullable_run_cases_response.json()), 1)
 
         list_runs_response = self.client.get("/evaluation/rag/runs")
         self.assertEqual(list_runs_response.status_code, 200)
