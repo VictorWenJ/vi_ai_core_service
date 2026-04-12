@@ -1,6 +1,6 @@
 # PROJECT_PLAN.md
 
-> 更新日期：2026-04-12
+> 更新日期：2026-04-13
 
 ## 1. 文档定位
 
@@ -69,7 +69,7 @@
 - 完整 Agent 平台
 - 多模态主链路
 
-这些属于后续阶段再逐步推进的内容。:contentReference[oaicite:1]{index=1}
+这些属于后续阶段再逐步推进的内容。
 
 ---
 
@@ -77,7 +77,7 @@
 
 当前轮次为：
 
-**Phase 7：RAG Evaluation + Offline Build Foundation**
+**RAG 持久化控制面升级（Post-Phase 7 主线）**
 
 ### 前置已落地（当前代码事实）
 
@@ -88,42 +88,47 @@
 - retrieval 接入 chat request assembly
 - `/chat` 返回 citations
 - `/chat_stream` 的 completed 事件返回 citations
-- retrieval trace 与测试回归保护
+- Phase 7 评估执行器、离线构建基础与 Internal Console v1 已形成第一轮闭环
+- 当前 RAG 控制面仍以进程内 `RAGControlState` 为真相源
 
 ### 本轮目标
 
-当前轮次不再扩张新的对外能力面，而是为已落地的 Phase 6 建立可持续优化能力。
+当前轮次不扩张新的对外能力面，而是把已落地的 Knowledge + Citation Layer 与 Phase 7 工程基础升级为正式持久化控制面。
 本轮应完成：
 
-- RAG 黄金评估集与标签结构
-- retrieval / citation / answer 三层评估执行器
-- 离线构建元数据与构建批次语义
-- 增量构建 / 局部重建的最小能力边界
-- 基础质量门禁与构建统计
-- API 控制面命名与领域分组收敛
-- 前后端契约统一为领域 REST/SSE 协议
-- 文档加载器适配层引入成熟框架能力
+- 从内存控制面升级为：
+  - MySQL 控制面
+  - 文件存储内容面
+  - Qdrant 向量数据面
+- 文档、版本、构建任务、chunk 元数据正式落盘
+- evaluation run / case 全量持久化
+- 删除 `RAGControlState` 正式控制面职责
+- 引入 `app/db/` 与 `app/rag/repository/` / `app/rag/content_store/` 分层
+- 在尽量不破坏现有 API contract 的前提下完成底层替换
 
 ### 本轮默认技术方向
 
-- 向量库：Qdrant
-- 相似度：Cosine
+- 控制面数据库：MySQL
+- 向量数据库：Qdrant
+- 内容存储：本地文件系统优先，保留后续对象存储替换空间
 - embedding：单一文本 embedding 基线
 - chunking：结构感知 + token-aware + overlap
-- 评估集：人工黄金集优先，规则扩展为辅
-- RAG：继续作为知识 grounding，不承接长期记忆
+- 评估结果：run / case 全量落盘
+- 向量查看：按 `vector_point_id` 从 Qdrant 回读，而不是冗余写入 MySQL
 
 ### 本轮明确不做
 
-- 独立 RAG 微服务
-- 长期记忆平台
-- Agentic RAG
+- 异步任务系统
+- 审计平台
+- 多租户 / 权限体系
+- 复杂对象存储平台化
 - Tool Calling / Agent Runtime
-- 审批流 / Case Workspace
-- 多模态检索主链路
-- 全量知识运营后台
+- 独立 RAG 微服务
+- 用 MySQL 代替 Qdrant
+- 跨存储强分布式事务体系
 
 ---
+
 
 ## 5. 阶段规划原则
 
@@ -158,6 +163,10 @@
 Phase 6 的重点是：
 - 让回答开始具备知识依据与引用能力
 
+Post-Phase 7 的重点是：
+- 先把控制面正式持久化
+- 先让 build / evaluation / inspector 具备可恢复、可追溯基础
+
 不是：
 - 一步到位做知识平台
 - 一步到位做长期记忆系统
@@ -188,22 +197,26 @@ Phase 6 的重点是：
 ### 阶段七：RAG Evaluation + Offline Build Foundation
 在 Knowledge + Citation 主链路落地后，补齐 RAG 黄金评估集、benchmark runner、离线构建元数据、增量构建与基础质量门禁。
 
-### 阶段八：Tool Calling / Action Layer
-在知识 grounding、评估体系与内部控制台稳定后，再做工具调用与基础 workflow 执行层。
+### 阶段八：RAG Control Plane Persistence Upgrade
+在 Phase 7 基础上，把 RAG 从“内存控制面 + Qdrant 数据面”升级为“MySQL 控制面 + 文件存储内容面 + Qdrant 向量数据面”，并让 build / evaluation / inspector 正式落盘。
 
-### 阶段九：Workflow / Agent Runtime Foundation
+### 阶段九：Tool Calling / Action Layer
+在 RAG 控制面正式持久化、Internal Console 与评估链路稳定后，再做工具调用与基础 workflow 执行层。
+
+### 阶段十：Workflow / Agent Runtime Foundation
 在 Tool Calling Foundation 落地后，再建设可循环、可重规划、可持久化的 workflow / agent runtime 基础层。
 
-### 阶段十：Summary & Compression Upgrade
+### 阶段十一：Summary & Compression Upgrade
 在工具调用与 workflow 基础具备后，再升级 conversation summary、长文档摘要与结构化压缩能力，解决当前“摘要质量弱、状态提炼粗”的问题。
 
-### 阶段十一：Case Workspace / Business Scenario MVP
+### 阶段十二：Case Workspace / Business Scenario MVP
 结合具体业务场景，建设案件工作台、结构化业务对象与最小业务闭环。
 
-### 阶段十二：Production Hardening / Governance Upgrade
+### 阶段十三：Production Hardening / Governance Upgrade
 最后再做权限、租户、配置治理、成本治理、线上评估与更完整的工程化加固。
 
 ---
+
 
 ## 7. 当前阶段能力声明
 
@@ -214,6 +227,8 @@ Phase 6 的重点是：
 - Phase 3 持久化短期记忆
 - Phase 4 conversation-scoped layered short-term memory
 - Phase 5 Streaming Chat & Conversation Lifecycle
+- Phase 6 Knowledge + Citation Layer
+- Phase 7 RAG Evaluation + Offline Build Foundation
 - Docker / compose 本地运行方式
 
 当前代码事实补充：
@@ -221,53 +236,59 @@ Phase 6 的重点是：
 - `app/rag/` 已落地治理文档 + 运行时代码
 - retrieval 主链路已在代码中落地并支持可降级
 - `/chat` 与 `/chat_stream` completed 已返回 citations
-- retrieval observability 与对应测试已落地
+- Internal Console v1 已具备 Chat Playground、Knowledge Ingest、Chunk / Vector Inspector、Evaluation Dashboard、Runtime / Config View 页面
+- 当前控制面仍以进程内 `RAGControlState` 为正式事实来源
 
-当前阶段新增（本轮已落地）：
+当前阶段新增（本轮目标）：
 
-- RAG 黄金评估集与标签结构（query / retrieval / citation / answer）
-- retrieval / citation / answer benchmark runner 与结果落盘输出
-- 离线构建元数据与构建批次语义（build/version/strategy/model 版本信息）
-- 增量构建 / 局部重建约束（manifest + content hash）
-- 基础质量门禁与构建统计（failure ratio、empty chunk ratio、upsert 统计）
-- 控制面 API 以领域命名对齐 knowledge / evaluation / runtime
-- 文档加载器适配层允许引入成熟框架，但仍保持内部 ingest 主链路控制权
+- MySQL 控制面正式落地
+- 文件存储内容面正式落地
+- `repository` 与 `content_store` 分层正式落地
+- `build_tasks` / `build_documents` / `chunks` 正式落盘
+- `evaluation_runs` / `evaluation_cases` 全量持久化
+- Runtime / Inspector 查询从内存切换到持久化控制面
 
-当前阶段不得因为引入 RAG 而破坏：
+当前阶段不得因为控制面升级而破坏：
 
 - 同步 chat 主链路
 - 流式 chat 主链路
 - Phase 4 short-term memory 语义
 - Phase 5 message lifecycle 语义
+- Phase 6 citation 契约
+- Phase 7 evaluation / offline build 基础能力
 
 ---
+
 
 ## 8. 当前轮次验收口径
 
-本轮交付的重点不是继续扩张对外聊天能力，而是让已落地的 RAG 具备可评估、可比较、可演进的工程基础。
-截至当前代码基线，本轮 Phase 7 验收口径应聚焦：
+本轮交付的重点不是新增聊天玩法，而是把已落地的 RAG 能力升级为正式可恢复、可追溯、可持续演进的持久化控制面。
+当前轮次验收口径应聚焦：
 
 验收优先级：
 
-1. 黄金评估集与标签结构可落地
-2. retrieval / citation / answer benchmark 可执行
-3. 离线构建具备 build/version 元数据
-4. 增量构建与局部重建边界清晰
-5. 基础质量门禁与构建统计可回归
-6. 不破坏 Phase 4、Phase 5 与 Phase 6 已有能力
+1. `RAGControlState` 退出正式控制面角色
+2. 文档上传后可落 `documents` 与 `document_versions`
+3. build 能从 MySQL + 内容存储读取输入并生成 `build_tasks / build_documents / chunks`
+4. 向量继续写入 Qdrant，向量详情可按 `vector_point_id` 回读
+5. evaluation run / case 全量持久化
+6. Runtime / Inspector 查询改为基于持久化控制面
+7. 不破坏 Phase 4、Phase 5、Phase 6 与 Phase 7 已有能力
 
 ---
 
+
 ## 9. 阶段推进约束
 
-1. 当前阶段仅推进 Phase 7 范围内内容
-2. 不得以 Phase 7 名义提前引入 Tool Calling、长期记忆平台、审批流、Case Workspace、Agent Runtime 或多模态主链路
+1. 当前阶段仅推进 RAG 控制面正式持久化范围内内容
+2. 不得以本轮名义提前引入异步任务系统、审计平台、多租户 / 权限体系、复杂对象存储平台化
 3. Tool Calling / Workflow / Agent Runtime 属于后续阶段，不在本轮混做
-4. Summary Upgrade 属于后续阶段，不在本轮混做
+4. Summary Upgrade 与 Case Workspace 属于后续阶段，不在本轮混做
 5. API 命名、控制面服务命名与前后端契约统一属于当前收口工作，应在不破坏既有行为的前提下尽快完成
 6. 后续每一阶段都必须保持与上一阶段主链路兼容，不允许推倒重来
 
 ---
+
 
 ## 10. 一句话总结
 

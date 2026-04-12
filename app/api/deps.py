@@ -1,4 +1,4 @@
-﻿"""API 路由依赖装配辅助。"""
+"""API 路由依赖装配辅助。"""
 
 from __future__ import annotations
 
@@ -7,9 +7,11 @@ from functools import lru_cache
 from app.config import AppConfig
 from app.context.manager import ContextManager
 from app.context.policies.tokenizer import CharacterTokenCounter
+from app.db import DatabaseRuntime, ensure_database_schema
 from app.providers.embeddings.registry import build_embedding_provider
 from app.providers.chat.registry import ProviderRegistry
 from app.rag.build_service import RAGBuildService
+from app.rag.content_store import LocalRAGContentStore
 from app.rag.document_service import RAGDocumentService
 from app.rag.evaluation_service import RAGEvaluationService
 from app.rag.ingestion.chunker import StructuredTokenChunker
@@ -17,10 +19,18 @@ from app.rag.ingestion.cleaner import DocumentCleaner
 from app.rag.ingestion.parser import DocumentParser
 from app.rag.ingestion.pipeline import KnowledgeIngestionPipeline
 from app.rag.inspector_service import RAGInspectorService
+from app.rag.repository import (
+    BuildDocumentRepository,
+    BuildTaskRepository,
+    ChunkRepository,
+    DocumentRepository,
+    DocumentVersionRepository,
+    EvaluationCaseRepository,
+    EvaluationRunRepository,
+)
 from app.rag.retrieval.service import KnowledgeRetrievalService
 from app.rag.retrieval.vector_store import InMemoryVectorStore, QdrantVectorStore
 from app.rag.runtime import RAGRuntime
-from app.rag.state import RAGControlState
 from app.services.cancellation_registry import CancellationRegistry
 from app.services.chat_service import ChatService
 from app.services.prompt_service import PromptService
@@ -32,6 +42,59 @@ from app.services.streaming_chat_service import StreamingChatService
 @lru_cache(maxsize=1)
 def get_app_config() -> AppConfig:
     return AppConfig.from_env()
+
+
+@lru_cache(maxsize=1)
+def get_database_runtime() -> DatabaseRuntime:
+    config = get_app_config()
+    runtime = DatabaseRuntime(
+        database_url=config.database_config.url,
+        echo_sql=config.database_config.echo_sql,
+        pool_pre_ping=config.database_config.pool_pre_ping,
+    )
+    ensure_database_schema(runtime)
+    return runtime
+
+
+@lru_cache(maxsize=1)
+def get_rag_content_store() -> LocalRAGContentStore:
+    config = get_app_config()
+    return LocalRAGContentStore(root_path=config.rag_content_store_config.root_path)
+
+
+@lru_cache(maxsize=1)
+def get_document_repository() -> DocumentRepository:
+    return DocumentRepository(database_runtime=get_database_runtime())
+
+
+@lru_cache(maxsize=1)
+def get_document_version_repository() -> DocumentVersionRepository:
+    return DocumentVersionRepository(database_runtime=get_database_runtime())
+
+
+@lru_cache(maxsize=1)
+def get_build_task_repository() -> BuildTaskRepository:
+    return BuildTaskRepository(database_runtime=get_database_runtime())
+
+
+@lru_cache(maxsize=1)
+def get_build_document_repository() -> BuildDocumentRepository:
+    return BuildDocumentRepository(database_runtime=get_database_runtime())
+
+
+@lru_cache(maxsize=1)
+def get_chunk_repository() -> ChunkRepository:
+    return ChunkRepository(database_runtime=get_database_runtime())
+
+
+@lru_cache(maxsize=1)
+def get_evaluation_run_repository() -> EvaluationRunRepository:
+    return EvaluationRunRepository(database_runtime=get_database_runtime())
+
+
+@lru_cache(maxsize=1)
+def get_evaluation_case_repository() -> EvaluationCaseRepository:
+    return EvaluationCaseRepository(database_runtime=get_database_runtime())
 
 
 @lru_cache(maxsize=1)
@@ -71,11 +134,6 @@ def get_rag_runtime() -> RAGRuntime:
 
 
 @lru_cache(maxsize=1)
-def get_rag_control_state() -> RAGControlState:
-    return RAGControlState()
-
-
-@lru_cache(maxsize=1)
 def get_rag_control_vector_store():
     app_config = get_app_config()
     rag_config = app_config.rag_config
@@ -96,8 +154,11 @@ def get_rag_control_embedding_provider():
 @lru_cache(maxsize=1)
 def get_rag_document_service() -> RAGDocumentService:
     return RAGDocumentService(
-        state=get_rag_control_state(),
+        document_repository=get_document_repository(),
+        document_version_repository=get_document_version_repository(),
+        content_store=get_rag_content_store(),
         parser=DocumentParser(),
+        cleaner=DocumentCleaner(),
     )
 
 
@@ -135,9 +196,13 @@ def get_rag_control_ingestion_pipeline() -> KnowledgeIngestionPipeline:
 @lru_cache(maxsize=1)
 def get_rag_build_service() -> RAGBuildService:
     return RAGBuildService(
-        state=get_rag_control_state(),
-        document_service=get_rag_document_service(),
+        document_version_repository=get_document_version_repository(),
+        build_task_repository=get_build_task_repository(),
+        build_document_repository=get_build_document_repository(),
+        chunk_repository=get_chunk_repository(),
+        content_store=get_rag_content_store(),
         pipeline=get_rag_control_ingestion_pipeline(),
+        vector_store=get_rag_control_vector_store(),
     )
 
 
@@ -147,14 +212,21 @@ def get_rag_inspector_service() -> RAGInspectorService:
         app_config=get_app_config(),
         rag_runtime=get_rag_runtime(),
         retrieval_service=get_rag_control_retrieval_service(),
-        document_service=get_rag_document_service(),
+        document_repository=get_document_repository(),
+        document_version_repository=get_document_version_repository(),
+        build_task_repository=get_build_task_repository(),
+        build_document_repository=get_build_document_repository(),
+        chunk_repository=get_chunk_repository(),
+        content_store=get_rag_content_store(),
+        vector_store=get_rag_control_vector_store(),
     )
 
 
 @lru_cache(maxsize=1)
 def get_rag_evaluation_service() -> RAGEvaluationService:
     return RAGEvaluationService(
-        state=get_rag_control_state(),
+        evaluation_run_repository=get_evaluation_run_repository(),
+        evaluation_case_repository=get_evaluation_case_repository(),
         inspector_service=get_rag_inspector_service(),
         document_service=get_rag_document_service(),
     )
@@ -164,9 +236,10 @@ def get_rag_evaluation_service() -> RAGEvaluationService:
 def get_runtime_service() -> RuntimeService:
     return RuntimeService(
         app_config=get_app_config(),
-        document_service=get_rag_document_service(),
-        build_service=get_rag_build_service(),
-        evaluation_service=get_rag_evaluation_service(),
+        document_repository=get_document_repository(),
+        chunk_repository=get_chunk_repository(),
+        build_task_repository=get_build_task_repository(),
+        evaluation_run_repository=get_evaluation_run_repository(),
     )
 
 
@@ -193,3 +266,4 @@ def get_streaming_chat_service() -> StreamingChatService:
         cancellation_registry=get_cancellation_registry(),
         rag_runtime=get_rag_runtime(),
     )
+

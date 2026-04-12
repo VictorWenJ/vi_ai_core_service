@@ -35,12 +35,18 @@ docker compose -f infra/compose.yaml ps
 当前 `infra/compose.yaml` 已为 `app` 服务默认启用：
 
 - 目录挂载：`../app:/workspace/app`
-- 依赖同步：`../requirements.txt:/workspace/requirements.txt:ro`
-- 启动参数：`pip install -r /workspace/requirements.txt && uvicorn ... --reload`
+- 启动参数：`uvicorn ... --reload`
 - 监听兼容：`WATCHFILES_FORCE_POLLING=true`
 
 这意味着你在本地修改 `app/` 下 Python 代码后，容器内服务会自动重载，不需要每次重建镜像。
-也意味着你在本地修改 `requirements.txt` 后，重启 `app` 容器时会自动安装最新依赖（例如 `python-multipart`）。
+也意味着重启容器时不会重复执行 `pip install`。
+
+如果你修改了 `requirements.txt`，需要手动重建 `app` 镜像后再启动：
+
+```powershell
+docker compose -f infra/compose.yaml build app
+docker compose -f infra/compose.yaml up -d app
+```
 
 说明：如果你修改了 `infra/Dockerfile` 或系统层依赖，仍需执行 `up --build` 重新构建镜像。
 

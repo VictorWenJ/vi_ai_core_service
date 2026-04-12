@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 
-> 更新日期：2026-04-12
+> 更新日期：2026-04-13
 
 ## 1. 文档定位
 
@@ -85,7 +85,8 @@
 - 负责 ingest / parse / clean / chunk / embed / index
 - 负责文档加载适配层（可接入成熟 loader 框架并转换为内部中间表示）
 - 负责 retrieval service、knowledge block 渲染与 citation 结构
-- 作为 Knowledge + Citation Layer 的内部实现域
+- 负责 `repository/`、`content_store/`、build task、evaluation 持久化编排
+- 作为 Knowledge + Citation Layer 与 RAG 持久化控制面的内部实现域
 
 ### 模型 API 接入层（`app/providers/`）
 职责：
@@ -102,6 +103,14 @@
 - 承接离线构建与 benchmark 运行的事实型日志字段
 
 ### 数据模型层（`app/schemas/`）
+职责：
+- 承载共享契约与基础数据模型
+- `app/api/schemas/` 负责对外 request / response contract
+
+### 数据库基础设施层（`app/db/`）
+职责：
+- 负责数据库连接、session、事务与公共持久化基础设施
+- 为 `rag` 等子域提供共享数据库能力
 职责：
 - 定义内部 `LLMMessage`、`LLMRequest`、`LLMResponse`、`LLMStreamChunk` 等共享契约
 - API request / response 与 SSE event 当前位于 `app/api/schemas/`
@@ -159,94 +168,25 @@
 ## 6. 当前调用关系
 
 ### 6.1 同步聊天链路
-
-1. 请求进入 `/chat`
-2. API 校验并委托给 service
-3. service 调用 `request_assembler`
-4. assembler 按固定顺序装配：
-   - system prompt
-   - knowledge block
-   - working memory block
-   - rolling summary block
-   - recent raw messages
-   - current user input
-5. service 调用 provider 非流式请求
-6. provider 返回归一化结果
-7. service 在有状态会话下执行 completed 态 context update
-8. API 输出 `ChatResponse`
-
-当前代码事实：
-
-- 当前同步链路已支持 retrieval、knowledge block 与 citations
+`api/chat -> services/chat_service -> request_assembler -> context/prompts/rag/providers -> response`。
 
 ### 6.2 流式聊天链路
-
-1. 请求进入 `/chat_stream`
-2. API 建立 SSE 响应
-3. service 生成 `request_id` 与 `assistant_message_id`
-4. service 写入 user message 与 assistant placeholder
-5. API 先输出 `response.started`
-6. service 调用 provider 流式请求
-7. provider 输出 canonical stream chunk
-8. service 推进 lifecycle 并生成 canonical stream event
-9. API 将 event 序列化为 SSE
-10. 正常完成时：
-   - service 写回 completed assistant message
-   - service 执行 Phase 4 标准 context update
-   - API 输出 `response.completed`
-- `response.completed` 当前可附带 usage / latency / trace / citations
-11. 异常或取消时：
-   - service 写回 `failed` / `cancelled`
-   - 不进入标准 memory update
-   - API 输出 `response.error` 或 `response.cancelled`
-
-当前代码事实：
-
-- 当前流式链路在 completed 阶段返回 citations，delta 阶段不返回 citation 增量
+`api/chat_stream -> services/streaming_chat_service -> request_assembler -> context/prompts/rag/providers -> SSE serializer`。
 
 ### 6.3 知识导入链路
-
-当前代码已实现知识导入最小链路：
-
-1. parser（raw text / `.txt` / `.md`）
-2. cleaner
-3. 结构感知 + token-aware + overlap chunking
-4. embedding provider 抽象调用
-5. vector index upsert（in-memory / qdrant 封装）
+`api/knowledge -> rag/document_service -> rag/ingestion/* -> rag/content_store -> rag/repository -> MySQL`。
 
 ### 6.4 离线构建链路
-
-当前阶段离线构建链路应在不破坏在线主链路的前提下持续增强：
-
-1. 文档导入进入 `app/rag/ingestion/`
-2. parser / cleaner / chunker 完成标准化处理
-3. embedding provider 生成向量表达
-4. index 写入向量存储
-5. 构建产物补充 `build_id`、`version_id`、`chunk_strategy_version`、`embedding_model_version` 等元数据
-6. 构建阶段执行最小质量门禁与统计输出
-
-当前代码事实补充：
-
-- `KnowledgeIngestionPipeline` 已提供 `build_documents` 离线构建入口
-- 构建链路已支持 build metadata 透传至 chunk metadata
-- 增量/局部重建当前通过 manifest + content hash + force document ids 约束
-- 构建统计与质量门禁当前已覆盖 failure ratio、empty chunk ratio、upsert 一致性
+`api/knowledge -> rag/build_service -> rag/repository(document/version/build_task/build_document/chunk) -> rag/content_store(normalized text) -> providers/embeddings -> rag/retrieval/vector_store(Qdrant)`。
 
 ### 6.5 评估链路
+`api/evaluation -> rag/evaluation_service -> rag/evaluation/runner -> rag/retrieval/runtime -> rag/repository(evaluation_run/evaluation_case)`。
 
-当前阶段评估链路应围绕已落地的 Phase 6 主链路构建：
-
-1. 使用固定 query set 与标签集作为输入
-2. 分别运行 retrieval、citation、answer 三层评估
-3. 输出结构化 benchmark 结果
-4. 不允许让评估 runner 反向侵入在线 chat / stream 主链路
-
-当前代码事实补充：
-
-- `app/rag/evaluation/` 已提供数据集模型、runner 与结构化结果落盘能力
-- 评估执行仅消费 `RAGRuntime`，不侵入在线 `/chat`、`/chat_stream` 主链路
+### 6.6 Runtime / Inspector 查询链路
+`api/runtime | api/knowledge inspector -> services/runtime_service | rag/inspector_service -> rag/repository -> MySQL`；当需要查看向量详情时，由 `rag/inspector_service` 按 `vector_point_id` 向 Qdrant 回读。
 
 ---
+
 
 ## 7. 分层衔接原则
 
@@ -279,59 +219,45 @@
 
 ## 8. 当前阶段架构约束
 
-
 ### 8.1 RAG 先做内部子域，不拆独立服务
-- `app/rag/` 是当前唯一知识与检索实现域
-- 若后续需要 ingestion worker，可作为同仓库独立运行角色演进
-- 当前阶段不额外建设独立 knowledge service
-
-当前代码事实：
-
-- `app/rag/` 已形成知识与检索实现代码
+`app/rag/` 继续作为内部知识与检索子域，不拆独立微服务。
 
 ### 8.2 相似度与索引约束
-- 默认向量库基线：Qdrant
-- 默认相似度：Cosine
-- 当前阶段不自研 ANN 算法
-- 当前阶段只做文本 embedding 主链路
+向量检索仍以 Qdrant + cosine 为基线；MySQL 不承担向量检索职责。
 
 ### 8.3 Citation 约束
-- 当前代码基线中 citation 已进入对外响应契约
-- `/chat` 返回完整 citations（为空时返回空数组）
-- `/chat_stream` 仅在完成事件返回 citations
-- delta 阶段不返回 citation 增量
+citation 必须继续来自 retrieval 结果，不得退化为模型自由生成装饰文本。
 
 ### 8.4 降级约束
-- retrieval 失败时，系统可退化为无知识增强聊天
-- ingestion 失败不应拖垮在线 chat 主链路
-- embedding/index 故障需可定位、可回归、可审查
+检索失败时，chat 与 stream 主链路必须允许降级，不得因 RAG 构建或控制面故障直接拖垮主链路。
 
-### 8.5 Phase 7 约束
-- 当前轮次允许增强离线构建与评估，不允许把在线主链路改造成实验脚手架
-- 评估 runner 与评估数据集应服务于现有 RAG 主链路，不得重新定义新的回答契约
-- 构建批次、版本、质量门禁等能力应围绕 `app/rag/` 与 `tests/` 组织，不得提前扩张成独立知识平台
+### 8.5 Post-Phase 7 控制面升级约束
+- 删除 `RAGControlState` 作为正式控制面真相源
+- MySQL 负责控制面与治理数据
+- 文件存储负责原始文件与 normalized text 快照
+- Qdrant 继续负责 embeddings、payload 与 retrieval
+- `build_tasks`、`evaluation_runs` 必须按任务对象建模，即使当前仍同步执行
 
 ### 8.6 控制面契约与命名约束
-- 控制面 API 模块必须按领域命名，不得继续使用 `*_console.py` 作为正式 API 文件名
-- `app/rag/` 不应长期保留以消费者命名的 `console_service.py` 聚合服务；控制面相关应用服务应按 document / build / inspector / evaluation / runtime 等职责拆分
-- 前后端契约应以后端 schema 为 source of truth，逐步走向 OpenAPI 驱动的一致性类型生成或映射
+- API 仍按领域命名，不再按 console / playground / debug 命名长期接口
+- `app/api/schemas/` 只承载对外 request / response contract
+- 领域内部对象保留在 `app/rag/`、`app/context/` 等模块内
 
 ### 8.7 文档加载适配层约束
-- loader 框架只进入 `app/rag/ingestion/` 输入适配层
-- 外部 loader 输出必须先转换为内部中间表示，再进入 clean / chunk / metadata / build 主链路
-- 不允许把 LangChain 或其他框架的 Document / pipeline 直接当作内部一等领域模型
+LangChain loader 只作为 ingest 输入适配层；不得接管 chunk、metadata、build、evaluation、retrieval 主链路。
 
-### 8.8 架构边界约束
-当前阶段不得以 Phase 7 名义扩展为：
+### 8.8 repository 分层约束
+- `app/db/` 只承载共享数据库基础设施
+- `app/rag/repository/` 承载 `rag` 子域的数据访问封装
+- 不得在 API / service / inspector 中散落 SQL
 
-- 独立 RAG 微服务
-- Tool Calling / Agent Runtime
-- 长期记忆平台
-- 审批流
-- Case Workspace
-- 多模态检索主链路
+### 8.9 结构化字段命名约束
+- 详情对象字段优先使用 `*_details`
+- 标识集合字段优先使用 `*_ids`
+- 不再以 `*_json` 作为业务语义命名
 
 ---
+
 
 ## 9. 修改规则
 
@@ -345,4 +271,4 @@
 
 ## 10. 一句话总结
 
-`ARCHITECTURE.md` 在当前阶段的职责，是作为项目总体架构文件，明确 `vi_ai_core_service` 的分层结构、依赖方向，以及当前已落地的同步 / 流式 / Knowledge + Citation 主链路，以及当前阶段的离线构建与评估支撑链路，确保系统在后续迭代中仍保持整体分层清晰、职责稳定、演进可控。
+`ARCHITECTURE.md` 在当前阶段的职责，是作为项目总体架构文件，明确 `vi_ai_core_service` 的分层结构、依赖方向，以及当前已落地的同步 / 流式 / Knowledge + Citation / Evaluation 主链路，以及本轮控制面持久化升级所需的 MySQL / 文件存储 / Qdrant 三层分工，确保系统在后续迭代中仍保持整体分层清晰、职责稳定、演进可控。

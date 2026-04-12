@@ -24,11 +24,20 @@ docker compose -f internal_console/infra/compose.yaml logs -f internal_console
 
 ## 3. 重启与自动重打包
 
-当前 `internal_console` 服务启动命令为：
+当前 `internal_console` 服务启动脚本为：
 
-- `npm ci && npm run build && npm run preview -- --host 0.0.0.0 --port 5173`
+- `/app/infra/start.sh`
 
-因此在 Docker Desktop 对 `vi_ai_core_internal_console` 执行 `Restart` 时，会自动重新安装依赖、重新构建并启动最新代码。
+脚本行为：
+
+1. 比较 `package-lock.json` 的哈希与 `node_modules` 内记录
+2. 仅在“首次启动”或“lockfile 变化”时执行 `npm ci`
+3. 每次启动都执行 `npm run build` 并 `npm run preview`
+
+因此在 Docker Desktop 对 `vi_ai_core_internal_console` 执行 `Restart` 时：
+
+- 不会每次都重新下载依赖包
+- 仍会自动重新构建并启动最新代码
 
 ## 4. 停止与清理
 

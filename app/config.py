@@ -99,6 +99,14 @@ DEFAULT_RAG_EMBEDDING_PROVIDER = "deterministic"
 DEFAULT_RAG_EMBEDDING_MODEL = "deterministic-text-v1"
 # embedding 向量默认维度大小，单位为维（dimension）。
 DEFAULT_RAG_EMBEDDING_DIMENSION = 64
+# 数据库连接默认 URL（MySQL 控制面基线）。
+DEFAULT_DB_URL = "mysql+pymysql://root:root@localhost:3306/vi_ai_core_service?charset=utf8mb4"
+# SQL 日志默认是否开启。
+DEFAULT_DB_ECHO = False
+# 连接池默认是否启用 pre-ping 健康检查。
+DEFAULT_DB_POOL_PRE_PING = True
+# RAG 内容存储默认根目录（相对项目根目录）。
+DEFAULT_RAG_CONTENT_STORE_ROOT = "storage"
 
 DEFAULT_BASE_URLS: dict[str, str | None] = {
     "openai": None,
@@ -236,6 +244,22 @@ class RAGConfig:
 
 
 @dataclass(frozen=True)
+class DatabaseConfig:
+    # 控制面数据库连接 URL。
+    url: str = DEFAULT_DB_URL
+    # 是否输出 SQL 调试日志。
+    echo_sql: bool = DEFAULT_DB_ECHO
+    # 是否启用连接池 pre-ping 健康检查。
+    pool_pre_ping: bool = DEFAULT_DB_POOL_PRE_PING
+
+
+@dataclass(frozen=True)
+class RAGContentStoreConfig:
+    # 内容存储根目录路径（可为相对路径或绝对路径）。
+    root_path: str = DEFAULT_RAG_CONTENT_STORE_ROOT
+
+
+@dataclass(frozen=True)
 class AppConfig:
     # 服务默认使用的 provider 名称。
     default_provider: str = "openai"
@@ -255,6 +279,12 @@ class AppConfig:
     streaming_config: StreamingConfig = field(default_factory=StreamingConfig)
     # RAG 子域配置。
     rag_config: RAGConfig = field(default_factory=RAGConfig)
+    # 数据库基础设施配置。
+    database_config: DatabaseConfig = field(default_factory=DatabaseConfig)
+    # RAG 内容存储配置。
+    rag_content_store_config: RAGContentStoreConfig = field(
+        default_factory=RAGContentStoreConfig
+    )
 
     @classmethod
     def from_env(
@@ -453,6 +483,19 @@ class AppConfig:
         if rag_config.chunk_overlap_token_size >= rag_config.chunk_token_size:
             raise ConfigError("RAG_CHUNK_OVERLAP_TOKEN_SIZE must be < RAG_CHUNK_TOKEN_SIZE.")
 
+        database_config = DatabaseConfig(
+            url=_read_optional("DB_URL", DEFAULT_DB_URL) or DEFAULT_DB_URL,
+            echo_sql=_read_bool("DB_ECHO", DEFAULT_DB_ECHO),
+            pool_pre_ping=_read_bool("DB_POOL_PRE_PING", DEFAULT_DB_POOL_PRE_PING),
+        )
+        rag_content_store_config = RAGContentStoreConfig(
+            root_path=_read_optional(
+                "RAG_CONTENT_STORE_ROOT",
+                DEFAULT_RAG_CONTENT_STORE_ROOT,
+            )
+            or DEFAULT_RAG_CONTENT_STORE_ROOT,
+        )
+
         return cls(
             default_provider=default_provider,
             timeout_seconds=timeout_seconds,
@@ -463,6 +506,8 @@ class AppConfig:
             context_memory_config=context_memory,
             streaming_config=streaming,
             rag_config=rag_config,
+            database_config=database_config,
+            rag_content_store_config=rag_content_store_config,
         )
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig:

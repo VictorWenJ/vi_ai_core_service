@@ -18,6 +18,7 @@ from app.api.schemas.control_plane import (
     BuildDetailResponse,
     BuildSummaryResponse,
     KnowledgeChunkDetailResponse,
+    KnowledgeChunkVectorDetailResponse,
     KnowledgeChunkSummaryResponse,
     KnowledgeDocumentDetailResponse,
     KnowledgeDocumentSummaryResponse,
@@ -84,7 +85,7 @@ def create_build(payload: BuildCreateRequest) -> BuildDetailResponse:
     started_at = perf_counter()
     service = _get_build_service()
     try:
-        build_result = service.create_build(
+        build_payload = service.create_build(
             version_id=payload.version_id,
             force_rebuild_document_ids=payload.force_rebuild_document_ids,
             max_failure_ratio=payload.max_failure_ratio,
@@ -96,22 +97,25 @@ def create_build(payload: BuildCreateRequest) -> BuildDetailResponse:
             started_at=started_at,
             event_prefix="api.knowledge.create_build",
         ) from exc
-    return BuildDetailResponse(**build_result.to_dict())
+    return BuildDetailResponse(**_normalize_build_payload(build_payload))
 
 
 @router.get("/knowledge/builds", response_model=list[BuildSummaryResponse])
 def list_builds() -> list[BuildSummaryResponse]:
-    service = _get_build_service()
-    return [BuildSummaryResponse(**_build_summary_payload(build)) for build in service.list_builds()]
+    service = _get_inspector_service()
+    return [
+        BuildSummaryResponse(**_build_summary_payload(build_payload))
+        for build_payload in service.list_builds()
+    ]
 
 
 @router.get("/knowledge/builds/{build_id}", response_model=BuildDetailResponse)
 def get_build(build_id: str) -> BuildDetailResponse:
-    service = _get_build_service()
-    build_result = service.get_build(build_id)
-    if build_result is None:
+    service = _get_inspector_service()
+    build_payload = service.get_build(build_id)
+    if build_payload is None:
         raise HTTPException(status_code=404, detail=f"build_id '{build_id}' 不存在。")
-    return BuildDetailResponse(**build_result.to_dict())
+    return BuildDetailResponse(**_normalize_build_payload(build_payload))
 
 
 @router.get("/knowledge/documents", response_model=list[KnowledgeDocumentSummaryResponse])
@@ -156,6 +160,18 @@ def get_chunk(chunk_id: str) -> KnowledgeChunkDetailResponse:
     return KnowledgeChunkDetailResponse(**chunk_payload)
 
 
+@router.get(
+    "/knowledge/chunks/{chunk_id}/vector",
+    response_model=KnowledgeChunkVectorDetailResponse,
+)
+def get_chunk_vector_detail(chunk_id: str) -> KnowledgeChunkVectorDetailResponse:
+    service = _get_inspector_service()
+    vector_payload = service.get_chunk_vector_detail(chunk_id=chunk_id)
+    if vector_payload is None:
+        raise HTTPException(status_code=404, detail=f"chunk_id '{chunk_id}' 不存在。")
+    return KnowledgeChunkVectorDetailResponse(**vector_payload)
+
+
 @router.post("/knowledge/retrieval/debug", response_model=RetrievalDebugResponse)
 def retrieval_debug(payload: RetrievalDebugRequest) -> RetrievalDebugResponse:
     started_at = perf_counter()
@@ -182,10 +198,18 @@ def _parse_tags(raw_tags: str | None) -> list[str]:
     return [segment.strip() for segment in raw_tags.split(",") if segment.strip()]
 
 
-def _build_summary_payload(build_result) -> dict[str, Any]:
-    payload = build_result.to_dict()
+def _build_summary_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    payload = _normalize_build_payload(payload)
     return {
         "metadata": payload["metadata"],
         "statistics": payload["statistics"],
         "quality_gate": payload["quality_gate"],
     }
+
+
+def _normalize_build_payload(payload: Any) -> dict[str, Any]:
+    if isinstance(payload, dict):
+        return payload
+    if hasattr(payload, "to_dict"):
+        return dict(payload.to_dict())
+    raise ValueError("build payload 格式不正确。")

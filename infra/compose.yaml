@@ -1,6 +1,36 @@
 name: vi_ai_core_service
 
 services:
+  mysql:
+    image: mysql:8.4
+    container_name: vi_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: vi_ai_core_service
+      MYSQL_USER: vi_user
+      MYSQL_PASSWORD: vi_password
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "127.0.0.1",
+          "-uroot",
+          "-proot",
+        ]
+      interval: 8s
+      timeout: 4s
+      retries: 15
+      start_period: 20s
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: vi_redis
@@ -37,15 +67,15 @@ services:
     volumes:
       # 本地代码热挂载：宿主机 app 目录变更后，容器内 uvicorn --reload 自动重载
       - ../app:/workspace/app
-      # 每次启动使用宿主机最新 requirements，避免新增依赖后容器缺包。
-      - ../requirements.txt:/workspace/requirements.txt:ro
     command:
       [
         "sh",
         "-c",
-        "pip install --disable-pip-version-check --no-cache-dir -r /workspace/requirements.txt && uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload",
+        "uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload",
       ]
     depends_on:
+      mysql:
+        condition: service_healthy
       redis:
         condition: service_healthy
       qdrant:

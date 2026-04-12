@@ -6,6 +6,8 @@
 ---
 
 ## 2. 架构目标
+当前轮次前端不新增大型页面，而是围绕后端持久化控制面升级，保持现有 Chat Playground、Knowledge Ingest、Chunk / Vector Inspector、Evaluation Dashboard、Runtime / Config View 可继续消费稳定领域 API。
+
 `internal_console/` 的目标不是承载核心业务逻辑，而是作为 `vi_ai_core_service` 的可视化操作与调试前端。
 
 其架构目标包括：

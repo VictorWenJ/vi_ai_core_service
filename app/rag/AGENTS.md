@@ -1,6 +1,6 @@
 # app/rag/AGENTS.md
 
-> 更新日期：2026-04-12
+> 更新日期：2026-04-13
 
 ## 1. 文档定位
 
@@ -41,7 +41,7 @@
 ## 2. 模块定位
 
 `app/rag/` 是系统在 Phase 6 落地的内部知识与检索子域。
-截至当前代码基线，模块已具备 Python 运行时代码与最小 ingest/retrieval/citation 闭环，并进入 Phase 7 的离线构建与评估基础增强阶段。
+截至当前代码基线，模块已具备 Python 运行时代码与最小 ingest / retrieval / citation 闭环，并已完成 Phase 7 的离线构建与评估基础，当前进入控制面正式持久化升级阶段。
 
 当前阶段建议围绕以下职责组织：
 
@@ -136,10 +136,12 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - 当前 `/chat` 与 `/chat_stream` completed 已接入本模块并返回 citations
 - 当前 retrieval 失败路径支持可降级，主 chat 链路不被拖垮
 
-### 6.7 Phase 7 演进原则
-- 本轮优先补齐离线构建元数据与构建质量门禁
-- 本轮允许为 benchmark 与评估标签提供稳定数据支撑
-- 本轮不把 `app/rag/` 扩张成独立知识运营平台或复杂 agentic retrieval 层
+### 6.7 Post-Phase 7 控制面升级原则
+- 当前 `RAGControlState` 必须退出正式控制面角色
+- `rag` 子域必须从“内存控制面 + Qdrant 数据面”升级为“MySQL 控制面 + 文件存储内容面 + Qdrant 数据面”
+- 本轮优先做控制面正式持久化，而不是先上异步任务系统
+- build / evaluation 虽可继续同步执行，但相关对象必须按任务对象落表
+
 
 ### 6.8 文档加载器适配原则
 - 文档加载器允许通过成熟框架接入，例如 LangChain document loaders
@@ -152,7 +154,11 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - 不再长期维持以消费者命名的 `console_service.py` 作为聚合服务
 - runtime summary / config / health 等系统级摘要能力不应继续固化在 `app/rag/` 内部
 
----
+### 6.10 repository / content_store 分层原则
+- `app/rag/repository/` 负责 `rag` 子域的数据访问封装
+- `app/rag/content_store/` 负责原始文件与 normalized text 快照存取
+- `app/db/` 负责共享数据库基础设施
+- 不允许在 API / service / inspector 中散落 SQL
 
 ## 7. 当前阶段能力声明
 
@@ -161,7 +167,8 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - `app/rag/` 已落地运行时代码
 - 仓库已具备 ingest -> embed -> index -> retrieve 主链路
 - `/chat` 与 `/chat_stream` completed 已接入 citations
-- `tests/` 已具备 RAG / citation 测试
+- `tests/` 已具备 RAG / citation / evaluation / offline build 测试
+- 当前正式控制面仍停留在进程内 `RAGControlState`
 
 当前前置已落地目标：
 
@@ -174,37 +181,26 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - retrieval service
 - citation-ready retrieval 结果
 - 与 `/chat` 和 `/chat_stream` completed 收口兼容的 citation 数据支撑
+- Phase 7 evaluation / offline build foundation
 
-当前前置默认基线：
+当前本轮目标：
 
-- 向量数据库：**Qdrant**
-- 相似度度量：**Cosine**
-- embedding：单一文本 embedding 基线
-- 检索：top-k + metadata filter
-- retrieval 结果进入 request assembly 的位置由 `services / request_assembler` 决定
-
-当前本轮新增（本轮已落地）：
-
-- 构建批次与版本元数据（build_id / version_id / chunk_strategy_version / embedding_model_version）
-- 增量构建 / 局部重建边界（manifest + content hash + force rebuild ids）
-- 基础质量门禁与构建统计（failure ratio / empty chunk ratio / upsert 一致性）
-- 与 retrieval / citation / answer benchmark 对齐的数据支撑（`app/rag/evaluation/`）
-- 允许在 loader adapter 层接入成熟文档加载器框架，并继续保持内部 ingest 主链路控制权
+- 删除 `RAGControlState` 正式控制面职责
+- 引入 `repository` 与 `content_store` 分层
+- 让 `documents`、`document_versions`、`build_tasks`、`build_documents`、`chunks`、`evaluation_runs`、`evaluation_cases` 正式落盘
+- 让 Inspector 通过 `vector_point_id` 回读 Qdrant 查看向量详情
 
 当前本轮不要求落地：
 
+- 异步任务系统
 - 独立 RAG 微服务
-- complex rerank
-- hybrid retrieval
-- 重型 rerank 体系
-- graph retrieval
-- agentic retrieval
+- complex rerank / hybrid retrieval / graph retrieval
 - 多模态检索主链路
 - 自动写回知识库
-- 知识审批流
-- 知识运营后台
+- 审计平台 / 知识审批流 / 知识运营后台
 
 ---
+
 
 ## 8. 核心模型要求
 
@@ -271,14 +267,22 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - `updated_at`
 - `metadata`
 
-### 8.5 Phase 7 构建元数据要求
-如本轮新增离线构建能力，至少应考虑以下元数据：
-- `build_id`
-- `version_id`
-- `chunk_strategy_version`
-- `embedding_model_version`
+### 8.5 Post-Phase 7 控制面对象要求
+如本轮新增控制面持久化能力，至少应考虑以下正式对象：
+- `documents`
+- `document_versions`
+- `build_tasks`
+- `build_documents`
+- `chunks`
+- `evaluation_runs`
+- `evaluation_cases`
+- `manifest_details`
 
-这些字段可按当前代码结构选择落位到文档对象、chunk 对象、构建结果对象或专用构建元数据对象中，但必须保证可追踪、可比较、可回归。
+这些对象可按当前代码结构选择落位到领域模型、持久化模型或服务入参 / 出参对象中，但必须保证：
+- 可追踪
+- 可比较
+- 可回归
+- 向量详情通过 `vector_point_id` 回读 Qdrant，而不是在 `chunks` 主表冗余完整向量值
 
 ---
 
@@ -342,6 +346,13 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 
 ## 11. Code Review 清单
 
+- 是否仍以 `rag` 作为内部子域，而不是擅自拆独立服务？
+- 是否删除了 `RAGControlState` 正式状态容器职责？
+- 是否已建立 `repository` 与 `content_store` 分层？
+- 是否避免在 `chunks` 表中冗余完整向量？
+- build / evaluation 是否都按任务对象正式落盘？
+
+
 1. `app/rag/` 是否仍保持为“内部知识与检索子域”？
 2. 当前提交是否真的新增了 RAG 代码，而不是只在文档中宣称已实现？
 3. 若已新增实现，ingestion 与 retrieval 是否职责清晰？
@@ -362,6 +373,13 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 ---
 
 ## 12. 测试要求
+
+- document upload -> persistence 测试
+- build task -> build_documents -> chunks 持久化测试
+- Inspector 从 MySQL 查询控制面、从 Qdrant 回读向量详情测试
+- evaluation run / case 全量持久化测试
+- 服务重启后仍可查询控制面测试
+
 
 当前代码现状下，本模块已存在运行时代码。
 当前测试至少覆盖：

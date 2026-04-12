@@ -200,6 +200,19 @@ class FakeInternalConsoleService:
             "metadata": {},
         }
 
+    def get_chunk_vector_detail(self, *, chunk_id: str):
+        if chunk_id != "chk-1":
+            return None
+        return {
+            "chunk_id": "chk-1",
+            "vector_point_id": "chk-1",
+            "vector_collection": "vi_ai_knowledge_chunks",
+            "found": True,
+            "vector": [0.1, 0.2, 0.3],
+            "vector_dimension": 3,
+            "payload": {"document_id": "doc-1"},
+        }
+
     def retrieval_debug(self, **kwargs):
         del kwargs
         return {
@@ -357,6 +370,11 @@ class ConsoleAPITests(unittest.TestCase):
         get_chunk_response = self.client.get("/knowledge/chunks/chk-1")
         self.assertEqual(get_chunk_response.status_code, 200)
         self.assertEqual(get_chunk_response.json()["document_id"], "doc-1")
+
+        get_vector_response = self.client.get("/knowledge/chunks/chk-1/vector")
+        self.assertEqual(get_vector_response.status_code, 200)
+        self.assertTrue(get_vector_response.json()["found"])
+        self.assertEqual(get_vector_response.json()["vector_point_id"], "chk-1")
 
         retrieval_debug_response = self.client.post(
             "/knowledge/retrieval/debug",

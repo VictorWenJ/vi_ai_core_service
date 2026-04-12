@@ -27,6 +27,7 @@ def create_evaluation_run(payload: EvaluationRunCreateRequest) -> EvaluationRunD
         run_result = service.create_evaluation_run(
             dataset_id=payload.dataset_id,
             version_id=payload.version_id,
+            build_id=payload.build_id,
             samples=[sample.model_dump() for sample in payload.samples],
             run_metadata=dict(payload.metadata) or {"trigger": "control_api"},
         )
@@ -67,13 +68,16 @@ def list_evaluation_run_cases(run_id: str) -> list[EvaluationRunCaseResponse]:
 
 
 def _to_run_summary_payload(run_result) -> dict[str, object]:
+    metadata = dict(run_result.metadata)
     return {
         "run_id": run_result.run_id,
+        "build_id": metadata.get("build_id"),
         "dataset_id": run_result.dataset_id,
         "dataset_version_id": run_result.dataset_version_id,
         "started_at": run_result.started_at,
         "completed_at": run_result.completed_at,
         "summary": run_result.summary.to_dict(),
-        "metadata": dict(run_result.metadata),
+        "status": metadata.get("status"),
+        "metadata": metadata,
         "case_count": len(run_result.cases),
     }

@@ -3,7 +3,7 @@
 > skill_name: python-observability-capability
 > module_scope: app/observability/
 > status: active
-> last_updated: 2026-04-12
+> last_updated: 2026-04-13
 
 ## 1. Skill 定位
 
@@ -66,10 +66,13 @@ observability 是支撑层，不得因为日志报错而打断同步或流式主
 ### 4.5 日志不是状态存储
 日志用于排查，不用于替代数据库、上下文 store 或正式契约。
 
-### 4.6 Phase 7 事实型评估日志
+### 4.6 Post-Phase 7 事实型持久化日志
 benchmark 结果、构建批次统计、质量门禁失败应继续以事实型日志表达，不在 observability 层实现评分逻辑本身。
 
 ---
+
+### 4.6 Post-Phase 7 事实型持久化日志
+控制面迁移后，应记录 document / build_task / evaluation_run 相关事实型日志，但 observability 仍不是状态存储，不得替代 MySQL / Qdrant / 内容存储。
 
 ## 5. 默认阶段基线
 

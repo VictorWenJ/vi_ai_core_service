@@ -39,6 +39,16 @@ class BaseVectorStore(ABC):
     ) -> list[RetrievedChunk]:
         raise NotImplementedError
 
+    @abstractmethod
+    def get_collection_name(self) -> str:
+        """返回向量集合名称。"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def fetch_point(self, *, point_id: str) -> dict[str, Any] | None:
+        """按 point_id 回读向量详情。"""
+        raise NotImplementedError
+
 
 @dataclass
 class _InMemoryEntry:
@@ -109,6 +119,21 @@ class InMemoryVectorStore(BaseVectorStore):
         scored.sort(key=lambda item: item[0], reverse=True)
         selected = scored[:top_k]
         return [self._to_retrieved_chunk(score, payload) for score, payload in selected]
+
+    def get_collection_name(self) -> str:
+        return "in_memory_vector_store"
+
+    def fetch_point(self, *, point_id: str) -> dict[str, Any] | None:
+        for entry in self._entries:
+            if entry.payload.get("chunk_id") != point_id:
+                continue
+            return {
+                "point_id": point_id,
+                "vector": list(entry.vector),
+                "vector_dimension": len(entry.vector),
+                "payload": dict(entry.payload),
+            }
+        return None
 
     @staticmethod
     def _to_retrieved_chunk(score: float, payload: dict[str, Any]) -> RetrievedChunk:
@@ -256,6 +281,32 @@ class QdrantVectorStore(BaseVectorStore):
                     )
                 )
         return qdrant_models.Filter(must=conditions)
+
+    def get_collection_name(self) -> str:
+        return self._collection_name
+
+    def fetch_point(self, *, point_id: str) -> dict[str, Any] | None:
+        points = self._client.retrieve(
+            collection_name=self._collection_name,
+            ids=[point_id],
+            with_payload=True,
+            with_vectors=True,
+        )
+        if not points:
+            return None
+        point = points[0]
+        vector = point.vector
+        if isinstance(vector, dict):
+            first_vector = next(iter(vector.values()), [])
+        else:
+            first_vector = vector or []
+        payload = dict(point.payload or {})
+        return {
+            "point_id": str(point.id),
+            "vector": list(first_vector),
+            "vector_dimension": len(first_vector),
+            "payload": payload,
+        }
 
 
 def _build_chunk_payload(

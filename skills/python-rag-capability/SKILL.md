@@ -3,7 +3,7 @@
 > skill_name: python-rag-capability
 > module_scope: app/rag/
 > status: active
-> last_updated: 2026-04-12
+> last_updated: 2026-04-13
 
 ## 1. Skill 定位
 
@@ -66,7 +66,8 @@ citation 必须来自 retrieval 结果，不得由模型自由生成。
 RAG 是增强层。
 retrieval / embedding / index 异常不应无条件拖垮 chat 主链路。
 
-### 4.6 Phase 7 先做评估与构建基础
+### 4.6 Post-Phase 7 先做控制面持久化
+### 4.7 文档加载器适配层可以引入成熟框架
 Phase 7 优先做 benchmark、黄金集、build 元数据与质量门禁；
 不把本轮扩张成独立知识平台、复杂 hybrid retrieval 平台或 agentic retrieval 系统。
 
@@ -171,7 +172,7 @@ RAG 相关实现任务，至少应交付以下之一或多项：
 ### 8.5 编排约束
 RAG 负责知识实现；chat 主链路编排仍由 services 负责。
 
-### 8.6 Phase 7 构建元数据约束
+### 8.6 Post-Phase 7 控制面对象约束
 若本轮新增构建能力，必须保证 `build_id`、`version_id`、`chunk_strategy_version`、`embedding_model_version` 等字段具备明确语义与可追踪性。
 
 ### 8.7 评估支撑约束

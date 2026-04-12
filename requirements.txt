@@ -8,3 +8,5 @@ qdrant-client>=1.10.0
 python-multipart>=0.0.20
 langchain-community>=0.3.0
 pymupdf>=1.24.0
+sqlalchemy>=2.0.36
+pymysql>=1.1.1

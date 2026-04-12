@@ -1,6 +1,6 @@
 # tests/AGENTS.md
 
-> 更新日期：2026-04-12
+> 更新日期：2026-04-13
 
 ## 1. 文档定位
 
@@ -109,6 +109,7 @@
 - provider / prompt / context 的关键协作面
 
 ### 6.4 当前代码中的回归重点
+- 当前轮次主回归重点应升级为“RAG 控制面从内存迁移到 MySQL 后，主链路与查询链路仍保持正确”
 当前代码已实现 retrieval / citation，主回归重点包括：
 - started / delta / heartbeat / completed / error / cancelled
 - request assembly 顺序与过滤
@@ -127,9 +128,13 @@
 - 旧 test / fake / stub / mock 如不适配当前基线，应直接删除或改写
 - 不允许长期并存“新旧两套断言/两套接口”
 
----
+### 6.7 Post-Phase 7 持久化基线
+- 文档、版本、build、chunk、evaluation run / case 必须有持久化回归测试
+- `RAGControlState` 被删除后，相关测试也必须同步迁移，不允许保留对旧 state 容器的历史依赖
+- 想看向量时，应测试 Inspector 按 `vector_point_id` 从 Qdrant 回读，而不是测试 MySQL 冗余向量字段
 
 ## 7. 当前阶段能力声明
+
 
 当前前置必须保持稳定：
 
@@ -149,7 +154,7 @@
 - 流式测试当前覆盖 completed / cancelled 路径、completed citations 与降级行为
 - 当前仓库已新增 `test_rag_evaluation.py` 与 `test_rag_offline_build.py`
 
-当前本轮新增（本轮已落地）：
+当前前置已落地补充：
 
 - retrieval / citation / answer 三层 benchmark
 - 黄金评估集与标签集校验
@@ -237,6 +242,14 @@
 ---
 
 ## 11. 测试要求
+
+1. document upload -> document/document_version 持久化测试
+2. build task / build_documents / chunks 持久化测试
+3. evaluation_runs / evaluation_cases 全量持久化测试
+4. runtime summary 基于数据库查询的测试
+5. 服务重启后控制面仍可查询的测试
+6. 向量详情通过 Qdrant 回读的测试
+
 
 至少覆盖：
 

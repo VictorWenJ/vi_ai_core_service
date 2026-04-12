@@ -1,6 +1,6 @@
 # app/api/AGENTS.md
 
-> 更新日期：2026-04-12
+> 更新日期：2026-04-13
 
 ## 1. 文档定位
 
@@ -128,9 +128,14 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 - 后端 schema 是前后端契约的 source of truth
 - 前端 API client 与类型定义应围绕后端领域 schema 对齐
 - 控制面 API 继续采用 REST JSON；chat 保持 JSON + SSE 双协议
----
+
+### 6.8 持久化升级下的契约稳定原则
+- 底层从内存控制面切换到 MySQL 控制面时，API 应尽量保持领域路径与主要响应形状稳定
+- `app/api/schemas/` 只承载对外 request / response contract
+- 不得把 repository model、ORM model、内部 persistence 对象直接暴露给 API
 
 ## 7. 当前阶段能力声明
+
 
 当前本轮必须保持稳定：
 
@@ -215,6 +220,12 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 
 ## 10. Code Review 清单
 
+- route handler 是否仍保持薄路由？
+- 是否把底层持久化切换限制在 service / rag 子域内部，而不是泄漏到 API 契约？
+- 新增字段是否遵守 `*_details` / `*_ids` 命名语义？
+- 是否避免按 console / playground 命名长期对外接口？
+
+
 1. API 是否仍然只负责协议输入输出？
 2. 是否没有把 retrieval / context / provider 逻辑混到 API 层？
 3. `/chat` 当前返回字段是否仍与 `app/api/schemas/chat.py` 一致？
@@ -231,6 +242,11 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 ---
 
 ## 11. 测试要求
+
+- knowledge / evaluation / runtime 路由在底层切换后仍保持 contract 稳定的测试
+- 文档详情、build 详情、evaluation run 详情新增字段的契约测试
+- Inspector 向量详情接口或字段的协议测试（若本轮新增）
+
 
 至少覆盖：
 

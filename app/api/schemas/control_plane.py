@@ -28,11 +28,15 @@ class BuildCreateRequest(BaseModel):
 class BuildMetadataResponse(BaseModel):
     build_id: str
     version_id: str
-    chunk_strategy_version: str
-    embedding_model_version: str
-    build_mode: str
+    build_version_id: str | None = None
+    status: str | None = None
+    chunk_strategy_name: str | None = None
+    chunk_strategy_version: str | None = None
+    embedding_model_name: str | None = None
+    embedding_model_version: str | None = None
     started_at: str
-    completed_at: str
+    completed_at: str | None = None
+    created_at: str | None = None
 
 
 class BuildStatisticsResponse(BaseModel):
@@ -94,6 +98,9 @@ class KnowledgeChunkSummaryResponse(BaseModel):
     embedding_model: str
     chunk_text_preview: str
     metadata: dict[str, Any] = Field(default_factory=dict)
+    vector_point_id: str | None = None
+    vector_dimension: int | None = None
+    vector_collection: str | None = None
 
 
 class KnowledgeChunkDetailResponse(BaseModel):
@@ -103,7 +110,23 @@ class KnowledgeChunkDetailResponse(BaseModel):
     token_count: int
     embedding_model: str
     chunk_text: str
+    chunk_text_preview: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    vector_point_id: str | None = None
+    vector_dimension: int | None = None
+    vector_collection: str | None = None
+    document_version_id: str | None = None
+    build_id: str | None = None
+
+
+class KnowledgeChunkVectorDetailResponse(BaseModel):
+    chunk_id: str
+    vector_point_id: str
+    vector_collection: str
+    found: bool
+    vector: list[float] = Field(default_factory=list)
+    vector_dimension: int
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class RetrievalDebugRequest(BaseModel):
@@ -170,6 +193,7 @@ class EvaluationSamplePayload(BaseModel):
 
 
 class EvaluationRunCreateRequest(BaseModel):
+    build_id: str | None = None
     dataset_id: str | None = None
     version_id: str | None = None
     samples: list[EvaluationSamplePayload] = Field(default_factory=list)
@@ -178,11 +202,13 @@ class EvaluationRunCreateRequest(BaseModel):
 
 class EvaluationRunSummaryResponse(BaseModel):
     run_id: str
+    build_id: str | None = None
     dataset_id: str
     dataset_version_id: str
     started_at: str
     completed_at: str
     summary: dict[str, Any]
+    status: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     case_count: int
 
@@ -215,6 +241,8 @@ class RuntimeSummaryResponse(BaseModel):
     chunk_count: int
     build_count: int
     evaluation_run_count: int
+    recent_build_statuses: list[dict[str, Any]] = Field(default_factory=list)
+    recent_evaluation_statuses: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RuntimeConfigSummaryResponse(BaseModel):
@@ -222,6 +250,7 @@ class RuntimeConfigSummaryResponse(BaseModel):
     providers: dict[str, Any]
     streaming: dict[str, Any]
     rag: dict[str, Any]
+    database: dict[str, Any] = Field(default_factory=dict)
 
 
 class RuntimeHealthResponse(BaseModel):

@@ -113,11 +113,13 @@
 ## 5. 与后端阶段协同关系
 
 ### 当前后端基线
+- 后端已完成 Phase 7 基线，并进入 RAG 持久化控制面升级阶段
+- 控制台当前页面应默认服务于持久化后的 knowledge / build / evaluation / runtime 控制面
+
 当前控制台建设基于：
 - Phase 6：Knowledge + Citation Layer
 - Phase 7：RAG Evaluation + Offline Build Foundation
 
-### 后续协同
 未来控制台可逐步承接：
 - Phase 8：Tool Calling Foundation
 - Phase 9：Workflow / Agent Runtime Foundation

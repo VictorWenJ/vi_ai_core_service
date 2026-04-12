@@ -3,7 +3,7 @@
 > skill_name: python-test-capability
 > module_scope: tests/
 > status: active
-> last_updated: 2026-04-12
+> last_updated: 2026-04-13
 
 ## 1. Skill 定位
 
@@ -73,13 +73,17 @@
 测试应围绕当前正式接口与正式 contract 收敛。
 历史接口、历史返回结构、历史兼容分支对应的测试与 fake/stub/mock 应直接删除或改写，不保留双轨。
 
-### 4.7 Phase 7 评估与门禁
+### 4.7 Post-Phase 7 持久化回归
+### 4.8 命名与适配层回归
 本轮应开始为 retrieval / citation / answer benchmark、黄金集校验与离线构建质量门禁提供稳定测试保护。
 
 ### 4.8 命名与适配层回归
 当 API 文件名、service 文件名或 loader adapter 引入发生变化时，测试必须围绕当前正式命名与正式边界收敛，不保留旧 `*_console` 命名或旧 loader 直通路径的历史断言。
 
 ---
+
+### 4.7 Post-Phase 7 持久化回归
+当前阶段除 Phase 2~7 主链路外，还必须新增控制面持久化迁移相关回归，包括 document/version/build/chunk/evaluation run / case 落盘、服务重启后查询、向量详情 Qdrant 回读。
 
 ## 5. 默认阶段基线
 
