@@ -30,7 +30,7 @@
 
 验收：
 - 前端项目可独立运行
-- 可通过 Docker 启动
+- 可通过 `internal_console/infra/compose.yaml` 独立 Docker 启动
 - 有基础页面壳与导航
 - 有统一 API client
 - 有基础 SSE 消费能力

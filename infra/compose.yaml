@@ -1,7 +1,9 @@
+name: vi_ai_core_service
+
 services:
   redis:
     image: redis:7-alpine
-    container_name: vi_ai_core_redis
+    container_name: vi_redis
     ports:
       - "6379:6379"
     healthcheck:
@@ -14,7 +16,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:v1.12.5
-    container_name: vi_ai_core_qdrant
+    container_name: vi_qdrant
     ports:
       - "6333:6333"
       - "6334:6334"
@@ -24,7 +26,7 @@ services:
     build:
       context: ..
       dockerfile: infra/Dockerfile
-    container_name: vi_ai_core_app
+    container_name: vi_app
     env_file:
       - ../.env.example
     environment:
@@ -35,7 +37,14 @@ services:
     volumes:
       # 本地代码热挂载：宿主机 app 目录变更后，容器内 uvicorn --reload 自动重载
       - ../app:/workspace/app
-    command: ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+      # 每次启动使用宿主机最新 requirements，避免新增依赖后容器缺包。
+      - ../requirements.txt:/workspace/requirements.txt:ro
+    command:
+      [
+        "sh",
+        "-c",
+        "pip install --disable-pip-version-check --no-cache-dir -r /workspace/requirements.txt && uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload",
+      ]
     depends_on:
       redis:
         condition: service_healthy

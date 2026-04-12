@@ -80,7 +80,7 @@ DEFAULT_STREAM_EMIT_TRACE = True
 DEFAULT_STREAM_CANCEL_ENABLED = True
 
 # RAG 子域默认是否启用。
-DEFAULT_RAG_ENABLED = False
+DEFAULT_RAG_ENABLED = True
 # Qdrant 默认连接地址。
 DEFAULT_RAG_QDRANT_URL = "http://localhost:6333"
 # Qdrant 默认集合名称。

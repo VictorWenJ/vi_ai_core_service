@@ -45,6 +45,7 @@
 
 ## 4.1 调用边界
 前端只能通过 HTTP / SSE 访问后端公开接口。  
+前端运行编排与后端编排独立，使用 `internal_console/infra/compose.yaml` 单独部署。  
 前端不应：
 - 直接访问 Qdrant
 - 直接访问后端内部 Python 对象

@@ -41,6 +41,7 @@
 
 ### 3.2 部署关系
 前端与后端应作为独立 Docker 服务运行，通过本地 HTTP / SSE 接口交互。
+前端 Docker 配置固定落在 `internal_console/infra/`，由 `internal_console/infra/compose.yaml` 独立编排。
 
 ### 3.3 依赖边界
 前端只能依赖：
