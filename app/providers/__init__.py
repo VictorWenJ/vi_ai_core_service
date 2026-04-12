@@ -23,6 +23,7 @@ from app.providers.embeddings import (
     EmbeddingProviderInvocationError,
     EmbeddingResult,
     OpenAIEmbeddingProvider,
+    TEIEmbeddingProvider,
     build_embedding_provider,
 )
 
@@ -41,6 +42,7 @@ __all__ = [
     "build_embedding_provider",
     "DeterministicEmbeddingProvider",
     "OpenAIEmbeddingProvider",
+    "TEIEmbeddingProvider",
     "OpenAICompatibleBaseProvider",
     "ProviderRegistry",
     "OpenAIProvider",

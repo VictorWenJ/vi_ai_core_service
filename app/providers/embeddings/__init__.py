@@ -10,6 +10,7 @@ from app.providers.embeddings.base import (
 from app.providers.embeddings.deterministic_provider import DeterministicEmbeddingProvider
 from app.providers.embeddings.openai_provider import OpenAIEmbeddingProvider
 from app.providers.embeddings.registry import build_embedding_provider
+from app.providers.embeddings.tei_provider import TEIEmbeddingProvider
 
 __all__ = [
     "BaseEmbeddingProvider",
@@ -20,4 +21,5 @@ __all__ = [
     "build_embedding_provider",
     "DeterministicEmbeddingProvider",
     "OpenAIEmbeddingProvider",
+    "TEIEmbeddingProvider",
 ]

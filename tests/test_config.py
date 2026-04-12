@@ -128,6 +128,48 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ConfigError):
                 AppConfig.from_env(load_dotenv_file=False)
 
+    def test_tei_embedding_provider_uses_provider_specific_defaults(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"RAG_EMBEDDING_PROVIDER": "tei"},
+            clear=True,
+        ):
+            config = AppConfig.from_env(load_dotenv_file=False)
+
+        self.assertEqual(config.rag_config.embedding_provider, "tei")
+        self.assertEqual(config.rag_config.embedding_model, "BAAI/bge-m3")
+        self.assertEqual(config.rag_config.embedding_dimension, 1024)
+        self.assertEqual(config.tei_embedding_config.base_url, "http://tei:80")
+        self.assertEqual(config.tei_embedding_config.timeout_seconds, 30.0)
+
+    def test_tei_embedding_config_supports_custom_values(self) -> None:
+        env = {
+            "RAG_EMBEDDING_PROVIDER": "tei",
+            "TEI_BASE_URL": "http://localhost:8080",
+            "TEI_TIMEOUT_SECONDS": "18.5",
+            "RAG_EMBEDDING_MODEL": "BAAI/bge-m3",
+            "RAG_EMBEDDING_DIMENSION": "1024",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = AppConfig.from_env(load_dotenv_file=False)
+
+        self.assertEqual(config.tei_embedding_config.base_url, "http://localhost:8080")
+        self.assertEqual(config.tei_embedding_config.timeout_seconds, 18.5)
+        self.assertEqual(config.rag_config.embedding_model, "BAAI/bge-m3")
+        self.assertEqual(config.rag_config.embedding_dimension, 1024)
+
+    def test_invalid_tei_timeout_raises(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "RAG_EMBEDDING_PROVIDER": "tei",
+                "TEI_TIMEOUT_SECONDS": "0",
+            },
+            clear=True,
+        ):
+            with self.assertRaises(ConfigError):
+                AppConfig.from_env(load_dotenv_file=False)
+
     def test_invalid_rag_overlap_settings_raise(self) -> None:
         env = {
             "RAG_CHUNK_TOKEN_SIZE": "128",

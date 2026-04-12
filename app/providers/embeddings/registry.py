@@ -9,6 +9,7 @@ from app.providers.embeddings.base import (
 )
 from app.providers.embeddings.deterministic_provider import DeterministicEmbeddingProvider
 from app.providers.embeddings.openai_provider import OpenAIEmbeddingProvider
+from app.providers.embeddings.tei_provider import TEIEmbeddingProvider
 
 
 def build_embedding_provider(app_config: AppConfig) -> BaseEmbeddingProvider:
@@ -23,6 +24,13 @@ def build_embedding_provider(app_config: AppConfig) -> BaseEmbeddingProvider:
             api_key=openai_config.api_key,
             base_url=openai_config.base_url,
             timeout_seconds=openai_config.timeout_seconds,
+        )
+    if provider_name == "tei":
+        tei_config = app_config.tei_embedding_config
+        return TEIEmbeddingProvider(
+            base_url=tei_config.base_url,
+            timeout_seconds=tei_config.timeout_seconds,
+            default_model=app_config.rag_config.embedding_model,
         )
     raise EmbeddingProviderConfigurationError(
         f"Unsupported embedding provider '{provider_name}'."

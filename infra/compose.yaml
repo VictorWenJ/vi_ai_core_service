@@ -52,6 +52,20 @@ services:
       - "6334:6334"
     restart: unless-stopped
 
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+    container_name: vi_tei
+    command:
+      - --model-id
+      - BAAI/bge-m3
+      - --port
+      - "80"
+    ports:
+      - "8080:80"
+    volumes:
+      - ../.cache/huggingface:/data
+    restart: unless-stopped
+
   app:
     build:
       context: ..
@@ -62,6 +76,11 @@ services:
     environment:
       # Windows / macOS 下文件监听在容器内可能漏事件，强制轮询可提升热更新稳定性
       WATCHFILES_FORCE_POLLING: "true"
+      RAG_EMBEDDING_PROVIDER: "tei"
+      RAG_EMBEDDING_MODEL: "BAAI/bge-m3"
+      RAG_EMBEDDING_DIMENSION: "1024"
+      TEI_BASE_URL: "http://tei:80"
+      TEI_TIMEOUT_SECONDS: "30"
     ports:
       - "8000:8000"
     volumes:
@@ -79,6 +98,8 @@ services:
       redis:
         condition: service_healthy
       qdrant:
+        condition: service_started
+      tei:
         condition: service_started
     healthcheck:
       test:

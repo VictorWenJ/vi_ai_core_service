@@ -14,7 +14,7 @@ SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS = (
     "drop_oldest",
 )
 SUPPORTED_CONTEXT_STORE_BACKENDS = ("memory", "redis")
-SUPPORTED_RAG_EMBEDDING_PROVIDERS = ("deterministic", "openai")
+SUPPORTED_RAG_EMBEDDING_PROVIDERS = ("deterministic", "openai", "tei")
 
 # 全局 LLM 调用默认超时时间，单位为秒（seconds）。
 DEFAULT_TIMEOUT_SECONDS = 60.0
@@ -98,6 +98,14 @@ DEFAULT_RAG_EMBEDDING_PROVIDER = "deterministic"
 DEFAULT_RAG_EMBEDDING_MODEL = "deterministic-text-v1"
 # embedding 默认向量维度，单位为 dimension。
 DEFAULT_RAG_EMBEDDING_DIMENSION = 64
+# 本地 TEI embedding 服务默认基础地址（Docker 内网调用基线）。
+DEFAULT_TEI_BASE_URL = "http://tei:80"
+# 本地 TEI embedding 请求默认超时时间，单位为秒（seconds）。
+DEFAULT_TEI_TIMEOUT_SECONDS = 30.0
+# TEI provider 默认 embedding 模型标识。
+DEFAULT_TEI_EMBEDDING_MODEL = "BAAI/bge-m3"
+# TEI provider 默认向量维度，单位为 dimension。
+DEFAULT_TEI_EMBEDDING_DIMENSION = 1024
 # 控制面数据库默认连接 URL（MySQL 基线）。
 DEFAULT_DB_URL = "mysql+pymysql://root:root@localhost:3306/vi_ai_core_service?charset=utf8mb4"
 # SQL 日志默认是否开启。
@@ -259,6 +267,14 @@ class RAGContentStoreConfig:
 
 
 @dataclass(frozen=True)
+class TEIEmbeddingConfig:
+    # TEI embedding 服务基础地址（不含接口路径）。
+    base_url: str = DEFAULT_TEI_BASE_URL
+    # TEI embedding 请求超时时间，单位为秒（seconds）。
+    timeout_seconds: float = DEFAULT_TEI_TIMEOUT_SECONDS
+
+
+@dataclass(frozen=True)
 class AppConfig:
     # 服务默认使用的 provider 名称。
     default_provider: str = "openai"
@@ -284,6 +300,8 @@ class AppConfig:
     rag_content_store_config: RAGContentStoreConfig = field(
         default_factory=RAGContentStoreConfig
     )
+    # 本地 TEI embedding provider 配置。
+    tei_embedding_config: TEIEmbeddingConfig = field(default_factory=TEIEmbeddingConfig)
 
     @classmethod
     def from_env(
@@ -445,6 +463,21 @@ class AppConfig:
         if streaming.stream_request_timeout_seconds <= 0:
             raise ConfigError("STREAM_REQUEST_TIMEOUT_SECONDS must be greater than 0.")
 
+        rag_embedding_provider = _read_rag_embedding_provider(
+            "RAG_EMBEDDING_PROVIDER",
+            DEFAULT_RAG_EMBEDDING_PROVIDER,
+        )
+        rag_embedding_model_default = (
+            DEFAULT_TEI_EMBEDDING_MODEL
+            if rag_embedding_provider == "tei"
+            else DEFAULT_RAG_EMBEDDING_MODEL
+        )
+        rag_embedding_dimension_default = (
+            DEFAULT_TEI_EMBEDDING_DIMENSION
+            if rag_embedding_provider == "tei"
+            else DEFAULT_RAG_EMBEDDING_DIMENSION
+        )
+
         rag_config = RAGConfig(
             enabled=_read_bool("RAG_ENABLED", DEFAULT_RAG_ENABLED),
             qdrant_url=_read_optional("RAG_QDRANT_URL", DEFAULT_RAG_QDRANT_URL)
@@ -465,18 +498,15 @@ class AppConfig:
                 "RAG_CHUNK_OVERLAP_TOKEN_SIZE",
                 DEFAULT_RAG_CHUNK_OVERLAP_TOKEN_SIZE,
             ),
-            embedding_provider=_read_rag_embedding_provider(
-                "RAG_EMBEDDING_PROVIDER",
-                DEFAULT_RAG_EMBEDDING_PROVIDER,
-            ),
+            embedding_provider=rag_embedding_provider,
             embedding_model=_read_optional(
                 "RAG_EMBEDDING_MODEL",
-                DEFAULT_RAG_EMBEDDING_MODEL,
+                rag_embedding_model_default,
             )
-            or DEFAULT_RAG_EMBEDDING_MODEL,
+            or rag_embedding_model_default,
             embedding_dimension=_read_int(
                 "RAG_EMBEDDING_DIMENSION",
-                DEFAULT_RAG_EMBEDDING_DIMENSION,
+                rag_embedding_dimension_default,
             ),
         )
         if rag_config.chunk_overlap_token_size >= rag_config.chunk_token_size:
@@ -494,6 +524,13 @@ class AppConfig:
                 or DEFAULT_RAG_STORAGE_ROOT
             ),
         )
+        tei_embedding_config = TEIEmbeddingConfig(
+            base_url=_read_optional("TEI_BASE_URL", DEFAULT_TEI_BASE_URL)
+            or DEFAULT_TEI_BASE_URL,
+            timeout_seconds=_read_float("TEI_TIMEOUT_SECONDS", DEFAULT_TEI_TIMEOUT_SECONDS),
+        )
+        if tei_embedding_config.timeout_seconds <= 0:
+            raise ConfigError("TEI_TIMEOUT_SECONDS must be greater than 0.")
 
         return cls(
             default_provider=default_provider,
@@ -507,6 +544,7 @@ class AppConfig:
             rag_config=rag_config,
             database_config=database_config,
             rag_content_store_config=rag_content_store_config,
+            tei_embedding_config=tei_embedding_config,
         )
 
     def get_provider_config(self, provider_name: str) -> ProviderConfig:
