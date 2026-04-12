@@ -85,6 +85,17 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             metadata_details={"uploaded_via": "test"},
         )
         self.assertEqual(version_payload["version_id"], "ver-1")
+        reused_version_payload = self.document_version_repository.find_version_by_content_hash(
+            document_id="doc-1",
+            content_hash="hash-raw",
+            hash_algorithm="sha1",
+        )
+        self.assertIsNotNone(reused_version_payload)
+        self.assertEqual(reused_version_payload["version_id"], "ver-1")
+        self.assertEqual(
+            self.document_version_repository.count_versions(document_id="doc-1"),
+            1,
+        )
         self.document_repository.set_latest_version_id(
             document_id="doc-1",
             latest_version_id="ver-1",
@@ -217,4 +228,3 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
         recent_evaluation_statuses = self.evaluation_run_repository.list_recent_statuses(limit=5)
         self.assertEqual(recent_build_statuses[0]["status"], "succeeded")
         self.assertEqual(recent_evaluation_statuses[0]["status"], "succeeded")
-

@@ -141,6 +141,21 @@ class RAGDomainServicePersistenceTests(unittest.TestCase):
             title="Law Baseline",
             tags=["law", "baseline"],
         )
+        duplicated_document = self.document_service.upload_document(
+            content="# Law Baseline\n\nLaw baseline policy for testing persistence.",
+            file_name="law.md",
+            title="Law Baseline",
+            document_id=uploaded_document.document_id,
+            tags=["law", "baseline"],
+        )
+        self.assertEqual(duplicated_document.document_id, uploaded_document.document_id)
+        self.assertEqual(
+            self._document_version_repository.count_versions(
+                document_id=uploaded_document.document_id
+            ),
+            1,
+        )
+
         document_payload = self._document_repository.get_document(
             document_id=uploaded_document.document_id
         )
@@ -245,4 +260,3 @@ class RAGDomainServicePersistenceTests(unittest.TestCase):
             self.assertEqual(restarted_summary["evaluation_run_count"], 1)
         finally:
             restarted_runtime.dispose()
-

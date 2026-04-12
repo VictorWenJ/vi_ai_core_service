@@ -58,9 +58,11 @@ class RAGEvaluationService:
         trigger_type: str = "manual",
         triggered_by: str = "internal_console",
     ) -> EvaluationRunResult:
+        persisted_dataset_id = (dataset_id or "").strip() or None
+        persisted_dataset_version_id = (version_id or "").strip() or None
         dataset = self._build_dataset(
-            dataset_id=dataset_id,
-            version_id=version_id,
+            dataset_id=persisted_dataset_id,
+            version_id=persisted_dataset_version_id,
             samples=samples or [],
         )
         run_id = generate_run_id()
@@ -68,8 +70,8 @@ class RAGEvaluationService:
         self._evaluation_run_repository.create_run(
             run_id=run_id,
             build_id=build_id,
-            dataset_id=dataset.dataset_id,
-            dataset_version_id=dataset.version_id,
+            dataset_id=persisted_dataset_id,
+            dataset_version_id=persisted_dataset_version_id,
             status="running",
             trigger_type=trigger_type,
             triggered_by=triggered_by,
@@ -184,8 +186,8 @@ class RAGEvaluationService:
             )
             return EvaluationRunResult.new(
                 run_id=run_id,
-                dataset_id=dataset.dataset_id,
-                dataset_version_id=dataset.version_id,
+                dataset_id=persisted_dataset_id,
+                dataset_version_id=persisted_dataset_version_id,
                 started_at=started_at,
                 completed_at=completed_at,
                 cases=cases,

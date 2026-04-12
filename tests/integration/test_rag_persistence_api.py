@@ -232,10 +232,29 @@ class RAGPersistenceAPIIntegrationTests(unittest.TestCase):
         self.assertEqual(create_run_response.status_code, 200)
         run_id = create_run_response.json()["run_id"]
         self.assertEqual(create_run_response.json()["build_id"], build_id)
+        self.assertEqual(create_run_response.json()["dataset_id"], "rag-eval")
+        self.assertEqual(create_run_response.json()["dataset_version_id"], "v1")
+
+        nullable_run_response = self.client.post(
+            "/evaluation/rag/runs",
+            json={
+                "build_id": build_id,
+                "samples": [
+                    {
+                        "sample_id": "sample-2",
+                        "query_text": "law persistence",
+                        "top_k": 4,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(nullable_run_response.status_code, 200)
+        self.assertIsNone(nullable_run_response.json()["dataset_id"])
+        self.assertIsNone(nullable_run_response.json()["dataset_version_id"])
 
         list_runs_response = self.client.get("/evaluation/rag/runs")
         self.assertEqual(list_runs_response.status_code, 200)
-        self.assertGreaterEqual(len(list_runs_response.json()), 1)
+        self.assertGreaterEqual(len(list_runs_response.json()), 2)
 
         get_run_response = self.client.get(f"/evaluation/rag/runs/{run_id}")
         self.assertEqual(get_run_response.status_code, 200)
@@ -250,7 +269,7 @@ class RAGPersistenceAPIIntegrationTests(unittest.TestCase):
         summary_payload = runtime_summary_response.json()
         self.assertEqual(summary_payload["document_count"], 1)
         self.assertEqual(summary_payload["build_count"], 1)
-        self.assertEqual(summary_payload["evaluation_run_count"], 1)
+        self.assertEqual(summary_payload["evaluation_run_count"], 2)
 
         runtime_config_response = self.client.get("/runtime/config-summary")
         self.assertEqual(runtime_config_response.status_code, 200)
@@ -259,4 +278,3 @@ class RAGPersistenceAPIIntegrationTests(unittest.TestCase):
         runtime_health_response = self.client.get("/runtime/health")
         self.assertEqual(runtime_health_response.status_code, 200)
         self.assertEqual(runtime_health_response.json()["status"], "ok")
-

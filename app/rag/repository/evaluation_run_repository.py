@@ -23,8 +23,8 @@ class EvaluationRunRepository:
         *,
         run_id: str,
         build_id: str | None,
-        dataset_id: str,
-        dataset_version_id: str,
+        dataset_id: str | None,
+        dataset_version_id: str | None,
         status: str,
         trigger_type: str,
         triggered_by: str,
@@ -154,4 +154,3 @@ class EvaluationRunRepository:
             "completed_at": datetime_to_iso(entity.completed_at),
             "created_at": datetime_to_iso(entity.created_at),
         }
-

@@ -1,4 +1,4 @@
-"""Application and provider configuration."""
+﻿"""Application and provider configuration."""
 
 from __future__ import annotations
 
@@ -16,69 +16,68 @@ SUPPORTED_CONTEXT_FALLBACK_BEHAVIORS = (
 SUPPORTED_CONTEXT_STORE_BACKENDS = ("memory", "redis")
 SUPPORTED_RAG_EMBEDDING_PROVIDERS = ("deterministic", "openai")
 
-# 全局 LLM 调用的默认超时时间，单位为秒。
+# 全局 LLM 调用默认超时时间，单位为秒（seconds）。
 DEFAULT_TIMEOUT_SECONDS = 60.0
-# 可观测性子域默认是否开启结构化日志。
+# 可观测性默认是否开启结构化日志。
 DEFAULT_LOG_ENABLED = True
-# 可观测性日志默认级别，用于控制日志输出粒度。
+# 可观测性默认日志级别。
 DEFAULT_LOG_LEVEL = "INFO"
-# 可观测性日志默认格式；当前仅支持 json。
+# 可观测性默认日志格式。
 DEFAULT_LOG_FORMAT = "json"
-# API 层请求/响应负载默认是否允许写入日志。
+# API 层请求/响应负载默认是否写日志。
 DEFAULT_LOG_API_PAYLOAD = True
-# Provider 层请求/响应负载默认是否允许写入日志。
+# Provider 层请求/响应负载默认是否写日志。
 DEFAULT_LOG_PROVIDER_PAYLOAD = True
-# 上下文窗口选择阶段默认 token 预算上限，单位为 token。
+# 上下文窗口选择默认 token 预算上限，单位为 token。
 DEFAULT_CONTEXT_MAX_TOKEN_BUDGET = 1200
 # 上下文截断阶段默认 token 预算上限，单位为 token。
 DEFAULT_CONTEXT_TRUNCATION_TOKEN_BUDGET = 900
-# 上下文摘要/压缩策略默认是否启用。
+# 上下文摘要压缩策略默认是否启用。
 DEFAULT_CONTEXT_SUMMARY_ENABLED = True
-# 摘要文本默认最大长度，单位为字符数（chars）。
+# 摘要文本默认最大长度，单位为字符（chars）。
 DEFAULT_CONTEXT_SUMMARY_MAX_CHARS = 320
-# 超预算回退策略默认行为标识。
+# 超预算回退策略默认行为。
 DEFAULT_CONTEXT_FALLBACK_BEHAVIOR = "summary_then_drop_oldest"
-# 单条消息 token 估算默认固定开销，单位为 token。
+# 单条消息 token 估算固定开销，单位为 token。
 DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS = 4
-# 分层短期记忆能力默认是否启用。
+# 分层短期记忆默认是否启用。
 DEFAULT_CONTEXT_LAYERED_MEMORY_ENABLED = True
 # recent raw 层默认 token 预算上限，单位为 token。
 DEFAULT_CONTEXT_RECENT_RAW_MAX_TOKEN_BUDGET = 900
-# recent raw 层默认最少保留消息条数，单位为条（count）。
+# recent raw 层默认最少保留消息数，单位为条（count）。
 DEFAULT_CONTEXT_RECENT_RAW_MIN_KEEP_MESSAGES = 2
 # rolling summary 层默认是否启用。
 DEFAULT_CONTEXT_ROLLING_SUMMARY_ENABLED = True
-# rolling summary 文本默认最大长度，单位为字符数（chars）。
+# rolling summary 默认最大长度，单位为字符（chars）。
 DEFAULT_CONTEXT_ROLLING_SUMMARY_MAX_CHARS = 1200
 # working memory 层默认是否启用。
 DEFAULT_CONTEXT_WORKING_MEMORY_ENABLED = True
 # working memory 每个 section 默认最大条目数，单位为条（count）。
 DEFAULT_CONTEXT_WORKING_MEMORY_MAX_ITEMS_PER_SECTION = 5
-# working memory 单条值默认最大长度，单位为字符数（chars）。
+# working memory 单条值默认最大长度，单位为字符（chars）。
 DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS = 160
 # 上下文存储默认后端类型。
 DEFAULT_CONTEXT_STORE_BACKEND = "memory"
 # Redis 上下文存储默认连接地址。
 DEFAULT_CONTEXT_REDIS_URL = "redis://localhost:6379/0"
-# 上下文存储默认键前缀，用于隔离命名空间。
+# 上下文存储默认键前缀。
 DEFAULT_CONTEXT_STORE_KEY_PREFIX = "vi_ai_core_service:context"
 # 会话上下文默认 TTL，单位为秒（seconds）。
 DEFAULT_CONTEXT_SESSION_TTL_SECONDS = 3600
 # Redis 不可用时默认是否允许降级到内存存储。
 DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK = True
-# 流式会话能力默认是否开启。
+# 流式会话默认是否启用。
 DEFAULT_STREAMING_ENABLED = True
-# 流式心跳事件默认间隔，单位为秒（seconds）。
+# 流式心跳默认间隔，单位为秒（seconds）。
 DEFAULT_STREAM_HEARTBEAT_INTERVAL_SECONDS = 15.0
 # 流式请求默认超时时间，单位为秒（seconds）。
 DEFAULT_STREAM_REQUEST_TIMEOUT_SECONDS = 120.0
-# 流式 completed 事件默认是否附带 usage。
+# completed 事件默认是否输出 usage。
 DEFAULT_STREAM_EMIT_USAGE = True
-# 流式事件默认是否附带 trace。
+# 流式事件默认是否输出 trace。
 DEFAULT_STREAM_EMIT_TRACE = True
-# 流式请求默认是否允许显式 cancel。
+# 流式请求默认是否允许 cancel。
 DEFAULT_STREAM_CANCEL_ENABLED = True
-
 # RAG 子域默认是否启用。
 DEFAULT_RAG_ENABLED = True
 # Qdrant 默认连接地址。
@@ -87,26 +86,26 @@ DEFAULT_RAG_QDRANT_URL = "http://localhost:6333"
 DEFAULT_RAG_QDRANT_COLLECTION = "vi_ai_knowledge_chunks"
 # 检索默认返回条数上限，单位为条（top-k count）。
 DEFAULT_RAG_RETRIEVAL_TOP_K = 4
-# 检索默认相似度阈值，单位为余弦分值（0~1）；None 表示不启用阈值过滤。
+# 检索默认相似度阈值（0~1）；None 表示不启用。
 DEFAULT_RAG_SCORE_THRESHOLD: float | None = None
 # chunk 默认目标长度，单位为 token。
 DEFAULT_RAG_CHUNK_TOKEN_SIZE = 300
-# 相邻 chunk 默认重叠长度，单位为 token。
+# chunk 默认重叠长度，单位为 token。
 DEFAULT_RAG_CHUNK_OVERLAP_TOKEN_SIZE = 50
-# embedding 默认 provider 名称。
+# embedding 默认 provider。
 DEFAULT_RAG_EMBEDDING_PROVIDER = "deterministic"
-# embedding 默认模型标识。
+# embedding 默认模型名。
 DEFAULT_RAG_EMBEDDING_MODEL = "deterministic-text-v1"
-# embedding 向量默认维度大小，单位为维（dimension）。
+# embedding 默认向量维度，单位为 dimension。
 DEFAULT_RAG_EMBEDDING_DIMENSION = 64
-# 数据库连接默认 URL（MySQL 控制面基线）。
+# 控制面数据库默认连接 URL（MySQL 基线）。
 DEFAULT_DB_URL = "mysql+pymysql://root:root@localhost:3306/vi_ai_core_service?charset=utf8mb4"
 # SQL 日志默认是否开启。
 DEFAULT_DB_ECHO = False
-# 连接池默认是否启用 pre-ping 健康检查。
+# 连接池默认是否启用 pre-ping。
 DEFAULT_DB_POOL_PRE_PING = True
 # RAG 内容存储默认根目录（相对项目根目录）。
-DEFAULT_RAG_CONTENT_STORE_ROOT = "storage"
+DEFAULT_RAG_STORAGE_ROOT = "storage"
 
 DEFAULT_BASE_URLS: dict[str, str | None] = {
     "openai": None,
@@ -123,15 +122,15 @@ class ConfigError(ValueError):
 
 @dataclass(frozen=True)
 class ProviderConfig:
-    # Provider 标识名，需与注册表中的 provider key 一致。
+    # Provider 标识名，需与注册表 key 保持一致。
     name: str
-    # Provider API 密钥；为空时表示未配置鉴权。
+    # Provider API 密钥；为空表示未配置鉴权。
     api_key: str | None = None
-    # Provider API 基础地址；为空时使用 SDK/厂商默认地址。
+    # Provider 基础地址；为空时使用 SDK/厂商默认地址。
     base_url: str | None = None
-    # Provider 默认模型名；为空时由上游调用方显式指定。
+    # Provider 默认模型名；为空时由调用方显式指定。
     default_model: str | None = None
-    # Provider 请求默认超时，单位为秒。
+    # Provider 默认超时，单位为秒（seconds）。
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
 
 
@@ -157,47 +156,47 @@ class ContextPolicyConfig:
     truncation_token_budget: int = DEFAULT_CONTEXT_TRUNCATION_TOKEN_BUDGET
     # 是否启用摘要/压缩策略。
     summary_enabled: bool = DEFAULT_CONTEXT_SUMMARY_ENABLED
-    # 摘要文本最大长度，单位为字符数（chars）。
+    # 摘要文本最大长度，单位为字符（chars）。
     summary_max_chars: int = DEFAULT_CONTEXT_SUMMARY_MAX_CHARS
-    # 超预算时的回退行为策略标识。
+    # 超预算回退行为标识。
     fallback_behavior: str = DEFAULT_CONTEXT_FALLBACK_BEHAVIOR
-    # 单条消息 token 估算固定开销，单位为 token。
+    # 单条消息 token 固定开销，单位为 token。
     message_overhead_tokens: int = DEFAULT_CONTEXT_MESSAGE_OVERHEAD_TOKENS
 
 
 @dataclass(frozen=True)
 class ContextStorageConfig:
-    # 上下文存储后端类型（memory / redis）。
+    # 上下文存储后端（memory / redis）。
     backend: str = DEFAULT_CONTEXT_STORE_BACKEND
-    # Redis 连接地址；仅在 backend=redis 时生效。
+    # Redis 连接地址；仅 backend=redis 时生效。
     redis_url: str = DEFAULT_CONTEXT_REDIS_URL
     # 会话存储 TTL，单位为秒（seconds）。
     session_ttl_seconds: int = DEFAULT_CONTEXT_SESSION_TTL_SECONDS
-    # 存储键名前缀，用于多服务隔离。
+    # 存储键前缀。
     key_prefix: str = DEFAULT_CONTEXT_STORE_KEY_PREFIX
-    # Redis 不可用时是否允许降级至内存后端。
+    # Redis 不可用时是否允许降级到内存后端。
     allow_memory_fallback: bool = DEFAULT_CONTEXT_ALLOW_MEMORY_FALLBACK
 
 
 @dataclass(frozen=True)
 class ContextMemoryConfig:
-    # 是否开启 layered short-term memory 管道。
+    # 是否启用 layered short-term memory。
     layered_memory_enabled: bool = DEFAULT_CONTEXT_LAYERED_MEMORY_ENABLED
     # recent raw 层 token 预算上限，单位为 token。
     recent_raw_max_token_budget: int = DEFAULT_CONTEXT_RECENT_RAW_MAX_TOKEN_BUDGET
-    # recent raw 层最少保留消息条数，单位为条（count）。
+    # recent raw 层最少保留消息数，单位为条（count）。
     recent_raw_min_keep_messages: int = DEFAULT_CONTEXT_RECENT_RAW_MIN_KEEP_MESSAGES
     # 是否启用 rolling summary 层。
     rolling_summary_enabled: bool = DEFAULT_CONTEXT_ROLLING_SUMMARY_ENABLED
-    # rolling summary 最大长度，单位为字符数（chars）。
+    # rolling summary 最大长度，单位为字符（chars）。
     rolling_summary_max_chars: int = DEFAULT_CONTEXT_ROLLING_SUMMARY_MAX_CHARS
     # 是否启用 working memory 层。
     working_memory_enabled: bool = DEFAULT_CONTEXT_WORKING_MEMORY_ENABLED
-    # working memory 每个 section 的最大条目数，单位为条（count）。
+    # working memory 每个 section 最大条目数，单位为条（count）。
     working_memory_max_items_per_section: int = (
         DEFAULT_CONTEXT_WORKING_MEMORY_MAX_ITEMS_PER_SECTION
     )
-    # working memory 单项文本最大长度，单位为字符数（chars）。
+    # working memory 单条值最大长度，单位为字符（chars）。
     working_memory_max_value_chars: int = DEFAULT_CONTEXT_WORKING_MEMORY_MAX_VALUE_CHARS
 
 
@@ -211,7 +210,7 @@ class StreamingConfig:
     stream_request_timeout_seconds: float = DEFAULT_STREAM_REQUEST_TIMEOUT_SECONDS
     # 是否在 completed 事件输出 usage。
     stream_emit_usage: bool = DEFAULT_STREAM_EMIT_USAGE
-    # 是否在流式事件输出 trace 信息。
+    # 是否在流式事件输出 trace。
     stream_emit_trace: bool = DEFAULT_STREAM_EMIT_TRACE
     # 是否允许通过 cancel 接口中断流式任务。
     stream_cancel_enabled: bool = DEFAULT_STREAM_CANCEL_ENABLED
@@ -229,17 +228,17 @@ class RAGConfig:
     qdrant_collection: str = DEFAULT_RAG_QDRANT_COLLECTION
     # 检索返回条数上限，单位为条（top-k count）。
     retrieval_top_k: int = DEFAULT_RAG_RETRIEVAL_TOP_K
-    # 相似度阈值；None 表示不按阈值过滤。
+    # 相似度阈值；None 表示不启用阈值过滤。
     score_threshold: float | None = DEFAULT_RAG_SCORE_THRESHOLD
     # chunk 目标长度，单位为 token。
     chunk_token_size: int = DEFAULT_RAG_CHUNK_TOKEN_SIZE
-    # chunk 间重叠长度，单位为 token。
+    # chunk 重叠长度，单位为 token。
     chunk_overlap_token_size: int = DEFAULT_RAG_CHUNK_OVERLAP_TOKEN_SIZE
     # embedding provider 标识。
     embedding_provider: str = DEFAULT_RAG_EMBEDDING_PROVIDER
     # embedding 模型标识。
     embedding_model: str = DEFAULT_RAG_EMBEDDING_MODEL
-    # embedding 向量维度，单位为维（dimension）。
+    # embedding 向量维度，单位为 dimension。
     embedding_dimension: int = DEFAULT_RAG_EMBEDDING_DIMENSION
 
 
@@ -256,7 +255,7 @@ class DatabaseConfig:
 @dataclass(frozen=True)
 class RAGContentStoreConfig:
     # 内容存储根目录路径（可为相对路径或绝对路径）。
-    root_path: str = DEFAULT_RAG_CONTENT_STORE_ROOT
+    root_path: str = DEFAULT_RAG_STORAGE_ROOT
 
 
 @dataclass(frozen=True)
@@ -489,11 +488,11 @@ class AppConfig:
             pool_pre_ping=_read_bool("DB_POOL_PRE_PING", DEFAULT_DB_POOL_PRE_PING),
         )
         rag_content_store_config = RAGContentStoreConfig(
-            root_path=_read_optional(
-                "RAG_CONTENT_STORE_ROOT",
-                DEFAULT_RAG_CONTENT_STORE_ROOT,
-            )
-            or DEFAULT_RAG_CONTENT_STORE_ROOT,
+            root_path=(
+                _read_optional("RAG_STORAGE_ROOT")
+                or _read_optional("RAG_CONTENT_STORE_ROOT")
+                or DEFAULT_RAG_STORAGE_ROOT
+            ),
         )
 
         return cls(

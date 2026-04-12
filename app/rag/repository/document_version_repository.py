@@ -63,6 +63,33 @@ class DocumentVersionRepository:
             session.flush()
             return self._to_payload(entity)
 
+    def find_version_by_content_hash(
+        self,
+        *,
+        document_id: str,
+        content_hash: str,
+        hash_algorithm: str,
+    ) -> dict[str, Any] | None:
+        with self._database_runtime.session_scope() as session:
+            entity = session.scalar(
+                select(DocumentVersionEntity).where(
+                    DocumentVersionEntity.document_id == document_id,
+                    DocumentVersionEntity.content_hash == content_hash,
+                    DocumentVersionEntity.hash_algorithm == hash_algorithm,
+                )
+            )
+            if entity is None:
+                return None
+            return self._to_payload(entity)
+
+    def count_versions(self, *, document_id: str | None = None) -> int:
+        with self._database_runtime.session_scope() as session:
+            statement = select(func.count()).select_from(DocumentVersionEntity)
+            if document_id is not None:
+                statement = statement.where(DocumentVersionEntity.document_id == document_id)
+            value = session.scalar(statement)
+            return int(value or 0)
+
     def get_version(self, *, version_id: str) -> dict[str, Any] | None:
         with self._database_runtime.session_scope() as session:
             entity = session.scalar(
@@ -149,4 +176,3 @@ class DocumentVersionRepository:
             "metadata_details": copy_json_dict(entity.metadata_details),
             "created_at": datetime_to_iso(entity.created_at),
         }
-

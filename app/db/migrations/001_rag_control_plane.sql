@@ -95,8 +95,8 @@ CREATE TABLE IF NOT EXISTS evaluation_runs (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     run_id VARCHAR(64) NOT NULL UNIQUE,
     build_id VARCHAR(64) NULL,
-    dataset_id VARCHAR(128) NOT NULL,
-    dataset_version_id VARCHAR(128) NOT NULL,
+    dataset_id VARCHAR(128) NULL,
+    dataset_version_id VARCHAR(128) NULL,
     status VARCHAR(64) NOT NULL,
     trigger_type VARCHAR(64) NOT NULL,
     triggered_by VARCHAR(128) NOT NULL,
@@ -130,4 +130,3 @@ CREATE TABLE IF NOT EXISTS evaluation_cases (
     created_at DATETIME NOT NULL,
     INDEX idx_evaluation_cases_run_id (run_id)
 );
-

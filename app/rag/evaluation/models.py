@@ -1,4 +1,4 @@
-"""Phase 7 RAG evaluation dataset and result models."""
+﻿"""Phase 7 RAG evaluation dataset and result models."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ class RetrievalLabel:
     expected_document_ids: list[str] = field(default_factory=list)
     # 期望命中的 chunk ID 列表。
     expected_chunk_ids: list[str] = field(default_factory=list)
-    # 检索召回率最低阈值，取值区间 [0, 1]。
+    # 检索召回率最小阈值，取值区间 [0, 1]。
     min_recall: float = 1.0
 
     def __post_init__(self) -> None:
@@ -43,9 +43,9 @@ class CitationLabel:
     expected_citation_ids: list[str] = field(default_factory=list)
     # 期望命中的 citation 文档 ID 列表。
     expected_document_ids: list[str] = field(default_factory=list)
-    # citation 召回率最低阈值，取值区间 [0, 1]。
+    # citation 召回率最小阈值，取值区间 [0, 1]。
     min_recall: float = 1.0
-    # citation 精确率最低阈值，取值区间 [0, 1]。
+    # citation 精确率最小阈值，取值区间 [0, 1]。
     min_precision: float = 0.0
 
     def __post_init__(self) -> None:
@@ -63,9 +63,9 @@ class AnswerLabel:
     required_terms: list[str] = field(default_factory=list)
     # 回答中禁止出现的关键词列表。
     forbidden_terms: list[str] = field(default_factory=list)
-    # required_terms 的最低命中比例，取值区间 [0, 1]。
+    # required_terms 最小命中比例，取值区间 [0, 1]。
     min_required_term_hit_ratio: float = 1.0
-    # forbidden_terms 允许命中的最大数量，单位为条（count）。
+    # forbidden_terms 允许命中最大数量，单位为条（count）。
     max_forbidden_term_hit_count: int = 0
 
     def __post_init__(self) -> None:
@@ -351,10 +351,10 @@ class EvaluationSummary:
 class EvaluationRunResult:
     # 评估运行批次 ID。
     run_id: str
-    # 评估数据集 ID。
-    dataset_id: str
-    # 评估数据集版本号。
-    dataset_version_id: str
+    # 评估数据集 ID（可空）。
+    dataset_id: str | None
+    # 评估数据集版本号（可空）。
+    dataset_version_id: str | None
     # 运行开始时间，UTC ISO 字符串。
     started_at: str
     # 运行完成时间，UTC ISO 字符串。
@@ -370,8 +370,8 @@ class EvaluationRunResult:
     def new(
         cls,
         *,
-        dataset_id: str,
-        dataset_version_id: str,
+        dataset_id: str | None,
+        dataset_version_id: str | None,
         started_at: str,
         completed_at: str,
         cases: list[EvaluationCaseResult],
@@ -381,8 +381,8 @@ class EvaluationRunResult:
     ) -> "EvaluationRunResult":
         return cls(
             run_id=(run_id or "").strip() or generate_run_id(),
-            dataset_id=dataset_id,
-            dataset_version_id=dataset_version_id,
+            dataset_id=(dataset_id or "").strip() or None,
+            dataset_version_id=(dataset_version_id or "").strip() or None,
             started_at=started_at,
             completed_at=completed_at,
             cases=cases,

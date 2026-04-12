@@ -137,6 +137,23 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ConfigError):
                 AppConfig.from_env(load_dotenv_file=False)
 
+    def test_rag_storage_root_prefers_new_env_name(self) -> None:
+        env = {
+            "RAG_STORAGE_ROOT": "storage/new",
+            "RAG_CONTENT_STORE_ROOT": "storage/legacy",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = AppConfig.from_env(load_dotenv_file=False)
+        self.assertEqual(config.rag_content_store_config.root_path, "storage/new")
+
+    def test_rag_storage_root_supports_legacy_env_name(self) -> None:
+        env = {
+            "RAG_CONTENT_STORE_ROOT": "storage/legacy",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = AppConfig.from_env(load_dotenv_file=False)
+        self.assertEqual(config.rag_content_store_config.root_path, "storage/legacy")
+
     def test_from_env_can_load_values_from_dotenv_file(self) -> None:
         dotenv_content = "\n".join(
             [

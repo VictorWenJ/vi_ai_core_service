@@ -1,4 +1,4 @@
-"""Knowledge document 应用服务。"""
+﻿"""Knowledge document domain service."""
 
 from __future__ import annotations
 
@@ -51,7 +51,8 @@ class RAGDocumentService:
 
         resolved_source_type = source_type or self._resolve_source_type_from_file_name(file_name)
         resolved_title = (title or "").strip() or file_name.rsplit(".", 1)[0] or "untitled"
-        parsed_document = DocumentParser.parse_text(
+
+        parsed_document = self._parser.parse_text(
             content=raw_content,
             title=resolved_title,
             source_type=resolved_source_type,
@@ -69,6 +70,42 @@ class RAGDocumentService:
         parsed_document.content = normalized_text
 
         resolved_document_id = parsed_document.document_id
+        content_hash = compute_content_hash(raw_content)
+        normalized_text_hash = compute_content_hash(normalized_text)
+        hash_algorithm = "sha1"
+
+        # 同一逻辑文档内容 hash 一致时，直接复用已有版本，不重复创建。
+        existing_version = self._document_version_repository.find_version_by_content_hash(
+            document_id=resolved_document_id,
+            content_hash=content_hash,
+            hash_algorithm=hash_algorithm,
+        )
+        if existing_version is not None:
+            reused_version_id = str(existing_version["version_id"])
+            self._document_repository.upsert_document(
+                document_id=resolved_document_id,
+                title=parsed_document.title,
+                source_type=parsed_document.source_type,
+                origin_uri=parsed_document.origin_uri,
+                file_name=parsed_document.file_name,
+                jurisdiction=parsed_document.jurisdiction,
+                domain=parsed_document.domain,
+                visibility=parsed_document.visibility,
+                tags_details=list(parsed_document.tags),
+                status="active",
+                latest_version_id=reused_version_id,
+            )
+            log_report(
+                "knowledge.document.version_reused",
+                {
+                    "document_id": resolved_document_id,
+                    "version_id": reused_version_id,
+                    "content_hash": content_hash,
+                    "hash_algorithm": hash_algorithm,
+                },
+            )
+            return parsed_document
+
         version_no = self._document_version_repository.next_version_no(
             document_id=resolved_document_id
         )
@@ -93,9 +130,9 @@ class RAGDocumentService:
                 version_id=version_id,
                 document_id=resolved_document_id,
                 version_no=version_no,
-                content_hash=compute_content_hash(raw_content),
-                normalized_text_hash=compute_content_hash(normalized_text),
-                hash_algorithm="sha1",
+                content_hash=content_hash,
+                normalized_text_hash=normalized_text_hash,
+                hash_algorithm=hash_algorithm,
                 raw_storage_path=raw_storage_path,
                 normalized_storage_path=normalized_storage_path,
                 raw_file_size=len(raw_bytes),
@@ -185,4 +222,3 @@ class RAGDocumentService:
         if lower_name.endswith(".pdf"):
             return "pdf_file"
         return "raw_text"
-

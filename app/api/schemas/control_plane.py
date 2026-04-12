@@ -203,8 +203,8 @@ class EvaluationRunCreateRequest(BaseModel):
 class EvaluationRunSummaryResponse(BaseModel):
     run_id: str
     build_id: str | None = None
-    dataset_id: str
-    dataset_version_id: str
+    dataset_id: str | None = None
+    dataset_version_id: str | None = None
     started_at: str
     completed_at: str
     summary: dict[str, Any]
