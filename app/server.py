@@ -8,10 +8,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.chat import router as chat_router
-from app.api.evaluation_console import router as evaluation_console_router
+from app.api.evaluation import router as evaluation_router
 from app.api.health import router as health_router
-from app.api.knowledge_console import router as knowledge_console_router
-from app.api.runtime_console import router as runtime_console_router
+from app.api.knowledge import router as knowledge_router
+from app.api.runtime import router as runtime_router
 from app.config import AppConfig
 from app.observability.log_until import log_report
 
@@ -28,9 +28,9 @@ app.add_middleware(
 )
 app.include_router(health_router)
 app.include_router(chat_router)
-app.include_router(knowledge_console_router)
-app.include_router(evaluation_console_router)
-app.include_router(runtime_console_router)
+app.include_router(knowledge_router)
+app.include_router(evaluation_router)
+app.include_router(runtime_router)
 
 
 @app.on_event("startup")

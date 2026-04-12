@@ -6,6 +6,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 from typing import Callable
+from typing import Protocol
 
 from app.observability.log_until import log_report
 from app.rag.evaluation.models import (
@@ -22,10 +23,22 @@ from app.rag.evaluation.models import (
     RetrievalLabel,
 )
 from app.rag.models import RetrievalResult, now_utc_iso
-from app.rag.runtime import RAGRuntime
 
 
 AnswerGenerator = Callable[[EvaluationSample, RetrievalResult], str]
+
+
+class RetrievalRuntimeLike(Protocol):
+    """评估运行器依赖的最小检索运行时协议。"""
+
+    def retrieve_for_chat(
+        self,
+        *,
+        query_text: str,
+        metadata_filter: dict[str, Any] | None = None,
+        top_k: int | None = None,
+    ) -> RetrievalResult:
+        """执行单次检索。"""
 
 
 class RAGEvaluationRunner:
@@ -34,7 +47,7 @@ class RAGEvaluationRunner:
     def __init__(
         self,
         *,
-        rag_runtime: RAGRuntime,
+        rag_runtime: RetrievalRuntimeLike,
         answer_generator: AnswerGenerator | None = None,
     ) -> None:
         self._rag_runtime = rag_runtime

@@ -100,6 +100,9 @@
 - 离线构建元数据与构建批次语义
 - 增量构建 / 局部重建的最小能力边界
 - 基础质量门禁与构建统计
+- API 控制面命名与领域分组收敛
+- 前后端契约统一为领域 REST/SSE 协议
+- 文档加载器适配层引入成熟框架能力
 
 ### 本轮默认技术方向
 
@@ -185,17 +188,20 @@ Phase 6 的重点是：
 ### 阶段七：RAG Evaluation + Offline Build Foundation
 在 Knowledge + Citation 主链路落地后，补齐 RAG 黄金评估集、benchmark runner、离线构建元数据、增量构建与基础质量门禁。
 
-### 阶段八：Summary & Compression Upgrade
-在评估与离线构建基础具备后，升级 conversation summary、长文档摘要与结构化压缩能力，解决当前“按字符切分、摘要质量弱”的问题。
+### 阶段八：Tool Calling / Action Layer
+在知识 grounding、评估体系与内部控制台稳定后，再做工具调用与基础 workflow 执行层。
 
-### 阶段九：Tool Calling / Action Layer
-在知识 grounding 与评估体系稳定后，再做工具调用与基础 workflow 执行层。
+### 阶段九：Workflow / Agent Runtime Foundation
+在 Tool Calling Foundation 落地后，再建设可循环、可重规划、可持久化的 workflow / agent runtime 基础层。
 
-### 阶段十：Case Workspace / Business Scenario MVP
+### 阶段十：Summary & Compression Upgrade
+在工具调用与 workflow 基础具备后，再升级 conversation summary、长文档摘要与结构化压缩能力，解决当前“摘要质量弱、状态提炼粗”的问题。
+
+### 阶段十一：Case Workspace / Business Scenario MVP
 结合具体业务场景，建设案件工作台、结构化业务对象与最小业务闭环。
 
-### 阶段十一：Agent Runtime
-最后再做 planning、多步执行与 workflow orchestration。
+### 阶段十二：Production Hardening / Governance Upgrade
+最后再做权限、租户、配置治理、成本治理、线上评估与更完整的工程化加固。
 
 ---
 
@@ -224,6 +230,8 @@ Phase 6 的重点是：
 - 离线构建元数据与构建批次语义（build/version/strategy/model 版本信息）
 - 增量构建 / 局部重建约束（manifest + content hash）
 - 基础质量门禁与构建统计（failure ratio、empty chunk ratio、upsert 统计）
+- 控制面 API 以领域命名对齐 knowledge / evaluation / runtime
+- 文档加载器适配层允许引入成熟框架，但仍保持内部 ingest 主链路控制权
 
 当前阶段不得因为引入 RAG 而破坏：
 
@@ -254,8 +262,10 @@ Phase 6 的重点是：
 
 1. 当前阶段仅推进 Phase 7 范围内内容
 2. 不得以 Phase 7 名义提前引入 Tool Calling、长期记忆平台、审批流、Case Workspace、Agent Runtime 或多模态主链路
-3. Summary Upgrade 属于后续阶段，不在本轮混做
-4. 后续每一阶段都必须保持与上一阶段主链路兼容，不允许推倒重来
+3. Tool Calling / Workflow / Agent Runtime 属于后续阶段，不在本轮混做
+4. Summary Upgrade 属于后续阶段，不在本轮混做
+5. API 命名、控制面服务命名与前后端契约统一属于当前收口工作，应在不破坏既有行为的前提下尽快完成
+6. 后续每一阶段都必须保持与上一阶段主链路兼容，不允许推倒重来
 
 ---
 

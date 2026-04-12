@@ -1,6 +1,6 @@
 # app/api/AGENTS.md
 
-> 更新日期：2026-04-10
+> 更新日期：2026-04-12
 
 ## 1. 文档定位
 
@@ -36,11 +36,14 @@
 当前阶段建议围绕以下职责组织：
 
 - `chat.py`：`/chat`、`/chat_stream`、`/chat_stream_cancel`、`/chat_reset`
+- `knowledge.py`：`/knowledge/*` 相关控制面入口
+- `evaluation.py`：`/evaluation/*` 相关控制面入口
+- `runtime.py`：`/runtime/*` 相关摘要入口
 - `health.py`：`/health`
 - `deps.py`：依赖装配
 - `error_mapping.py`：异常到 HTTP 的映射
 - `sse.py`：SSE 文本序列化
-- `schemas/chat.py`：API 层请求 / 响应模型
+- `schemas/`：按领域维护 API 层请求 / 响应模型
 
 ---
 
@@ -53,6 +56,7 @@
 5. 输出 SSE 事件流
 6. 保持对外契约稳定
 7. 维护 `/chat`、`/chat_stream`、`/chat_stream_cancel`、`/chat_reset`、`/health` 的稳定接入语义
+8. 维护 knowledge / evaluation / runtime 控制面 API 的稳定领域契约
 
 ---
 
@@ -115,6 +119,15 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 - SSE event name 与 payload 结构必须稳定
 - API 层不负责定义业务生命周期状态机，但负责正确输出其协议表示
 
+### 6.6 API 命名必须按领域，而不是按消费者
+- 路由文件与 URL 分组应按领域职责命名，例如 `knowledge.py`、`evaluation.py`、`runtime.py`
+- 不再以 `*_console.py` 作为正式 API 文件名
+- 前端 Internal Console 只是当前消费者，不能反向定义后端 API 模块命名
+
+### 6.7 前后端契约统一原则
+- 后端 schema 是前后端契约的 source of truth
+- 前端 API client 与类型定义应围绕后端领域 schema 对齐
+- 控制面 API 继续采用 REST JSON；chat 保持 JSON + SSE 双协议
 ---
 
 ## 7. 当前阶段能力声明
@@ -133,6 +146,7 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 
 - `ChatResponse` 已定义 `citations`
 - `response.completed` 已定义 `citations`
+- 当前控制面 API 已按领域分组为 knowledge / evaluation / runtime，而不是按 console 消费者命名
 - API 层仍不直接接入 retrieval，仅消费 service 编排结果与降级结果
 
 当前本轮必须保持：
@@ -194,6 +208,8 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 5. 若未来新增 citations，不允许以无 schema、临时拼接字段的方式输出
 6. 不允许在 API 层直接做 context reset / cancel / stream 之外的状态机编排
 7. 不允许为历史测试保留旧 service 方法名的双轨调用分支
+8. 不允许新增 `*_console.py` 形式的正式 API 文件名
+9. 不允许把控制面 API 设计成仅服务 Internal Console 的临时命名或临时响应结构
 
 ---
 
@@ -209,7 +225,8 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 8. 是否没有把未落地的 Phase 6 能力写成已实现事实？
 9. 是否没有泄漏底层向量库与 embedding 细节？
 10. 本次文档更新是否遵守了“文档维护规则”？
-11. 是否保持了原有布局、排版、标题层级、写法和风格？
+11. 控制面 API 是否已按领域命名收敛，而不是保留 `*_console` 命名？
+12. 是否保持了原有布局、排版、标题层级、写法和风格？
 
 ---
 
@@ -227,6 +244,7 @@ API 负责收与发，不负责 chat、streaming、retrieval 的内部流程。
 8. `error_mapping.py` 映射稳定
 9. `/health` 与 HTTP smoke 行为符合设计
 10. 原有同步与流式契约未被破坏
+11. knowledge / evaluation / runtime 控制面 API 契约稳定且按领域命名
 
 ---
 

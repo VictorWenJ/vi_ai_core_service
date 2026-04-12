@@ -8,6 +8,7 @@ from app.context.policies.tokenizer import CharacterTokenCounter
 from app.providers.embeddings.base import BaseEmbeddingProvider, EmbeddingResult
 from app.rag.ingestion.chunker import StructuredTokenChunker
 from app.rag.ingestion.cleaner import DocumentCleaner
+from app.rag.ingestion.loaders.base import LoadedDocument
 from app.rag.ingestion.parser import DocumentParser
 from app.rag.ingestion.pipeline import KnowledgeIngestionPipeline
 from app.rag.models import KnowledgeDocument
@@ -48,7 +49,18 @@ class StubEmbeddingProvider(BaseEmbeddingProvider):
 
 class RAGIngestionTests(unittest.TestCase):
     def test_document_parser_supports_text_and_local_files(self) -> None:
-        parser = DocumentParser()
+        class _FakePdfLoader:
+            def load(self, file_path: str | Path) -> LoadedDocument:
+                return LoadedDocument(
+                    text="pdf-content",
+                    title=Path(file_path).stem,
+                    source_type="pdf_file",
+                    origin_uri=str(Path(file_path)),
+                    file_name=Path(file_path).name,
+                    metadata={"page_count": 1},
+                )
+
+        parser = DocumentParser(pdf_loader=_FakePdfLoader())
 
         from_text = parser.parse_text(
             content="hello world",
@@ -61,14 +73,20 @@ class RAGIngestionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             txt_path = Path(temp_dir) / "a.txt"
             md_path = Path(temp_dir) / "b.md"
+            pdf_path = Path(temp_dir) / "c.pdf"
             txt_path.write_text("txt-content", encoding="utf-8")
             md_path.write_text("# heading\n\nmd-content", encoding="utf-8")
+            pdf_path.write_bytes(b"%PDF-1.4\n%fake\n")
 
             from_txt = parser.parse_file(str(txt_path))
             from_md = parser.parse_file(str(md_path))
+            from_pdf = parser.parse_file(str(pdf_path))
 
         self.assertEqual(from_txt.source_type, "text_file")
         self.assertEqual(from_md.source_type, "markdown_file")
+        self.assertEqual(from_pdf.source_type, "pdf_file")
+        self.assertEqual(from_pdf.content, "pdf-content")
+        self.assertEqual(from_pdf.metadata["page_count"], 1)
         self.assertEqual(from_md.file_name, "b.md")
 
     def test_document_cleaner_normalizes_whitespace(self) -> None:

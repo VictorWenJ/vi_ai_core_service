@@ -12,7 +12,7 @@ from app.api.schemas.chat import (
     ChatStreamRequest,
     ChatUsage,
 )
-from app.api.schemas.console import (
+from app.api.schemas.control_plane import (
     BuildCreateRequest,
     BuildDetailResponse,
     BuildSummaryResponse,

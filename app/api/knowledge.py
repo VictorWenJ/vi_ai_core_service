@@ -1,4 +1,4 @@
-"""Internal console knowledge/build/inspector routes."""
+﻿"""Knowledge domain control-plane routes."""
 
 from __future__ import annotations
 
@@ -7,9 +7,13 @@ from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from app.api.deps import get_internal_console_rag_service
+from app.api.deps import (
+    get_rag_build_service,
+    get_rag_document_service,
+    get_rag_inspector_service,
+)
 from app.api.error_mapping import build_service_http_exception
-from app.api.schemas.console import (
+from app.api.schemas.control_plane import (
     BuildCreateRequest,
     BuildDetailResponse,
     BuildSummaryResponse,
@@ -23,7 +27,9 @@ from app.api.schemas.console import (
 )
 
 router = APIRouter(tags=["knowledge"])
-_get_internal_console_rag_service = get_internal_console_rag_service
+_get_document_service = get_rag_document_service
+_get_build_service = get_rag_build_service
+_get_inspector_service = get_rag_inspector_service
 
 
 @router.post(
@@ -40,7 +46,7 @@ async def upload_document(
     tags: str | None = Form(default=None),
 ) -> KnowledgeDocumentUploadResponse:
     started_at = perf_counter()
-    service = _get_internal_console_rag_service()
+    service = _get_document_service()
     try:
         raw_bytes = await file.read()
         content = raw_bytes.decode("utf-8")
@@ -54,13 +60,13 @@ async def upload_document(
             jurisdiction=jurisdiction,
             domain=domain,
             tags=tag_list,
-            metadata={"uploaded_via": "internal_console"},
+            metadata={"uploaded_via": "control_api"},
         )
     except Exception as exc:
         raise build_service_http_exception(
             exc,
             started_at=started_at,
-            event_prefix="api.console.knowledge.upload",
+            event_prefix="api.knowledge.upload",
             context_payload={"file_name": file.filename or "uploaded.txt"},
         ) from exc
     return KnowledgeDocumentUploadResponse(
@@ -76,7 +82,7 @@ async def upload_document(
 @router.post("/knowledge/builds", response_model=BuildDetailResponse)
 def create_build(payload: BuildCreateRequest) -> BuildDetailResponse:
     started_at = perf_counter()
-    service = _get_internal_console_rag_service()
+    service = _get_build_service()
     try:
         build_result = service.create_build(
             version_id=payload.version_id,
@@ -88,20 +94,20 @@ def create_build(payload: BuildCreateRequest) -> BuildDetailResponse:
         raise build_service_http_exception(
             exc,
             started_at=started_at,
-            event_prefix="api.console.knowledge.create_build",
+            event_prefix="api.knowledge.create_build",
         ) from exc
     return BuildDetailResponse(**build_result.to_dict())
 
 
 @router.get("/knowledge/builds", response_model=list[BuildSummaryResponse])
 def list_builds() -> list[BuildSummaryResponse]:
-    service = _get_internal_console_rag_service()
+    service = _get_build_service()
     return [BuildSummaryResponse(**_build_summary_payload(build)) for build in service.list_builds()]
 
 
 @router.get("/knowledge/builds/{build_id}", response_model=BuildDetailResponse)
 def get_build(build_id: str) -> BuildDetailResponse:
-    service = _get_internal_console_rag_service()
+    service = _get_build_service()
     build_result = service.get_build(build_id)
     if build_result is None:
         raise HTTPException(status_code=404, detail=f"build_id '{build_id}' 不存在。")
@@ -110,7 +116,7 @@ def get_build(build_id: str) -> BuildDetailResponse:
 
 @router.get("/knowledge/documents", response_model=list[KnowledgeDocumentSummaryResponse])
 def list_documents() -> list[KnowledgeDocumentSummaryResponse]:
-    service = _get_internal_console_rag_service()
+    service = _get_inspector_service()
     return [
         KnowledgeDocumentSummaryResponse(**document_payload)
         for document_payload in service.list_documents()
@@ -122,7 +128,7 @@ def list_documents() -> list[KnowledgeDocumentSummaryResponse]:
     response_model=KnowledgeDocumentDetailResponse,
 )
 def get_document(document_id: str) -> KnowledgeDocumentDetailResponse:
-    service = _get_internal_console_rag_service()
+    service = _get_inspector_service()
     document_payload = service.get_document(document_id)
     if document_payload is None:
         raise HTTPException(status_code=404, detail=f"document_id '{document_id}' 不存在。")
@@ -134,7 +140,7 @@ def get_document(document_id: str) -> KnowledgeDocumentDetailResponse:
     response_model=list[KnowledgeChunkSummaryResponse],
 )
 def list_document_chunks(document_id: str) -> list[KnowledgeChunkSummaryResponse]:
-    service = _get_internal_console_rag_service()
+    service = _get_inspector_service()
     chunks_payload = service.list_document_chunks(document_id)
     if chunks_payload is None:
         raise HTTPException(status_code=404, detail=f"document_id '{document_id}' 不存在。")
@@ -143,7 +149,7 @@ def list_document_chunks(document_id: str) -> list[KnowledgeChunkSummaryResponse
 
 @router.get("/knowledge/chunks/{chunk_id}", response_model=KnowledgeChunkDetailResponse)
 def get_chunk(chunk_id: str) -> KnowledgeChunkDetailResponse:
-    service = _get_internal_console_rag_service()
+    service = _get_inspector_service()
     chunk_payload = service.get_chunk(chunk_id)
     if chunk_payload is None:
         raise HTTPException(status_code=404, detail=f"chunk_id '{chunk_id}' 不存在。")
@@ -153,7 +159,7 @@ def get_chunk(chunk_id: str) -> KnowledgeChunkDetailResponse:
 @router.post("/knowledge/retrieval/debug", response_model=RetrievalDebugResponse)
 def retrieval_debug(payload: RetrievalDebugRequest) -> RetrievalDebugResponse:
     started_at = perf_counter()
-    service = _get_internal_console_rag_service()
+    service = _get_inspector_service()
     try:
         debug_payload = service.retrieval_debug(
             query_text=payload.query_text,
@@ -164,7 +170,7 @@ def retrieval_debug(payload: RetrievalDebugRequest) -> RetrievalDebugResponse:
         raise build_service_http_exception(
             exc,
             started_at=started_at,
-            event_prefix="api.console.knowledge.retrieval_debug",
+            event_prefix="api.knowledge.retrieval_debug",
             context_payload={"query_text": payload.query_text},
         ) from exc
     return RetrievalDebugResponse(**debug_payload)

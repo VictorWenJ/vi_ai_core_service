@@ -291,15 +291,23 @@ class ConsoleAPITests(unittest.TestCase):
         self.fake_service = FakeInternalConsoleService()
         self._patchers = [
             patch(
-                "app.api.knowledge_console._get_internal_console_rag_service",
+                "app.api.knowledge._get_document_service",
                 return_value=self.fake_service,
             ),
             patch(
-                "app.api.evaluation_console._get_internal_console_rag_service",
+                "app.api.knowledge._get_build_service",
                 return_value=self.fake_service,
             ),
             patch(
-                "app.api.runtime_console._get_internal_console_rag_service",
+                "app.api.knowledge._get_inspector_service",
+                return_value=self.fake_service,
+            ),
+            patch(
+                "app.api.evaluation._get_evaluation_service",
+                return_value=self.fake_service,
+            ),
+            patch(
+                "app.api.runtime._get_runtime_service",
                 return_value=self.fake_service,
             ),
         ]

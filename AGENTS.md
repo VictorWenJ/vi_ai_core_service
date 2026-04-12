@@ -95,6 +95,9 @@
 - 基础增量构建与局部重建约束
 - 构建质量门禁与最小构建统计
 - 评估与离线构建相关 observability
+- API 控制面命名与领域分组收敛（`knowledge.py`、`evaluation.py`、`runtime.py`）
+- 前后端契约统一到“领域 API + 稳定 REST/SSE 协议”风格，避免按消费者命名接口
+- 文档加载器引入成熟适配层，但 loader 仅作为 ingest 输入适配，不接管内部 chunk / metadata / build 主链路
 
 ### 本轮默认技术基线
 
@@ -117,6 +120,7 @@
 - Tool Calling / Agent Runtime
 - 多模态检索主链路
 - Web 爬虫平台化
+- 让 LangChain 或其他框架直接接管 retrieval / citation / request assembly 主链路
 
 ---
 
@@ -226,6 +230,28 @@ citation 必须来自 retrieval 结果，不得变成模型自由生成的装饰
 
 ---
 
+
+
+### 7.7 API 控制面命名收敛规则
+
+控制面 API 与其路由文件应按**领域职责**命名，而不是按当前消费者命名。
+当前阶段要求：
+
+1. `app/api/` 中的路由文件应统一按领域命名，例如：`chat.py`、`knowledge.py`、`evaluation.py`、`runtime.py`。
+2. 不再保留以 `*_console.py` 命名的正式 API 模块名；“console”只能描述当前消费者，不能定义后端领域能力命名。
+3. API schema、API client、前端页面与测试用例后续也应跟随后端领域命名收敛，不长期维持“领域名 + console 后缀”双轨。
+4. 控制台只是当前消费者，后端 API 命名必须保持可被未来正式产品前端、CLI、集成测试与其他服务复用的中性命名。
+
+### 7.8 文档加载器引入原则
+
+文档加载器属于知识接入适配能力，不属于本项目当前阶段必须手搓的核心竞争力。
+当前阶段允许在 `app/rag/ingestion/` 中引入成熟文档加载器框架作为 loader adapter，例如 LangChain document loaders，但必须遵守：
+
+1. 只允许 loader 层借助成熟框架，不允许让外部框架接管内部 `KnowledgeDocument` / `KnowledgeChunk` / `Citation` 等领域模型。
+2. clean / normalize / chunking / metadata enrichment / build version / retrieval / citation 仍由仓库内部代码主导。
+3. loader adapter 的输出必须先转换为本项目内部中间表示，再进入现有 ingest pipeline。
+4. 不允许因为引入 loader 框架而把 `app/rag/` 重构成 LangChain 主导的端到端 RAG 流水线。
+
 ## 8. 当前阶段能力声明
 
 当前阶段已实现并要求保持稳定：
@@ -257,6 +283,11 @@ citation 必须来自 retrieval 结果，不得变成模型自由生成的装饰
 - 离线构建元数据与构建批次概念（build_id / version_id / chunk_strategy_version / embedding_model_version）
 - 增量构建与局部重建约束（manifest + 内容哈希）
 - 基础质量门禁与构建统计（failure ratio / empty chunk ratio / upsert 一致性）
+- Internal Console v1 已落地，并通过领域化控制面 API 消费 knowledge / evaluation / runtime 能力
+- API 路由文件已按领域命名收敛为 `chat.py`、`knowledge.py`、`evaluation.py`、`runtime.py`
+- `app/rag/console_service.py` 已拆分为 `document_service.py`、`build_service.py`、`inspector_service.py`、`evaluation_service.py`
+- runtime summary / config / health 聚合能力已落位 `app/services/runtime_service.py`
+- 文档加载器已在 `app/rag/ingestion/loaders/` 引入受控 adapter（含 LangChain PyMuPDF loader 适配）
 
 当前轮次所有实现，必须严格限制在当前阶段边界内，不得提前扩展到：
 

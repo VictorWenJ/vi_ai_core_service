@@ -1,4 +1,4 @@
-"""Internal console evaluation routes."""
+﻿"""Evaluation domain control-plane routes."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ from time import perf_counter
 
 from fastapi import APIRouter, HTTPException
 
-from app.api.deps import get_internal_console_rag_service
+from app.api.deps import get_rag_evaluation_service
 from app.api.error_mapping import build_service_http_exception
-from app.api.schemas.console import (
+from app.api.schemas.control_plane import (
     EvaluationRunCaseResponse,
     EvaluationRunCreateRequest,
     EvaluationRunDetailResponse,
@@ -16,32 +16,32 @@ from app.api.schemas.console import (
 )
 
 router = APIRouter(tags=["evaluation"])
-_get_internal_console_rag_service = get_internal_console_rag_service
+_get_evaluation_service = get_rag_evaluation_service
 
 
 @router.post("/evaluation/rag/runs", response_model=EvaluationRunDetailResponse)
 def create_evaluation_run(payload: EvaluationRunCreateRequest) -> EvaluationRunDetailResponse:
     started_at = perf_counter()
-    service = _get_internal_console_rag_service()
+    service = _get_evaluation_service()
     try:
         run_result = service.create_evaluation_run(
             dataset_id=payload.dataset_id,
             version_id=payload.version_id,
             samples=[sample.model_dump() for sample in payload.samples],
-            run_metadata=dict(payload.metadata),
+            run_metadata=dict(payload.metadata) or {"trigger": "control_api"},
         )
     except Exception as exc:
         raise build_service_http_exception(
             exc,
             started_at=started_at,
-            event_prefix="api.console.evaluation.create_run",
+            event_prefix="api.evaluation.create_run",
         ) from exc
     return EvaluationRunDetailResponse(**_to_run_summary_payload(run_result))
 
 
 @router.get("/evaluation/rag/runs", response_model=list[EvaluationRunSummaryResponse])
 def list_evaluation_runs() -> list[EvaluationRunSummaryResponse]:
-    service = _get_internal_console_rag_service()
+    service = _get_evaluation_service()
     return [
         EvaluationRunSummaryResponse(**_to_run_summary_payload(run_result))
         for run_result in service.list_evaluation_runs()
@@ -50,7 +50,7 @@ def list_evaluation_runs() -> list[EvaluationRunSummaryResponse]:
 
 @router.get("/evaluation/rag/runs/{run_id}", response_model=EvaluationRunDetailResponse)
 def get_evaluation_run(run_id: str) -> EvaluationRunDetailResponse:
-    service = _get_internal_console_rag_service()
+    service = _get_evaluation_service()
     run_result = service.get_evaluation_run(run_id)
     if run_result is None:
         raise HTTPException(status_code=404, detail=f"run_id '{run_id}' 不存在。")
@@ -59,7 +59,7 @@ def get_evaluation_run(run_id: str) -> EvaluationRunDetailResponse:
 
 @router.get("/evaluation/rag/runs/{run_id}/cases", response_model=list[EvaluationRunCaseResponse])
 def list_evaluation_run_cases(run_id: str) -> list[EvaluationRunCaseResponse]:
-    service = _get_internal_console_rag_service()
+    service = _get_evaluation_service()
     run_result = service.get_evaluation_run(run_id)
     if run_result is None:
         raise HTTPException(status_code=404, detail=f"run_id '{run_id}' 不存在。")

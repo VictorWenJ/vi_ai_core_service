@@ -88,6 +88,10 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 ### 4.7 Phase 7 边界
 benchmark runner 可以复用 services 的正式在线入口，但 services 不承担黄金集定义、评分逻辑与离线构建逻辑。
 
+### 4.8 控制面应用服务命名原则
+应用层服务命名应按职责命名，而不是按当前消费者命名。
+若存在 runtime summary / config summary / health 等应用级聚合能力，应放在 `app/services/` 内按职责收敛，而不是长期依附 `app/rag/console_service.py`。
+
 ---
 
 ## 5. 默认阶段基线
@@ -190,7 +194,10 @@ services 可依赖：
 ### 8.6 历史兼容清理约束
 当确认旧接口仅用于历史测试兼容时，应在 services 层移除对应分支，并同步更新测试到当前正式接口。
 
-### 8.7 中文字段注释与默认配置说明约束
+### 8.7 命名收敛约束
+不允许新增按 console、debug、playground 等消费者命名的长期应用服务文件或类。
+
+### 8.8 中文字段注释与默认配置说明约束
 
 1. 本模块中所有 `@dataclass` 定义的结构化对象，必须为每一个字段补充中文注释，说明字段含义。
 2. 本模块中所有默认配置常量、默认阈值或默认限制项，必须补充中文注释；涉及 token、chars、seconds、ttl、size、top-k、threshold 等值时，必须明确单位或语义。

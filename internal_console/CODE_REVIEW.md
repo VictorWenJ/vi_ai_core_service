@@ -36,6 +36,7 @@
 ### 3.2 API-first
 所有页面必须通过稳定 API 获取数据。  
 如果页面需要的数据当前后端没有提供，应先补后端 API，而不是前端绕过边界。
+页面与 API client 应按 chat / knowledge / evaluation / runtime 等领域拆分，不延续 `*_console` 风格命名。
 
 ### 3.3 SSE 处理必须按事件语义实现
 对 `/chat_stream`：

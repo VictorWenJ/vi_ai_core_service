@@ -1,4 +1,4 @@
-"""Internal console API schemas."""
+﻿"""Control-plane API schemas."""
 
 from __future__ import annotations
 

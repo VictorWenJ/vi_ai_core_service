@@ -10,7 +10,7 @@
 
 其架构目标包括：
 - 提供清晰的页面级能力入口
-- 通过稳定 API 消费后端能力
+- 通过稳定领域 API 消费后端能力
 - 正确消费 `/chat_stream` SSE 事件
 - 将操作、查看、评估、构建四类能力统一在一个内部控制台中
 - 保持与后端解耦，不依赖后端内部实现
@@ -46,6 +46,7 @@
 ## 4.1 调用边界
 前端只能通过 HTTP / SSE 访问后端公开接口。  
 前端运行编排与后端编排独立，使用 `internal_console/infra/compose.yaml` 单独部署。  
+当前控制台应优先消费以下领域 API：`/chat*`、`/knowledge/*`、`/evaluation/*`、`/runtime/*`。
 前端不应：
 - 直接访问 Qdrant
 - 直接访问后端内部 Python 对象
@@ -131,6 +132,7 @@
 
 ## 7. 类型与契约原则
 前端应显式维护 API contract 类型定义。
+当前类型与 API client 应按领域拆分，并逐步向以后端 schema / OpenAPI 为源收敛。
 
 要求：
 - Chat 响应类型明确

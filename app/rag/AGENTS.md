@@ -50,6 +50,7 @@
 - `retrieval/`
 - `citation/`
 - `runtime.py`
+- 面向知识领域职责拆分的应用服务（如 document / build / inspector / evaluation）
 - `AGENTS.md`
 
 ---
@@ -57,7 +58,7 @@
 ## 3. 本模块职责
 
 1. 提供 Phase 6 知识对象模型与 citation 对象模型
-2. 提供最小 ingest pipeline（parser / cleaner / chunker / embedding / index）
+2. 提供最小 ingest pipeline（loader adapter / parser / cleaner / chunker / embedding / index）
 3. 提供 retrieval service 与 knowledge block 渲染
 4. 提供 citation-ready retrieval 结果与可降级 runtime
 5. 提供离线构建元数据与构建批次相关数据支撑
@@ -75,6 +76,7 @@
 6. 不负责 `/chat` 或 `/chat_stream` 的最终响应封装
 7. 不负责长期记忆平台、审批流、Case Workspace
 8. 不负责完整知识运营后台或独立评估平台 UI
+9. 不负责以消费者命名的控制台聚合服务长期驻留在 `app/rag/`
 
 ---
 
@@ -139,6 +141,17 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - 本轮允许为 benchmark 与评估标签提供稳定数据支撑
 - 本轮不把 `app/rag/` 扩张成独立知识运营平台或复杂 agentic retrieval 层
 
+### 6.8 文档加载器适配原则
+- 文档加载器允许通过成熟框架接入，例如 LangChain document loaders
+- loader 框架只位于 `ingestion/` 的输入适配层
+- loader 输出必须先转换为本项目内部中间表示，再进入 clean / chunk / metadata / build 主链路
+- 不允许让外部框架 Document/loader 直接替代内部领域模型
+
+### 6.9 控制面服务拆分原则
+- `app/rag/` 中面向控制面或操作面的应用服务，应按 document / build / inspector / evaluation 等领域职责拆分
+- 不再长期维持以消费者命名的 `console_service.py` 作为聚合服务
+- runtime summary / config / health 等系统级摘要能力不应继续固化在 `app/rag/` 内部
+
 ---
 
 ## 7. 当前阶段能力声明
@@ -176,6 +189,7 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - 增量构建 / 局部重建边界（manifest + content hash + force rebuild ids）
 - 基础质量门禁与构建统计（failure ratio / empty chunk ratio / upsert 一致性）
 - 与 retrieval / citation / answer benchmark 对齐的数据支撑（`app/rag/evaluation/`）
+- 允许在 loader adapter 层接入成熟文档加载器框架，并继续保持内部 ingest 主链路控制权
 
 当前本轮不要求落地：
 

@@ -70,6 +70,10 @@ retrieval / embedding / index 异常不应无条件拖垮 chat 主链路。
 Phase 7 优先做 benchmark、黄金集、build 元数据与质量门禁；
 不把本轮扩张成独立知识平台、复杂 hybrid retrieval 平台或 agentic retrieval 系统。
 
+### 4.7 文档加载器适配层可以引入成熟框架
+文档加载器不是当前项目的核心差异化能力。
+允许在 loader adapter 层引入 LangChain 等成熟框架，但不得让其接管内部知识模型、chunking、build、retrieval 与 citation 主链路。
+
 ---
 
 ## 5. 默认技术基线
@@ -84,6 +88,7 @@ Phase 7 优先做 benchmark、黄金集、build 元数据与质量门禁；
 - citation：由 retrieval 结果派生
 - 评估：query / retrieval / citation / answer 分层标签
 - 离线构建：build / version / strategy 元数据可追踪
+- 文档加载：允许在 adapter 层接入 LangChain loaders 等成熟能力
 - 当前代码已提供 `app/rag/evaluation/` 数据集模型、runner 与结果落盘
 - 当前代码已提供离线构建 `build_documents`、manifest 增量约束与质量门禁
 
@@ -143,6 +148,7 @@ RAG 相关实现任务，至少应交付以下之一或多项：
 
 ### 8.1 运行时代码约束
 新增能力时，必须先确认当前提交不只是文档补丁，而是真的在 `app/rag/` 新增或完善运行时代码。
+不得继续把控制面聚合逻辑长期堆在 `console_service.py` 一类消费者导向文件中。
 
 ### 8.2 模型约束
 必须显式区分：

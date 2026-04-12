@@ -117,6 +117,7 @@
 - rag ingestion / retrieval / citation
 - retrieval failure degrade
 - retrieval / citation / answer benchmark
+- 领域 API 命名与控制面契约收敛
 
 ### 6.5 测试不能掩盖架构问题
 如果实现层边界已经错了，不能靠写更多测试来掩盖。
@@ -216,6 +217,8 @@
 7. 不允许新增仅用于维持历史兼容分支的测试
 8. 不允许保留只覆盖旧方法名或旧 response shape 的过时测试
 9. 不允许把纯 LLM 合成样本直接当作唯一正式黄金集而不做分层标注
+10. API 或 service 重命名完成后，不允许继续保留仅覆盖 `*_console` 历史命名的过时测试。
+11. 引入 loader adapter 后，测试应覆盖 adapter 到内部文档模型的转换与回归。
 
 ---
 

@@ -83,6 +83,7 @@
 职责：
 - 负责知识对象模型
 - 负责 ingest / parse / clean / chunk / embed / index
+- 负责文档加载适配层（可接入成熟 loader 框架并转换为内部中间表示）
 - 负责 retrieval service、knowledge block 渲染与 citation 结构
 - 作为 Knowledge + Citation Layer 的内部实现域
 
@@ -310,7 +311,17 @@
 - 评估 runner 与评估数据集应服务于现有 RAG 主链路，不得重新定义新的回答契约
 - 构建批次、版本、质量门禁等能力应围绕 `app/rag/` 与 `tests/` 组织，不得提前扩张成独立知识平台
 
-### 8.6 架构边界约束
+### 8.6 控制面契约与命名约束
+- 控制面 API 模块必须按领域命名，不得继续使用 `*_console.py` 作为正式 API 文件名
+- `app/rag/` 不应长期保留以消费者命名的 `console_service.py` 聚合服务；控制面相关应用服务应按 document / build / inspector / evaluation / runtime 等职责拆分
+- 前后端契约应以后端 schema 为 source of truth，逐步走向 OpenAPI 驱动的一致性类型生成或映射
+
+### 8.7 文档加载适配层约束
+- loader 框架只进入 `app/rag/ingestion/` 输入适配层
+- 外部 loader 输出必须先转换为内部中间表示，再进入 clean / chunk / metadata / build 主链路
+- 不允许把 LangChain 或其他框架的 Document / pipeline 直接当作内部一等领域模型
+
+### 8.8 架构边界约束
 当前阶段不得以 Phase 7 名义扩展为：
 
 - 独立 RAG 微服务

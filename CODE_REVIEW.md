@@ -59,6 +59,10 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 未经明确确认，不允许删除既有中文字段注释或默认配置注释；若字段或配置项仍存在但注释被删除，视为不合格改动。
 
 ### 当前阶段额外原则
+- 控制面 API 与服务命名必须按领域职责收敛，不按当前消费者命名。
+- `app/api/` 中正式路由文件不得继续使用 `*_console.py` 作为长期命名。
+- `app/rag/` 中不得继续维持消费者导向的聚合型 `console_service` 作为长期结构。
+- 文档加载器允许引入成熟框架，但 loader 框架只能位于输入适配层，不得接管内部 RAG 主链路。
 
 - 当前已落地主链路覆盖 Phase 2~6，不得被不受控改动破坏
 - Phase 7 只能增强评估与离线构建基础，不得借机改坏在线 chat / stream / context / citation 契约
@@ -90,6 +94,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 ## 5. 全局边界检查清单
 
 ### API 层
+- 路由文件与 URL 分组是否按领域命名（chat / knowledge / evaluation / runtime），而不是按 console 消费者命名？
 - 是否只做接入、校验、转发、返回
 - SSE 序列化是否留在 API 层
 - route 是否没有直接消费 provider 原始 chunk 或 vector index
@@ -97,12 +102,14 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - citation 是否通过稳定 schema 返回，而不是随意拼接
 
 ### Services 层
+- 是否仍保持按应用职责拆分，而不是把控制面能力塞进消费者导向的 God Service？
 - 是否仍然是编排层
 - 生命周期状态机、取消协调、完成态收口是否由 services 统一调度
 - 当前 request assembly 顺序是否仍为 system -> knowledge -> working memory -> rolling summary -> recent raw -> user
 - retrieval 是否由 services 编排，而不是散落到 api/provider/context
 
 ### Context / Prompt / RAG / Provider
+- loader 框架的引入是否仅停留在 ingest 输入适配层，而没有污染内部 chunk / retrieval / citation / build 语义？
 - 四个专项能力模块是否职责分离
 - context 是否只在 completed 时执行标准 memory update
 - rag 是否保持“内部子域 + 运行时代码实现”且不越界
@@ -199,6 +206,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 修改 `KnowledgeDocument` / `KnowledgeChunk` / `RetrievedChunk` / `Citation` 时，是否职责清晰
 
 ### 9.3 Chunking 与 Ingest
+- 文档加载器引入后，是否仍保持内部 clean / normalize / chunk / metadata / build 主链路由仓库内部代码控制？
 - chunking / ingest 实现是否与代码一致
 - 是否采用结构感知 + token-aware + overlap
 - parser / cleaner / chunker / embedding / index 链路是否清晰
@@ -248,6 +256,9 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 没有 query/label 分层就把 LLM 合成问答直接当正式黄金集
 
 ### 当前阶段补充拒绝项
+- 以 `*_console.py` 或 `console_service.py` 形式长期固化消费者导向命名
+- 为了前端便利直接把 runtime / build / evaluation / inspector 全塞进单一聚合服务
+- 让 LangChain 或其他框架 Document/loader 直接渗透为内部一等领域模型
 
 - 将 retrieval 结果直接当成 short-term memory 使用
 - 在 service 层散落直接访问向量库 SDK 的实现
