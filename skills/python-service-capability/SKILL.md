@@ -7,17 +7,17 @@
 
 ## 1. Skill 定位
 
-本 skill 用于指导 `vi_ai_core_service` 在 `app/services/` 模块中进行应用编排层的设计、实现、测试与增量演进。
+本 skill 用于指导 `vi_ai_core_service` 在 `app/services/` 模块中进行应用入口层的设计、实现、测试与增量演进。
 
 本 skill 的目标不是生成“泛化的 chat service 示例”，而是约束在本项目文档治理体系下，按当前仓库真实代码结构实现：
 
-- 同步 chat 编排
-- 流式 chat 编排
-- request assembly
-- cancellation registry
-- assistant message lifecycle 收口
+- 同步 chat 入口 façade
+- 流式 chat 入口 façade
+- runtime request/result 适配
+- SSE 交付协作
+- cancellation registry 协作
+- 与 `app/chat_runtime/` 的稳定协作
 - 与 context / prompts / providers 的稳定协作
-- 为 benchmark 复用在线能力提供稳定入口
 
 ---
 
@@ -45,8 +45,8 @@
 4. Prompt 资产注册与模板渲染内部实现
 5. retrieval / chunking / embedding / index 运行时代码
 6. citation 生成逻辑
-7. 长期记忆平台
-8. Agent Runtime
+7. `app/chat_runtime/` 内部 workflow / hook / trace 主逻辑
+8. Tool Calling / Agent Runtime
 9. 审批流
 10. Case Workspace
 
@@ -56,10 +56,10 @@
 
 ## 4. 本 skill 的核心原则
 
-### 4.1 services 是编排层
-services 负责“何时调用谁、如何收口”，不负责底层存储、SDK 调用与协议输出。
+### 4.1 services 是 façade 层
+services 负责“接住请求、转给 runtime、交付结果”，不再承担 chat 主执行内核。
 
-### 4.2 request_assembler 是唯一装配中枢
+### 4.2 request_assembler 仍是唯一装配中枢
 当前代码中，装配顺序固定为：
 
 - system prompt
@@ -74,45 +74,30 @@ services 负责“何时调用谁、如何收口”，不负责底层存储、SD
 - failed / cancelled：只更新消息状态，不进入标准 memory update
 - delta：只做传输与聚合，不写 rolling summary / working memory
 
-### 4.4 流式生命周期必须收敛在 services
-`started / delta / heartbeat / completed / error / cancelled` 的业务语义由 services 统一调度。
+### 4.4 流式交付留在 services / api 边界
+`started / delta / heartbeat / completed / error / cancelled` 的对外交付由 services / api 边界协作完成；其业务语义由 chat runtime 统一定义。
 
 ### 4.5 当前代码已落地 RAG 编排
-当前仓库中的 services 已有 retrieval、knowledge block、citations 运行时编排逻辑。
-后续迭代必须继续在本层统一编排，不能散落到 API / provider / context。
+当前仓库中的 retrieval、knowledge block、citations 运行时编排逻辑在收敛后由 chat runtime 统一调度；services 只消费其结果。
 
-### 4.6 同步入口收敛
-同步聊天正式入口以 `chat_with_citations_from_user_prompt` 为准。
-不得为了历史测试长期保留旧同步入口双轨兼容。
+### 4.6 同步与流式入口收敛
+同步聊天正式入口与流式聊天正式入口都应以 chat runtime 为唯一主执行来源。
 
-### 4.7 Post-Phase 7 边界
-### 4.8 控制面应用服务命名原则
-benchmark runner 可以复用 services 的正式在线入口，但 services 不承担黄金集定义、评分逻辑与离线构建逻辑。
-
-### 4.8 控制面应用服务命名原则
-应用层服务命名应按职责命名，而不是按当前消费者命名。
-若存在 runtime summary / config summary / health 等应用级聚合能力，应放在 `app/services/` 内按职责收敛，而不是长期依附 `app/rag/console_service.py`。
+### 4.7 当前阶段边界
+benchmark runner 可以继续复用正式在线入口，但 services 不承担 workflow / hook / trace 内核。
 
 ---
-
-### 4.7 Post-Phase 7 边界
-services 可以继续编排 knowledge / runtime 领域能力，但不得重新引入内存控制面；与控制面持久化相关的正式状态，应由 `rag` 子域 repository / content_store 承担。
-
-### 4.8 repository 返回值消费原则
-services 应优先消费领域对象或专用 read model，不应长期在主编排逻辑中大量依赖 repository 返回的裸 `dict`。
-`*_details` 这类半结构化字段内部允许继续使用 `dict`，但 services 的主编排不应建立在“整条查询结果是裸 `dict`”的前提上。
 
 ## 5. 默认阶段基线
 
 当前 skill 默认基线如下：
 
-- `ChatService` 负责编排同步 chat
-- `StreamingChatService` 负责编排流式 chat
+- `ChatService` 负责编排同步 chat 入口 façade
+- `StreamingChatService` 负责编排流式 chat 入口 façade
 - `ChatRequestAssembler` 负责上下文组装与请求规范化
 - `CancellationRegistry` 负责请求级取消
-- `PromptService` 负责消息装配辅助
-- 当前代码包含 retrieval / citation 编排
-- 当前阶段 services 继续作为 benchmark 复用的在线能力入口
+- `app/chat_runtime/` 负责 workflow / hook / trace / invoke 主执行语义
+- 当前代码包含 retrieval / citation 编排，但主调度逐步收敛到 chat runtime
 
 如需变更该基线，必须先更新根目录文档与模块 AGENTS，再进入实现。
 
@@ -153,8 +138,8 @@ services 应优先消费领域对象或专用 read model，不应长期在主编
 
 service 相关任务，至少应交付以下之一或多项：
 
-1. 同步 chat 编排更新
-2. 流式 chat 编排更新
+1. 同步 chat façade 更新
+2. 流式 chat façade 更新
 3. request assembly 更新
 4. cancellation registry 更新
 5. service 错误收敛更新
@@ -172,13 +157,15 @@ service 相关任务，至少应交付以下之一或多项：
 - provider / model 解析稳定
 - system prompt 注入稳定
 - context completed 收口稳定
+- 统一调用 chat runtime
 
 ### 8.2 流式链路约束
 流式链路必须继续保持：
 
 - request_id / assistant_message_id 生成稳定
-- placeholder / delta / finalize 收口稳定
+- SSE 事件交付稳定
 - cancel / timeout / error 路径稳定
+- 统一调用 chat runtime
 
 ### 8.3 装配约束
 `request_assembler` 之外的模块不得决定上下文装配顺序。
@@ -186,6 +173,7 @@ service 相关任务，至少应交付以下之一或多项：
 ### 8.4 依赖约束
 services 可依赖：
 
+- `app/chat_runtime/`
 - `app/context/`
 - `app/prompts/`
 - `app/providers/`
@@ -195,22 +183,16 @@ services 可依赖：
 
 不得直接散落访问 Redis client、向量库 SDK 或 provider 原始 SDK。
 
-### 8.5 Phase 6 约束
-当前代码已落地 retrieval / citations。
+### 8.5 当前阶段约束
 新增这类能力的改动，必须同时补真实代码与测试。
 
 ### 8.6 历史兼容清理约束
-当确认旧接口仅用于历史测试兼容时，应在 services 层移除对应分支，并同步更新测试到当前正式接口。
+当确认旧入口或旧服务路径仅用于历史兼容时，应在 services 层移除对应分支，并同步更新测试到当前正式入口。
 
 ### 8.7 命名收敛约束
 不允许新增按 console、debug、playground 等消费者命名的长期应用服务文件或类。
 
-### 8.8 repository 消费约束
-1. services 从 `rag` / repository 获取的核心控制面结果，应优先是领域对象或 read model。
-2. 不允许在主编排路径中长期通过 `row["field"]`、`result["status"]` 这类字符串键访问裸 `dict` 作为主要实现方式。
-3. 若当前阶段存在历史 `dict` 结果，应以增量方式迁移，不得继续扩大使用范围。
-
-### 8.9 中文字段注释与默认配置说明约束
+### 8.8 中文字段注释与默认配置说明约束
 
 1. 本模块中所有 `@dataclass` 定义的结构化对象，必须为每一个字段补充中文注释，说明字段含义。
 2. 本模块中所有默认配置常量、默认阈值或默认限制项，必须补充中文注释；涉及 token、chars、seconds、ttl、size、top-k、threshold 等值时，必须明确单位或语义。
@@ -222,21 +204,24 @@ services 可依赖：
 ## 9. 与其他模块的协作约束
 
 ### 与 api 协作
-API 负责协议接入与 SSE 序列化；services 负责编排。
+API 负责协议接入与 SSE 序列化；services 负责 façade 与交付。
 services 不接管 route handler 职责。
 
+### 与 chat_runtime 协作
+chat_runtime 负责统一执行骨架；services 负责调用它并交付结果。
+
 ### 与 context 协作
-context 负责状态与 memory update；services 负责何时更新、何时收口。
+context 负责状态与 memory update；services 只协调何时交给 runtime / context 收口。
 
 ### 与 prompts 协作
-prompts 负责模板资产；services 负责决定何时取默认 system prompt 并组装消息。
+prompts 负责模板资产；services 不重新定义 prompt 资产治理。
 
 ### 与 providers 协作
-providers 负责厂商适配与 canonical result；services 负责调用时机与结果收口。
+providers 负责厂商适配与 canonical result；services 不直接散落调用厂商 SDK。
 
 ### 与 rag 协作
 当前代码已接入 rag。
-rag 负责知识实现，services 负责编排。
+services 不直接承担 retrieval 主调度，只消费收敛后的 runtime 结果。
 
 ---
 
@@ -244,14 +229,13 @@ rag 负责知识实现，services 负责编排。
 
 service 相关实现至少补以下测试之一或多项：
 
-1. 同步 chat 基础路径
-2. 流式 chat 生命周期路径
+1. 同步 chat façade 路径
+2. 流式 chat façade 路径
 3. cancel / timeout / error 路径
 4. request assembly 顺序与过滤路径
-5. completed 才进入标准 memory update 路径
-6. 默认 provider / model / system prompt 解析路径
+5. façade 调用 runtime 的路径
+6. SSE 交付路径
 7. retrieval degrade 不拖垮 chat/stream 主链路
-8. benchmark 复用 services 时不引入实验性双轨接口
 
 ---
 
@@ -259,26 +243,8 @@ service 相关实现至少补以下测试之一或多项：
 
 提交前至少自查：
 
-1. services 是否仍然只是编排层？
-2. request_assembler 是否仍是唯一装配中枢？
-3. completed / failed / cancelled 语义是否仍清晰？
-4. 是否没有把 route / SDK / store 细节混入 services？
-5. retrieval / citations 是否仍保持 services 编排边界？
-6. 是否补了测试？
-
----
-
-## 12. 关联文件
-
-- `assets/capability-scope.md`
-- `assets/delivery-workflow.md`
-- `assets/acceptance-checklist.md`
-- `references/module-boundaries.md`
-- `references/data-contracts.md`
-- `references/testing-matrix.md`
-
----
-
-## 13. 一句话总结
-
-本 skill 的目标，是确保 `app/services/` 在当前项目中持续作为应用编排层演进，稳定承接同步 / 流式 chat、request assembly、retrieval 编排与生命周期收口。
+1. services 是否仍是 façade 层，而不是双编排内核？
+2. `request_assembler` 是否仍是唯一装配中枢？
+3. SSE 交付是否仍留在 services / api 边界？
+4. 是否没有把 workflow / hook / trace 逻辑重新塞回 services？
+5. 是否仍符合模块边界与根文档要求？

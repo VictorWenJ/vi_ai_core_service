@@ -8,10 +8,10 @@
 
 ## 2. 输入契约
 
-当前 services 会直接消费两类输入：
+当前 services 会直接消费：
 
 - `app/api/schemas/chat.py` 中的用户请求模型
-- `app/schemas/` 中的 `LLMRequest`
+- `app/chat_runtime/models.py` 中的 runtime 请求 / 结果对象
 
 ---
 
@@ -19,8 +19,8 @@
 
 当前 services 主要输出：
 
-- 同步路径：`ChatServiceResult`（含 `LLMResponse + citations + retrieval_trace`），由 API 再转为 `ChatResponse`
-- 流式路径：canonical event dict，再由 API 序列化为 SSE
+- 同步路径：runtime result -> `ChatResponse`
+- 流式路径：runtime event dict -> SSE event
 
 ---
 
@@ -54,5 +54,5 @@
 ## 6. 原则
 
 - services 不直接发明新的对外 contract
-- 未落地的 Phase 6 字段不得写入当前 contract
+- runtime 内部 contract 与 API 对外 contract 要保持分层
 - contract 变更必须同步补测试

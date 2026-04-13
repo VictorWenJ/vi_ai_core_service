@@ -64,12 +64,41 @@ class StubRAGRuntime:
         return self._retrieval_result
 
 
+class StubStreamRuntimeEngine:
+    def __init__(self) -> None:
+        self.last_request = None
+
+    def run_stream(self, request):
+        self.last_request = request
+        yield {
+            "event": "response.started",
+            "data": {
+                "request_id": request.request_id,
+                "assistant_message_id": request.assistant_message_id,
+            },
+        }
+        yield {
+            "event": "response.completed",
+            "data": {
+                "request_id": request.request_id,
+                "assistant_message_id": request.assistant_message_id,
+                "status": "completed",
+                "finish_reason": "stop",
+                "usage": None,
+                "latency_ms": 1.2,
+                "citations": [],
+                "trace": {"workflow_name": "default_chat"},
+            },
+        }
+
+
 class StreamingChatServiceTests(unittest.TestCase):
     def _build_service(
         self,
         provider: BaseLLMProvider,
         *,
         rag_runtime: StubRAGRuntime | None = None,
+        runtime_engine=None,
     ) -> tuple[StreamingChatService, ContextManager]:
         providers = {
             "openai": ProviderConfig(name="openai", api_key="k1", default_model="gpt-test"),
@@ -96,6 +125,7 @@ class StreamingChatServiceTests(unittest.TestCase):
             request_assembler=assembler,
             cancellation_registry=CancellationRegistry(),
             rag_runtime=rag_runtime,  # type: ignore[arg-type]
+            runtime_engine=runtime_engine,
         )
         return service, context_manager
 
@@ -150,6 +180,30 @@ class StreamingChatServiceTests(unittest.TestCase):
         assistant_messages = [message for message in window.messages if message.role == "assistant"]
         self.assertTrue(assistant_messages)
         self.assertEqual(assistant_messages[-1].status, "cancelled")
+
+    def test_stream_service_uses_runtime_engine_facade(self) -> None:
+        runtime_engine = StubStreamRuntimeEngine()
+        service, _ = self._build_service(
+            FakeStreamingProvider(ProviderConfig(name="openai", api_key="k1")),
+            runtime_engine=runtime_engine,
+        )
+
+        events = list(
+            service.stream_chat_from_user_prompt(
+                ChatStreamRequest(
+                    user_prompt="runtime stream",
+                    provider="openai",
+                    session_id="session-1",
+                    conversation_id="conv-1",
+                )
+            )
+        )
+
+        self.assertEqual(events[0]["event"], "response.started")
+        self.assertEqual(events[-1]["event"], "response.completed")
+        self.assertIsNotNone(runtime_engine.last_request)
+        assert runtime_engine.last_request is not None
+        self.assertEqual(runtime_engine.last_request.user_prompt, "runtime stream")
 
     def test_stream_completed_includes_citations_and_delta_has_no_citations(self) -> None:
         provider = FakeStreamingProvider(ProviderConfig(name="openai", api_key="k1"))

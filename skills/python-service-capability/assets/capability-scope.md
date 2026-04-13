@@ -10,13 +10,12 @@
 
 当前能力范围限定为：
 
-- 同步 chat 编排
-- 流式 chat 编排
-- request assembly
+- 同步 chat 入口 façade
+- 流式 chat 入口 façade
+- runtime request / result 适配
 - cancellation registry
-- assistant message lifecycle 收口
-- retrieval orchestration
-- citations 输出编排
+- SSE 交付协作
+- request assembly 协作
 - service 级错误收敛
 - service 相关测试
 
@@ -26,15 +25,14 @@
 
 当前不在范围内的能力包括：
 
-- HTTP 路由与 SSE 文本协议
+- HTTP 路由与 SSE 文本协议定义
 - provider SDK 适配
 - context store 底层实现
 - Prompt 模板资产治理
 - retrieval / chunking / embedding / index 运行时代码
 - citation 生成逻辑（由 rag 子域负责）
-- 长期记忆平台
-- 审批流
-- Case Workspace
+- `app/chat_runtime/` 内部 workflow / hook / trace 主逻辑
+- Tool Calling
 - Agent Runtime
 
 ---
@@ -45,8 +43,8 @@
 - 流式入口：`StreamingChatService`
 - 装配中枢：`ChatRequestAssembler`
 - 取消协调：`CancellationRegistry`
+- 统一执行骨架：`app/chat_runtime/`
 - 当前装配顺序：system -> knowledge -> working memory -> rolling summary -> recent raw -> user
-- 当前已包含 retrieval / citations 编排
 
 ---
 

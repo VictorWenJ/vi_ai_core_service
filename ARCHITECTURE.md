@@ -44,6 +44,7 @@
 - 让不同能力在不同目录中各司其职
 - 让系统具备前端可接入的流式会话交付能力
 - 为基于受控知识源进行 grounding 与 citation 提供运行时子域
+- 先把 `chat` / `chat_stream` 的执行骨架收敛清楚
 - 为后续 Tool、Case Workspace、Agent 预留清晰边界
 - 为 RAG 评估与离线构建提供可演进的工程基础
 
@@ -59,13 +60,19 @@
 - 输出 SSE 流式响应
 - 暴露 cancel/reset 等控制入口
 
-### 应用编排层（`app/services/`）
+### 应用入口与 façade 层（`app/services/`）
 职责：
-- 承接同步与流式两类会话用例
-- 协调 context / prompts / providers
-- 管理 assistant message 生命周期
-- 管理 cancel / timeout / failure 收口
-- 维护 request assembly、取消注册与 context completed 收口
+- 承接同步与流式两类会话用例入口
+- 做 request/response 级适配
+- 管理同步返回与 SSE 交付
+- 作为 chat runtime 的 façade，而不是继续承载主编排内核
+
+### Chat Runtime 执行层（`app/chat_runtime/`）
+职责：
+- 负责统一的 chat core 执行骨架
+- 负责 workflow、hook、step dispatch 与 trace 收口
+- 统一协调 scope 标准化、retrieval、request assembly、provider 调用、context 收口
+- 为未来 tool calling、model routing、runtime skill 预留接口位
 
 ### 上下文管理层（`app/context/`）
 职责：
@@ -100,22 +107,18 @@
 职责：
 - 统一结构化日志
 - 通过 `log_report` 提供 JSON-safe 的事实型日志输出
-- 承接离线构建与 benchmark 运行的事实型日志字段
+- 承接 chat runtime trace、离线构建与 benchmark 运行的事实型日志字段
 
 ### 数据模型层（`app/schemas/`）
 职责：
 - 承载共享契约与基础数据模型
 - `app/api/schemas/` 负责对外 request / response contract
+- `app/chat_runtime/models.py` 负责 chat runtime 内部执行态契约
 
 ### 数据库基础设施层（`app/db/`）
 职责：
 - 负责数据库连接、session、事务与公共持久化基础设施
 - 为 `rag` 等子域提供共享数据库能力
-职责：
-- 定义内部 `LLMMessage`、`LLMRequest`、`LLMResponse`、`LLMStreamChunk` 等共享契约
-- API request / response 与 SSE event 当前位于 `app/api/schemas/`
-
----
 
 ### repository / 持久化实体分层
 当前控制面持久化升级完成后，数据库访问应遵守以下分层：
@@ -129,7 +132,7 @@
 
 - `repository` 层内部允许直接操作 ORM 持久化实体对象
 - `repository` 对外不应长期以裸 `dict` 作为核心返回形式
-- `services`、`runtime`、`inspector` 等上层应消费领域对象或 read model，而不是大量基于字符串键访问 `dict`
+- `services`、`chat_runtime`、`inspector` 等上层应消费领域对象或 read model，而不是大量基于字符串键访问 `dict`
 - `*_details` 字段内部允许保持半结构化 `dict`，但查询结果整体不应长期维持为裸 `dict`
 
 ## 4. 工程基础设施平面
@@ -155,38 +158,35 @@
 
 业务依赖方向：
 
-`api -> services -> context/prompts/rag/providers -> schemas`
+`api -> services -> chat_runtime -> context/prompts/rag/providers -> schemas`
 
 其中：
 
-- `observability` 为横切基础设施层，可被 `api/services/providers/rag` 依赖
-- `providers` 不能依赖 `api/services/context/rag`
-- `context` 不能依赖 `api/services/providers/rag`
+- `observability` 为横切基础设施层，可被 `api/services/chat_runtime/providers/rag` 依赖
+- `providers` 不能依赖 `api/services/chat_runtime/context/rag`
+- `context` 不能依赖 `api/services/chat_runtime/providers/rag`
 - `rag` 不能依赖 `api`
-- `rag` 的 retrieval 结果应由 `services` 编排后进入 request assembly
-
-当前代码事实补充：
-
-- 当前主链路已启用 `rag` 可降级分支
-- `services` 当前少量用户请求入口会消费 `app/api/schemas/` 中的 Pydantic 模型
+- `rag` 的 retrieval 结果应由 `chat_runtime` 编排后进入 request assembly
+- `services` 只依赖 `chat_runtime` 的稳定入口，不应重新散落主编排逻辑
 
 ### 依赖方向原则
 
 1. API 只向下依赖，不反向被业务层依赖
-2. services 是编排层，不承担底层实现域职责
-3. context 与 rag 并列存在，分别负责 short-term memory 与 external knowledge
-4. providers 是能力提供层，不反向驱动业务编排
-5. schemas 是共享契约层，不承担业务逻辑
+2. services 是 façade 层，不承担主执行内核职责
+3. chat_runtime 是 chat core 执行层，不承担 HTTP/SSE 协议职责
+4. context 与 rag 并列存在，分别负责 short-term memory 与 external knowledge
+5. providers 是能力提供层，不反向驱动业务编排
+6. schemas 是共享契约层，不承担业务逻辑
 
 ---
 
 ## 6. 当前调用关系
 
 ### 6.1 同步聊天链路
-`api/chat -> services/chat_service -> request_assembler -> context/prompts/rag/providers -> response`。
+`api/chat -> services/chat_service -> chat_runtime/engine -> request_assembler -> context/prompts/rag/providers -> response`。
 
 ### 6.2 流式聊天链路
-`api/chat_stream -> services/streaming_chat_service -> request_assembler -> context/prompts/rag/providers -> SSE serializer`。
+`api/chat_stream -> services/streaming_chat_service -> chat_runtime/engine -> request_assembler -> context/prompts/rag/providers -> SSE serializer`。
 
 ### 6.3 知识导入链路
 `api/knowledge -> rag/document_service -> rag/ingestion/* -> rag/content_store -> rag/repository -> MySQL`。
@@ -202,16 +202,15 @@
 
 ---
 
-
 ## 7. 分层衔接原则
 
-### 7.1 Phase 4、Phase 5 与 Phase 6 的衔接原则
+### 7.1 Phase 4、Phase 5 与当前 Chat Runtime 收敛的衔接原则
 
 - Phase 4 的 policy pipeline 不变：
   `selection -> truncation -> deterministic summary -> serialization`
 - Phase 5 的 message lifecycle 与 SSE 协议不变
-- Phase 6 不改变 completed 才进入标准 memory update 的规则
-- Phase 6 中 knowledge block 已纳入装配，不替代 working memory / rolling summary
+- 当前 chat runtime 收敛不改变 completed 才进入标准 memory update 的规则
+- knowledge block 已纳入装配，不替代 working memory / rolling summary
 - non-completed assistant message 默认不参与后续 request assembly
 - citation 已落地并且只来自 retrieval 结果，不来自模型自由生成
 
@@ -224,7 +223,8 @@
 
 ### 7.3 编排与实现分离原则
 
-- `services` 负责编排
+- `services` 负责入口 façade 与交付
+- `chat_runtime` 负责 chat core 编排
 - `context` 负责状态
 - `rag` 负责知识实现
 - `providers` 负责厂商接入
@@ -234,45 +234,33 @@
 
 ## 8. 当前阶段架构约束
 
-### 8.1 RAG 先做内部子域，不拆独立服务
-`app/rag/` 继续作为内部知识与检索子域，不拆独立微服务。
+### 8.1 Chat Runtime 先做最小骨架，不做通用平台
+`app/chat_runtime/` 当前只服务 `chat` 与 `chat_stream`，不做 Tool Calling / Agent Runtime 平台化。
 
-### 8.2 相似度与索引约束
-向量检索仍以 Qdrant + cosine 为基线；MySQL 不承担向量检索职责。
+### 8.2 workflow 必须显式声明
+主流程必须显式定义为 `DEFAULT_CHAT_WORKFLOW = list[str]`，不得继续依赖隐式大函数顺序。
 
-### 8.3 Citation 约束
-citation 必须继续来自 retrieval 结果，不得退化为模型自由生成装饰文本。
+### 8.3 hook 必须与主 workflow 分离配置
+lifecycle hook 必须以事件数组形式存在；step hook 必须以 step 前后事件形式存在；不得与主 workflow 混成同一个数组。
 
-### 8.4 降级约束
-检索失败时，chat 与 stream 主链路必须允许降级，不得因 RAG 构建或控制面故障直接拖垮主链路。
+### 8.4 services 必须收口为 façade
+`ChatService` 与 `StreamingChatService` 保持入口适配与交付职责，不得继续扩展为双编排内核。
 
-### 8.5 Post-Phase 7 控制面升级约束
-- 删除 `RAGControlState` 作为正式控制面真相源
-- MySQL 负责控制面与治理数据
-- 文件存储负责原始文件与 normalized text 快照
-- Qdrant 继续负责 embeddings、payload 与 retrieval
-- `build_tasks`、`evaluation_runs` 必须按任务对象建模，即使当前仍同步执行
+### 8.5 request assembly 仍由唯一中枢负责
+`ChatRequestAssembler` 继续是唯一装配中枢；chat runtime 只能调用它，不能绕过它重新定义装配顺序。
 
-### 8.6 控制面契约与命名约束
-- API 仍按领域命名，不再按 console / playground / debug 命名长期接口
-- `app/api/schemas/` 只承载对外 request / response contract
-- 领域内部对象保留在 `app/rag/`、`app/context/` 等模块内
+### 8.6 对外 contract 稳定性约束
+- `/chat` 与 `/chat_stream` 的对外 contract 不得回退
+- completed 事件的 citations 行为保持不变
+- delta 阶段不新增 citations 增量
 
-### 8.7 文档加载适配层约束
-LangChain loader 只作为 ingest 输入适配层；不得接管 chunk、metadata、build、evaluation、retrieval 主链路。
+### 8.7 skill 只预留引用位
+当前只允许在 workflow 中声明 `skills[]` 引用位；不得在本轮实现 runtime skill loader 或技能自动发现系统。
 
-### 8.8 repository 分层约束
-- `app/db/` 只承载共享数据库基础设施
-- `app/rag/repository/` 承载 `rag` 子域的数据访问封装
-- 不得在 API / service / inspector 中散落 SQL
-
-### 8.9 结构化字段命名约束
-- 详情对象字段优先使用 `*_details`
-- 标识集合字段优先使用 `*_ids`
-- 不再以 `*_json` 作为业务语义命名
+### 8.8 RAG 与未来控制面升级保持边界
+当前 chat runtime 收敛不得破坏后续 `rag` 控制面持久化升级边界；`chat_runtime` 不接管 `rag` 子域内部持久化职责。
 
 ---
-
 
 ## 9. 修改规则
 
@@ -286,4 +274,4 @@ LangChain loader 只作为 ingest 输入适配层；不得接管 chunk、metadat
 
 ## 10. 一句话总结
 
-`ARCHITECTURE.md` 在当前阶段的职责，是作为项目总体架构文件，明确 `vi_ai_core_service` 的分层结构、依赖方向，以及当前已落地的同步 / 流式 / Knowledge + Citation / Evaluation 主链路，以及本轮控制面持久化升级所需的 MySQL / 文件存储 / Qdrant 三层分工，确保系统在后续迭代中仍保持整体分层清晰、职责稳定、演进可控。
+`ARCHITECTURE.md` 在当前阶段的职责，是把 `vi_ai_core_service` 的聊天主链路从“同步一套、流式一套”升级为“services façade + chat_runtime 骨架 + context/rag/providers 能力层”的整体架构，并确保这一收敛过程不破坏已有 Phase 4~7 的上下文、流式、知识与引用能力基础。

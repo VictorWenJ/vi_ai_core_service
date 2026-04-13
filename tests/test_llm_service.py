@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 
 from app.api.schemas import ChatRequest
+from app.chat_runtime.models import RuntimeTurnResult
+from app.chat_runtime.trace import ExecutionTrace
 from app.config import AppConfig, ProviderConfig
 from app.context.manager import ContextManager
 from app.context.models import ContextMessage, ContextWindow
@@ -125,6 +127,39 @@ class StubRAGRuntime:
         self.last_query_text = query_text
         self.last_metadata_filter = metadata_filter
         return self._retrieval_result
+
+
+class StubRuntimeEngine:
+    def __init__(self) -> None:
+        self.last_request = None
+
+    def run_sync(self, request):
+        self.last_request = request
+        trace = ExecutionTrace.create(workflow_name="default_chat", stream=False)
+        trace.complete(
+            provider="openai",
+            model="gpt-test",
+            finish_reason="stop",
+            error_type=None,
+        )
+        return RuntimeTurnResult(
+            response_text="runtime-ok",
+            citations=[],
+            provider="openai",
+            model="gpt-test",
+            usage=None,
+            finish_reason="stop",
+            retrieval_trace=RetrievalTrace(
+                status="disabled",
+                query_text=request.user_prompt,
+                top_k=0,
+                hit_count=0,
+                citation_count=0,
+            ),
+            trace=trace,
+            metadata={},
+            raw_response=None,
+        )
 
 
 class ChatServiceTests(unittest.TestCase):
@@ -318,6 +353,29 @@ class ChatServiceTests(unittest.TestCase):
         self.assertEqual(result.citations, [])
         self.assertIsNone(fake_context_manager.last_get_session_id)
         self.assertIsNone(fake_context_manager.last_update_payload)
+
+    def test_chat_with_citations_uses_runtime_engine_facade(self) -> None:
+        runtime_engine = StubRuntimeEngine()
+        service = ChatService(
+            app_config=self.config,
+            registry=self.registry,
+            prompt_service=PromptService(),
+            context_manager=FakeContextManager(),
+            runtime_engine=runtime_engine,  # type: ignore[arg-type]
+        )
+
+        result = service.chat_with_citations_from_user_prompt(
+            ChatRequest(
+                user_prompt="runtime path",
+                session_id="session-1",
+                provider="openai",
+            )
+        )
+
+        self.assertEqual(result.llm_response.content, "runtime-ok")
+        self.assertIsNotNone(runtime_engine.last_request)
+        assert runtime_engine.last_request is not None
+        self.assertEqual(runtime_engine.last_request.user_prompt, "runtime path")
 
     def test_chat_with_citations_injects_knowledge_block_and_returns_citations(self) -> None:
         fake_context_manager = FakeContextManager()

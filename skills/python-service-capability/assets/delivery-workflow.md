@@ -11,9 +11,9 @@
 ### 步骤 1：确认任务边界
 先确认本轮需求属于以下哪类：
 
-- sync chat
-- stream chat
-- request assembly
+- sync chat façade
+- stream chat façade
+- request assembly 协作
 - cancellation registry
 - service errors
 - service tests
@@ -33,9 +33,9 @@
 
 ### 步骤 4：实现
 要求：
-- services 仍保持编排层定位
+- services 仍保持 façade 层定位
 - request_assembler 仍是唯一装配中枢
-- completed / failed / cancelled 收口清晰
+- 同步与流式都通过 chat runtime 执行
 - 不混入 SDK、路由或 store 细节
 
 ### 步骤 5：补测试
@@ -43,10 +43,10 @@
 
 ### 步骤 6：自检
 至少回答：
-- 当前装配顺序是否仍正确？
-- completed 才进入标准 memory update 是否仍成立？
-- 流式生命周期路径是否仍稳定？
-- retrieval / citations 编排是否仍保持边界？
+- services 是否仍然只是 façade？
+- 是否没有把 workflow / hook / trace 塞回 services？
+- SSE 交付路径是否仍稳定？
+- request assembly 顺序是否仍正确？
 - 是否仍符合模块边界？
 
 ---
@@ -57,4 +57,4 @@
 
 - 未读文档直接改代码
 - 不补测试直接提交
-- 在 service 层直接散落路由、SDK、存储或向量库细节
+- 在 services 层直接散落路由、SDK、存储或 runtime 主逻辑

@@ -1,4 +1,4 @@
-"""带独立请求装配的服务层聊天编排。"""
+"""同步聊天服务 façade。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ import traceback
 from typing import Any
 
 from app.api.schemas import ChatRequest
+from app.chat_runtime.engine import ChatRuntimeEngine
+from app.chat_runtime.models import RuntimeTurnRequest
 from app.config import AppConfig, ConfigError
 from app.context.manager import ContextManager
 from app.observability.log_until import log_report
@@ -17,7 +19,6 @@ from app.providers.chat.base import (
     StreamNotImplementedError,
 )
 from app.providers.chat.registry import ProviderRegistry
-from app.rag.models import RetrievalResult
 from app.rag.runtime import RAGRuntime
 from app.schemas.llm_request import LLMRequest
 from app.schemas.llm_response import LLMResponse
@@ -25,7 +26,6 @@ from app.services.chat_result import ChatServiceResult
 from app.services.errors import (
     ServiceConfigurationError,
     ServiceDependencyError,
-    ServiceError,
     ServiceNotImplementedError,
     ServiceValidationError,
 )
@@ -34,16 +34,17 @@ from app.services.request_assembler import ChatRequestAssembler
 
 
 class ChatService:
-    """面向业务的聊天编排（当前非流式阶段）。"""
+    """面向 `/chat` 的应用层同步入口。"""
 
     def __init__(
-            self,
-            app_config: AppConfig,
-            registry: ProviderRegistry | None = None,
-            prompt_service: PromptService | None = None,
-            context_manager: ContextManager | None = None,
-            request_assembler: ChatRequestAssembler | None = None,
-            rag_runtime: RAGRuntime | None = None,
+        self,
+        app_config: AppConfig,
+        registry: ProviderRegistry | None = None,
+        prompt_service: PromptService | None = None,
+        context_manager: ContextManager | None = None,
+        request_assembler: ChatRequestAssembler | None = None,
+        rag_runtime: RAGRuntime | None = None,
+        runtime_engine: ChatRuntimeEngine | None = None,
     ) -> None:
         self._app_config = app_config
         self._registry = registry or ProviderRegistry(app_config)
@@ -58,8 +59,16 @@ class ChatService:
             if app_config.rag_config.enabled
             else RAGRuntime.disabled(default_top_k=app_config.rag_config.retrieval_top_k)
         )
+        self._runtime_engine = runtime_engine or ChatRuntimeEngine(
+            app_config=app_config,
+            provider_registry=self._registry,
+            context_manager=self._context_manager,
+            request_assembler=self._request_assembler,
+            rag_runtime=self._rag_runtime,
+        )
 
     def chat(self, llm_request: LLMRequest) -> LLMResponse:
+        """兼容旧用例：直接执行规范化后的非流式 provider 调用。"""
         started_at = perf_counter()
         provider_for_log = llm_request.provider or self._app_config.default_provider
         model_for_log = llm_request.model
@@ -70,129 +79,106 @@ class ChatService:
                 provider_registry=self._registry,
             )
             log_report("ChatService.chat.normalized_request", normalized_request)
-
             provider_for_log = normalized_request.provider
             model_for_log = normalized_request.model
-
             provider = self._registry.get_provider(normalized_request.provider or "")
-
             return provider.chat(normalized_request)
-        except ServiceError as exc:
-            _log_service_exception(
-                exc,
-                provider=provider_for_log,
-                model=model_for_log,
-                started_at=started_at,
+        except ProviderConfigurationError as exc:
+            _log_service_exception(exc, provider=provider_for_log, model=model_for_log, started_at=started_at)
+            raise ServiceConfigurationError(str(exc)) from exc
+        except ConfigError as exc:
+            _log_service_exception(exc, provider=provider_for_log, model=model_for_log, started_at=started_at)
+            raise ServiceConfigurationError(str(exc)) from exc
+        except ProviderInvocationError as exc:
+            _log_service_exception(exc, provider=provider_for_log, model=model_for_log, started_at=started_at)
+            raise ServiceDependencyError(str(exc)) from exc
+        except (ProviderNotImplementedError, StreamNotImplementedError, NotImplementedError) as exc:
+            _log_service_exception(exc, provider=provider_for_log, model=model_for_log, started_at=started_at)
+            raise ServiceNotImplementedError(str(exc)) from exc
+        except ValueError as exc:
+            _log_service_exception(exc, provider=provider_for_log, model=model_for_log, started_at=started_at)
+            raise ServiceValidationError(str(exc)) from exc
+
+    def chat_with_citations_from_user_prompt(self, chat_request: ChatRequest) -> ChatServiceResult:
+        started_at = perf_counter()
+        try:
+            runtime_request = RuntimeTurnRequest(
+                user_prompt=chat_request.user_prompt,
+                session_id=chat_request.session_id,
+                conversation_id=chat_request.conversation_id,
+                request_id=chat_request.request_id,
+                provider_override=chat_request.provider,
+                model_override=chat_request.model,
+                temperature=chat_request.temperature,
+                max_tokens=chat_request.max_tokens,
+                system_prompt=chat_request.system_prompt,
+                stream=False,
+                metadata=dict(chat_request.metadata or {}),
             )
-            raise
+            runtime_result = self._runtime_engine.run_sync(runtime_request)
+            llm_response = LLMResponse(
+                content=runtime_result.response_text,
+                provider=runtime_result.provider,
+                model=runtime_result.model,
+                usage=runtime_result.usage,
+                finish_reason=runtime_result.finish_reason,
+                metadata={
+                    **runtime_result.metadata,
+                    "runtime_trace": runtime_result.trace.to_dict(),
+                },
+                raw_response=runtime_result.raw_response,
+            )
+            return ChatServiceResult(
+                llm_response=llm_response,
+                citations=list(runtime_result.citations),
+                retrieval_trace=runtime_result.retrieval_trace,
+            )
         except ProviderConfigurationError as exc:
             _log_service_exception(
                 exc,
-                provider=provider_for_log,
-                model=model_for_log,
+                provider=chat_request.provider or self._app_config.default_provider,
+                model=chat_request.model,
                 started_at=started_at,
             )
             raise ServiceConfigurationError(str(exc)) from exc
         except ConfigError as exc:
             _log_service_exception(
                 exc,
-                provider=provider_for_log,
-                model=model_for_log,
+                provider=chat_request.provider or self._app_config.default_provider,
+                model=chat_request.model,
                 started_at=started_at,
             )
             raise ServiceConfigurationError(str(exc)) from exc
         except ProviderInvocationError as exc:
             _log_service_exception(
                 exc,
-                provider=provider_for_log,
-                model=model_for_log,
+                provider=chat_request.provider or self._app_config.default_provider,
+                model=chat_request.model,
                 started_at=started_at,
             )
             raise ServiceDependencyError(str(exc)) from exc
         except (ProviderNotImplementedError, StreamNotImplementedError, NotImplementedError) as exc:
             _log_service_exception(
                 exc,
-                provider=provider_for_log,
-                model=model_for_log,
+                provider=chat_request.provider or self._app_config.default_provider,
+                model=chat_request.model,
                 started_at=started_at,
             )
             raise ServiceNotImplementedError(str(exc)) from exc
         except ValueError as exc:
             _log_service_exception(
                 exc,
-                provider=provider_for_log,
-                model=model_for_log,
+                provider=chat_request.provider or self._app_config.default_provider,
+                model=chat_request.model,
                 started_at=started_at,
             )
             raise ServiceValidationError(str(exc)) from exc
 
-    def chat_with_citations_from_user_prompt(self, chat_request: ChatRequest) -> ChatServiceResult:
-        retrieval_filter = _extract_retrieval_filter(chat_request.metadata)
-
-        retrieval_result = self._rag_runtime.retrieve_for_chat(
-            query_text=chat_request.user_prompt,
-            metadata_filter=retrieval_filter,
-        )
-        log_report("ChatService.chat_with_citations_from_user_prompt.retrieval_result", retrieval_result)
-
-        llm_request = (
-            self._request_assembler.assemble_from_user_prompt(
-                request=chat_request,
-                context_manager=self._context_manager,
-                knowledge_block=retrieval_result.knowledge_block,
-            ))
-        llm_request.metadata["retrieval"] = retrieval_result.trace.to_dict()
-        log_report("ChatService.chat_with_citations_from_user_prompt.llm_request", llm_request)
-
-        llm_response = self.chat(llm_request)
-        log_report("ChatService.chat_with_citations_from_user_prompt.llm_response", llm_response)
-
-        self._write_context_after_response(
-            llm_request,
-            chat_request,
-            llm_response,
-            retrieval_result=retrieval_result,
-        )
-
-        return ChatServiceResult(
-            llm_response=llm_response,
-            citations=retrieval_result.citations,
-            retrieval_trace=retrieval_result.trace,
-        )
-
-    def _write_context_after_response(
-            self,
-            llm_request: LLMRequest,
-            chat_request: ChatRequest,
-            llm_response: LLMResponse,
-            *,
-            retrieval_result: RetrievalResult,
-    ) -> None:
-        if llm_request.session_id:
-            context_metadata = {
-                "conversation_id": llm_request.conversation_id,
-                "request_id": llm_request.request_id,
-                "provider": llm_response.provider,
-                "model": llm_response.model,
-                "retrieval_status": retrieval_result.trace.status,
-                "citation_count": len(retrieval_result.citations),
-            }
-
-            updated_context_window = self._context_manager.update_after_chat_turn(
-                session_id=llm_request.session_id,
-                conversation_id=llm_request.conversation_id,
-                user_content=chat_request.user_prompt,
-                assistant_content=llm_response.content,
-                metadata=context_metadata,
-                memory_config=self._app_config.context_memory_config,
-            )
-            log_report("ChatService._write_context_after_response.updated_context_window", updated_context_window)
-
     def reset_context(
-            self,
-            *,
-            session_id: str,
-            conversation_id: str | None = None,
+        self,
+        *,
+        session_id: str,
+        conversation_id: str | None = None,
     ) -> dict[str, Any]:
         normalized_session_id = (session_id or "").strip()
         if not normalized_session_id:
@@ -217,21 +203,12 @@ class ChatService:
         return result
 
 
-def _extract_retrieval_filter(metadata: dict[str, Any] | None) -> dict[str, Any] | None:
-    if not metadata:
-        return None
-    retrieval_filter = metadata.get("retrieval_filter")
-    if not isinstance(retrieval_filter, dict):
-        return None
-    return dict(retrieval_filter)
-
-
 def _log_service_exception(
-        exc: BaseException,
-        *,
-        provider: str | None,
-        model: str | None,
-        started_at: float,
+    exc: BaseException,
+    *,
+    provider: str | None,
+    model: str | None,
+    started_at: float,
 ) -> None:
     log_report(
         "service.chat.error",
@@ -241,8 +218,6 @@ def _log_service_exception(
             "latency_ms": round((perf_counter() - started_at) * 1000, 2),
             "error_type": type(exc).__name__,
             "error_message": str(exc),
-            "traceback": "".join(
-                traceback.format_exception(type(exc), exc, exc.__traceback__)
-            ),
+            "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
         },
     )

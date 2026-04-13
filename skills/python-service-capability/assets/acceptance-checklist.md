@@ -8,11 +8,16 @@
 
 ## 2. 验收清单
 
-### 编排
-- [ ] 同步 chat 编排语义清晰
-- [ ] 流式 chat 编排语义清晰
+### façade
+- [ ] 同步 chat 入口 façade 语义清晰
+- [ ] 流式 chat 入口 façade 语义清晰
+- [ ] services 未重新长成主编排内核
 - [ ] cancellation registry 行为清晰
-- [ ] request_assembler 仍是唯一装配中枢
+
+### 协作
+- [ ] `request_assembler` 仍是唯一装配中枢
+- [ ] 与 `chat_runtime` 的调用边界清晰
+- [ ] SSE 交付边界清晰
 
 ### 生命周期
 - [ ] started / delta / heartbeat / completed / error / cancelled 路径清晰
@@ -23,7 +28,7 @@
 - [ ] 未混入 route 逻辑
 - [ ] 未混入 provider SDK 细节
 - [ ] 未混入 store / Redis 细节
-- [ ] retrieval / citations 保持 services 编排边界，未侵入 API/provider/context
+- [ ] 未重新实现 workflow / hook / trace 主逻辑
 
 ### 回归
 - [ ] 未破坏同步 chat 主链路

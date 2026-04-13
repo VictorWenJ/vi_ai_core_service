@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from app.chat_runtime.engine import ChatRuntimeEngine
 from app.config import AppConfig
 from app.context.manager import ContextManager
 from app.context.policies.tokenizer import CharacterTokenCounter
@@ -117,6 +118,17 @@ def get_request_assembler() -> ChatRequestAssembler:
     return ChatRequestAssembler(
         app_config=get_app_config(),
         prompt_service=get_prompt_service(),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_chat_runtime_engine() -> ChatRuntimeEngine:
+    return ChatRuntimeEngine(
+        app_config=get_app_config(),
+        provider_registry=get_provider_registry(),
+        context_manager=get_context_manager(),
+        request_assembler=get_request_assembler(),
+        rag_runtime=get_rag_runtime(),
     )
 
 
@@ -252,6 +264,7 @@ def get_chat_service() -> ChatService:
         context_manager=get_context_manager(),
         request_assembler=get_request_assembler(),
         rag_runtime=get_rag_runtime(),
+        runtime_engine=get_chat_runtime_engine(),
     )
 
 
@@ -265,5 +278,5 @@ def get_streaming_chat_service() -> StreamingChatService:
         request_assembler=get_request_assembler(),
         cancellation_registry=get_cancellation_registry(),
         rag_runtime=get_rag_runtime(),
+        runtime_engine=get_chat_runtime_engine(),
     )
-
