@@ -12,6 +12,7 @@ from app.rag.repository.build_task_repository import BuildTaskRepository
 from app.rag.repository.chunk_repository import ChunkRepository
 from app.rag.repository.document_repository import DocumentRepository
 from app.rag.repository.document_version_repository import DocumentVersionRepository
+from app.rag.repository.read_models import BuildTaskRecord
 from app.rag.retrieval.service import KnowledgeRetrievalService
 from app.rag.retrieval.vector_store import BaseVectorStore
 from app.rag.runtime import RAGRuntime
@@ -48,25 +49,25 @@ class RAGInspectorService:
     def list_documents(self) -> list[dict[str, Any]]:
         documents = self._document_repository.list_documents()
         chunk_count_mapping = self._document_repository.get_chunk_counts_by_document_ids(
-            document_ids=[document["document_id"] for document in documents]
+            document_ids=[document.document_id for document in documents]
         )
         payloads: list[dict[str, Any]] = []
         for document in documents:
             payloads.append(
                 {
-                    "document_id": document["document_id"],
-                    "title": document["title"],
-                    "source_type": document["source_type"],
-                    "origin_uri": document["origin_uri"],
-                    "file_name": document["file_name"],
-                    "jurisdiction": document["jurisdiction"],
-                    "domain": document["domain"],
-                    "tags": list(document.get("tags_details") or []),
+                    "document_id": document.document_id,
+                    "title": document.title,
+                    "source_type": document.source_type,
+                    "origin_uri": document.origin_uri,
+                    "file_name": document.file_name,
+                    "jurisdiction": document.jurisdiction,
+                    "domain": document.domain,
+                    "tags": list(document.tags_details),
                     "effective_at": None,
-                    "updated_at": document["updated_at"],
-                    "visibility": document["visibility"],
+                    "updated_at": document.updated_at,
+                    "visibility": document.visibility,
                     "metadata": {},
-                    "chunk_count": int(chunk_count_mapping.get(document["document_id"], 0)),
+                    "chunk_count": int(chunk_count_mapping.get(document.document_id, 0)),
                 }
             )
         return payloads
@@ -75,7 +76,7 @@ class RAGInspectorService:
         document_payload = self._document_repository.get_document(document_id=document_id)
         if document_payload is None:
             return None
-        latest_version_id = document_payload.get("latest_version_id")
+        latest_version_id = document_payload.latest_version_id
         version_payload = (
             self._document_version_repository.get_version(version_id=latest_version_id)
             if latest_version_id
@@ -85,25 +86,25 @@ class RAGInspectorService:
         metadata = {}
         if version_payload is not None:
             content = self._content_store.read_normalized_text(
-                storage_path=version_payload["normalized_storage_path"]
+                storage_path=version_payload.normalized_storage_path
             )
-            metadata = dict(version_payload.get("metadata_details") or {})
+            metadata = dict(version_payload.metadata_details or {})
         chunk_count_mapping = self._document_repository.get_chunk_counts_by_document_ids(
             document_ids=[document_id]
         )
         return {
-            "document_id": document_payload["document_id"],
-            "title": document_payload["title"],
-            "source_type": document_payload["source_type"],
+            "document_id": document_payload.document_id,
+            "title": document_payload.title,
+            "source_type": document_payload.source_type,
             "content": content,
-            "origin_uri": document_payload["origin_uri"],
-            "file_name": document_payload["file_name"],
-            "jurisdiction": document_payload["jurisdiction"],
-            "domain": document_payload["domain"],
-            "tags": list(document_payload.get("tags_details") or []),
+            "origin_uri": document_payload.origin_uri,
+            "file_name": document_payload.file_name,
+            "jurisdiction": document_payload.jurisdiction,
+            "domain": document_payload.domain,
+            "tags": list(document_payload.tags_details),
             "effective_at": None,
-            "updated_at": document_payload["updated_at"],
-            "visibility": document_payload["visibility"],
+            "updated_at": document_payload.updated_at,
+            "visibility": document_payload.visibility,
             "metadata": metadata,
             "chunk_count": int(chunk_count_mapping.get(document_id, 0)),
             "latest_version_id": latest_version_id,
@@ -116,16 +117,16 @@ class RAGInspectorService:
         chunk_payloads = self._chunk_repository.list_by_document_id(document_id=document_id)
         return [
             {
-                "chunk_id": chunk["chunk_id"],
-                "document_id": chunk["document_id"],
-                "chunk_index": chunk["chunk_index"],
-                "token_count": chunk["token_count"],
-                "embedding_model": chunk["embedding_model_name"],
-                "chunk_text_preview": chunk["chunk_preview"],
-                "metadata": dict(chunk.get("metadata_details") or {}),
-                "vector_point_id": chunk["vector_point_id"],
-                "vector_dimension": chunk["vector_dimension"],
-                "vector_collection": chunk["vector_collection"],
+                "chunk_id": chunk.chunk_id,
+                "document_id": chunk.document_id,
+                "chunk_index": chunk.chunk_index,
+                "token_count": chunk.token_count,
+                "embedding_model": chunk.embedding_model_name,
+                "chunk_text_preview": chunk.chunk_preview,
+                "metadata": dict(chunk.metadata_details or {}),
+                "vector_point_id": chunk.vector_point_id,
+                "vector_dimension": chunk.vector_dimension,
+                "vector_collection": chunk.vector_collection,
             }
             for chunk in chunk_payloads
         ]
@@ -135,19 +136,19 @@ class RAGInspectorService:
         if chunk_payload is None:
             return None
         return {
-            "chunk_id": chunk_payload["chunk_id"],
-            "document_id": chunk_payload["document_id"],
-            "chunk_index": chunk_payload["chunk_index"],
-            "token_count": chunk_payload["token_count"],
-            "embedding_model": chunk_payload["embedding_model_name"],
-            "chunk_text": chunk_payload["chunk_preview"],
-            "chunk_text_preview": chunk_payload["chunk_preview"],
-            "metadata": dict(chunk_payload.get("metadata_details") or {}),
-            "vector_point_id": chunk_payload["vector_point_id"],
-            "vector_dimension": chunk_payload["vector_dimension"],
-            "vector_collection": chunk_payload["vector_collection"],
-            "document_version_id": chunk_payload["document_version_id"],
-            "build_id": chunk_payload["build_id"],
+            "chunk_id": chunk_payload.chunk_id,
+            "document_id": chunk_payload.document_id,
+            "chunk_index": chunk_payload.chunk_index,
+            "token_count": chunk_payload.token_count,
+            "embedding_model": chunk_payload.embedding_model_name,
+            "chunk_text": chunk_payload.chunk_preview,
+            "chunk_text_preview": chunk_payload.chunk_preview,
+            "metadata": dict(chunk_payload.metadata_details or {}),
+            "vector_point_id": chunk_payload.vector_point_id,
+            "vector_dimension": chunk_payload.vector_dimension,
+            "vector_collection": chunk_payload.vector_collection,
+            "document_version_id": chunk_payload.document_version_id,
+            "build_id": chunk_payload.build_id,
         }
 
     def get_chunk_vector_detail(self, *, chunk_id: str) -> dict[str, Any] | None:
@@ -155,22 +156,22 @@ class RAGInspectorService:
         if chunk_payload is None:
             return None
         vector_payload = self._vector_store.fetch_point(
-            point_id=chunk_payload["vector_point_id"]
+            point_id=chunk_payload.vector_point_id
         )
         if vector_payload is None:
             return {
                 "chunk_id": chunk_id,
-                "vector_point_id": chunk_payload["vector_point_id"],
-                "vector_collection": chunk_payload["vector_collection"],
+                "vector_point_id": chunk_payload.vector_point_id,
+                "vector_collection": chunk_payload.vector_collection,
                 "found": False,
                 "vector": [],
-                "vector_dimension": chunk_payload["vector_dimension"],
+                "vector_dimension": chunk_payload.vector_dimension,
                 "payload": {},
             }
         return {
             "chunk_id": chunk_id,
-            "vector_point_id": chunk_payload["vector_point_id"],
-            "vector_collection": chunk_payload["vector_collection"],
+            "vector_point_id": chunk_payload.vector_point_id,
+            "vector_collection": chunk_payload.vector_collection,
             "found": True,
             "vector": list(vector_payload.get("vector") or []),
             "vector_dimension": int(vector_payload.get("vector_dimension") or 0),
@@ -258,24 +259,24 @@ class RAGInspectorService:
             return normalized[:max_chars]
         return f"{normalized[: max_chars - 3]}..."
 
-    def _to_build_detail_payload(self, task_payload: dict[str, Any]) -> dict[str, Any]:
-        build_id = str(task_payload["build_id"])
+    def _to_build_detail_payload(self, task_payload: BuildTaskRecord) -> dict[str, Any]:
+        build_id = task_payload.build_id
         build_documents = self._build_document_repository.list_by_build_id(build_id=build_id)
-        statistics_details = dict(task_payload.get("statistics_details") or {})
-        quality_gate_details = dict(task_payload.get("quality_gate_details") or {})
+        statistics_details = dict(task_payload.statistics_details or {})
+        quality_gate_details = dict(task_payload.quality_gate_details or {})
         return {
             "metadata": {
                 "build_id": build_id,
-                "version_id": task_payload["build_version_id"],
-                "build_version_id": task_payload["build_version_id"],
-                "status": task_payload["status"],
-                "chunk_strategy_name": task_payload["chunk_strategy_name"],
-                "chunk_strategy_version": task_payload["chunk_strategy_name"],
-                "embedding_model_name": task_payload["embedding_model_name"],
-                "embedding_model_version": task_payload["embedding_model_name"],
-                "started_at": task_payload["started_at"],
-                "completed_at": task_payload["completed_at"],
-                "created_at": task_payload["created_at"],
+                "version_id": task_payload.build_version_id,
+                "build_version_id": task_payload.build_version_id,
+                "status": task_payload.status,
+                "chunk_strategy_name": task_payload.chunk_strategy_name,
+                "chunk_strategy_version": task_payload.chunk_strategy_name,
+                "embedding_model_name": task_payload.embedding_model_name,
+                "embedding_model_version": task_payload.embedding_model_name,
+                "started_at": task_payload.started_at,
+                "completed_at": task_payload.completed_at,
+                "created_at": task_payload.created_at,
             },
             "statistics": {
                 "requested_document_count": int(
@@ -309,17 +310,16 @@ class RAGInspectorService:
                     quality_gate_details.get("max_empty_chunk_ratio", 0.0)
                 ),
             },
-            "manifest": dict(task_payload.get("manifest_details") or {}),
+            "manifest": dict(task_payload.manifest_details or {}),
             "ingestion_results": [
                 {
-                    "document_id": record["document_id"],
-                    "document_version_id": record["document_version_id"],
-                    "chunk_count": record["chunk_count"],
-                    "vector_count": record["vector_count"],
-                    "action": record["action"],
-                    "error_message": record["error_message"],
+                    "document_id": record.document_id,
+                    "document_version_id": record.document_version_id,
+                    "chunk_count": record.chunk_count,
+                    "vector_count": record.vector_count,
+                    "action": record.action,
+                    "error_message": record.error_message,
                 }
                 for record in build_documents
             ],
         }
-

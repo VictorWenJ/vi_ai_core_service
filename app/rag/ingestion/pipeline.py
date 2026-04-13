@@ -91,6 +91,7 @@ class KnowledgeIngestionPipeline:
                 chunk.metadata.update(build_metadata)
         log_report("KnowledgeIngestionPipeline.ingest_document.chunks", chunks)
 
+        # 向量提取
         vectors: list[list[float]] = []
         embedding_batch_count = 0
         embedding_dimension = 0
@@ -105,6 +106,7 @@ class KnowledgeIngestionPipeline:
             embedding_dimension = embedding_result.dimensions
             vectors.extend(embedding_result.vectors)
 
+        # 向量保存
         upserted_count = self._vector_store.upsert(
             document=document,
             chunks=chunks,

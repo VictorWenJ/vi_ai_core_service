@@ -160,6 +160,12 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - `app/db/` 负责共享数据库基础设施
 - 不允许在 API / service / inspector 中散落 SQL
 
+### 6.11 repository 实体与 mapper 原则
+- `app/rag/repository/` 中每张核心控制面表都应有明确的持久化实体对象，不应长期依赖裸 `dict` 表达整条记录。
+- 推荐按持久化记录对象（如 `*Record` / ORM model）+ mapper + 领域对象 / read model 的方式组织。
+- `repository` 层内部允许直接操作 ORM 持久化实体，但对外应优先返回领域对象或专用 read model。
+- `*_details` 字段内部允许继续使用半结构化 `dict`，但查询结果整体不得长期维持为裸 `dict`。
+
 ## 7. 当前阶段能力声明
 
 当前代码现状：
@@ -189,6 +195,7 @@ RAG 是增强层，不应在当前阶段成为主链路单点故障。
 - 引入 `repository` 与 `content_store` 分层
 - 让 `documents`、`document_versions`、`build_tasks`、`build_documents`、`chunks`、`evaluation_runs`、`evaluation_cases` 正式落盘
 - 让 Inspector 通过 `vector_point_id` 回读 Qdrant 查看向量详情
+- 推进 repository 层标准化，逐步收敛核心查询结果的实体对象与 mapper 边界
 
 当前本轮不要求落地：
 

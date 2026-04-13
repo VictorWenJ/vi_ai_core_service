@@ -8,8 +8,13 @@ from typing import Any
 from sqlalchemy import Select, func, select
 
 from app.db.session import DatabaseRuntime
-from app.rag.repository._utils import copy_json_dict, datetime_to_iso, utcnow
+from app.rag.repository._utils import utcnow
+from app.rag.repository.mappers import (
+    map_evaluation_run_entity_to_record,
+    map_evaluation_run_entity_to_status_summary,
+)
 from app.rag.repository.models import EvaluationRunEntity
+from app.rag.repository.read_models import EvaluationRunRecord, EvaluationRunStatusSummary
 
 
 class EvaluationRunRepository:
@@ -33,7 +38,7 @@ class EvaluationRunRepository:
         error_message: str | None = None,
         started_at: datetime | None = None,
         completed_at: datetime | None = None,
-    ) -> dict[str, Any]:
+    ) -> EvaluationRunRecord:
         with self._database_runtime.session_scope() as session:
             entity = EvaluationRunEntity(
                 run_id=run_id,
@@ -51,7 +56,7 @@ class EvaluationRunRepository:
             )
             session.add(entity)
             session.flush()
-            return self._to_payload(entity)
+            return map_evaluation_run_entity_to_record(entity)
 
     def update_run(
         self,
@@ -62,7 +67,7 @@ class EvaluationRunRepository:
         metadata_details: dict[str, Any] | None = None,
         error_message: str | None = None,
         completed_at: datetime | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> EvaluationRunRecord | None:
         with self._database_runtime.session_scope() as session:
             entity = session.scalar(
                 select(EvaluationRunEntity).where(EvaluationRunEntity.run_id == run_id)
@@ -81,7 +86,7 @@ class EvaluationRunRepository:
                 entity.completed_at = completed_at
             session.add(entity)
             session.flush()
-            return self._to_payload(entity)
+            return map_evaluation_run_entity_to_record(entity)
 
     def mark_failed(
         self,
@@ -89,7 +94,7 @@ class EvaluationRunRepository:
         run_id: str,
         error_message: str,
         metadata_details: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> EvaluationRunRecord | None:
         return self.update_run(
             run_id=run_id,
             status="failed",
@@ -98,28 +103,28 @@ class EvaluationRunRepository:
             completed_at=utcnow(),
         )
 
-    def list_runs(self) -> list[dict[str, Any]]:
+    def list_runs(self) -> list[EvaluationRunRecord]:
         with self._database_runtime.session_scope() as session:
             entities = session.scalars(
                 select(EvaluationRunEntity).order_by(EvaluationRunEntity.created_at.desc())
             ).all()
-            return [self._to_payload(entity) for entity in entities]
+            return [map_evaluation_run_entity_to_record(entity) for entity in entities]
 
-    def get_run(self, *, run_id: str) -> dict[str, Any] | None:
+    def get_run(self, *, run_id: str) -> EvaluationRunRecord | None:
         with self._database_runtime.session_scope() as session:
             entity = session.scalar(
                 select(EvaluationRunEntity).where(EvaluationRunEntity.run_id == run_id)
             )
             if entity is None:
                 return None
-            return self._to_payload(entity)
+            return map_evaluation_run_entity_to_record(entity)
 
     def count_runs(self) -> int:
         with self._database_runtime.session_scope() as session:
             value = session.scalar(select(func.count()).select_from(EvaluationRunEntity))
             return int(value or 0)
 
-    def list_recent_statuses(self, *, limit: int = 5) -> list[dict[str, Any]]:
+    def list_recent_statuses(self, *, limit: int = 5) -> list[EvaluationRunStatusSummary]:
         with self._database_runtime.session_scope() as session:
             statement: Select[EvaluationRunEntity] = (
                 select(EvaluationRunEntity)
@@ -127,30 +132,4 @@ class EvaluationRunRepository:
                 .limit(limit)
             )
             entities = session.scalars(statement).all()
-            return [
-                {
-                    "run_id": entity.run_id,
-                    "status": entity.status,
-                    "created_at": datetime_to_iso(entity.created_at),
-                    "completed_at": datetime_to_iso(entity.completed_at),
-                }
-                for entity in entities
-            ]
-
-    @staticmethod
-    def _to_payload(entity: EvaluationRunEntity) -> dict[str, Any]:
-        return {
-            "run_id": entity.run_id,
-            "build_id": entity.build_id,
-            "dataset_id": entity.dataset_id,
-            "dataset_version_id": entity.dataset_version_id,
-            "status": entity.status,
-            "trigger_type": entity.trigger_type,
-            "triggered_by": entity.triggered_by,
-            "summary_details": copy_json_dict(entity.summary_details),
-            "metadata_details": copy_json_dict(entity.metadata_details),
-            "error_message": entity.error_message,
-            "started_at": datetime_to_iso(entity.started_at),
-            "completed_at": datetime_to_iso(entity.completed_at),
-            "created_at": datetime_to_iso(entity.created_at),
-        }
+            return [map_evaluation_run_entity_to_status_summary(entity) for entity in entities]

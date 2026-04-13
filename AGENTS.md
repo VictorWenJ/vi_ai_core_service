@@ -121,6 +121,7 @@
 - chunking：**结构感知 + token-aware + overlap**
 - 结构化字段命名：优先使用业务语义命名，详情对象使用 `*_details`，标识集合使用 `*_ids`
 - API 契约边界：`app/api/schemas/` 仅承载对外 request / response contract；领域内部对象保留在各自模块内
+- repository 标准化：核心持久化查询结果不得长期以裸 `dict` 对外暴露；每张核心表应有明确的持久化实体对象，并通过 mapper 转换为领域对象或专用 read model
 
 ### 本轮明确不做
 

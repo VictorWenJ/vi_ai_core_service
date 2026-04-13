@@ -161,14 +161,14 @@ class RAGDomainServicePersistenceTests(unittest.TestCase):
         )
         self.assertIsNotNone(document_payload)
 
-        latest_version_id = str(document_payload["latest_version_id"])
+        latest_version_id = str(document_payload.latest_version_id)
         version_payload = self._document_version_repository.get_version(
             version_id=latest_version_id
         )
         self.assertIsNotNone(version_payload)
-        raw_file_path = self._content_store.root_path / version_payload["raw_storage_path"]
+        raw_file_path = self._content_store.root_path / version_payload.raw_storage_path
         normalized_file_path = (
-            self._content_store.root_path / version_payload["normalized_storage_path"]
+            self._content_store.root_path / version_payload.normalized_storage_path
         )
         self.assertTrue(raw_file_path.exists())
         self.assertTrue(normalized_file_path.exists())
@@ -179,7 +179,7 @@ class RAGDomainServicePersistenceTests(unittest.TestCase):
 
         persisted_build = self._build_task_repository.get_task(build_id=build_id)
         self.assertIsNotNone(persisted_build)
-        self.assertEqual(persisted_build["status"], "succeeded")
+        self.assertEqual(persisted_build.status, "succeeded")
 
         document_chunks = self.inspector_service.list_document_chunks(uploaded_document.document_id)
         self.assertIsNotNone(document_chunks)

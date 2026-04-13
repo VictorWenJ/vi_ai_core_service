@@ -7,8 +7,9 @@ from typing import Any
 from sqlalchemy import func, select
 
 from app.db.session import DatabaseRuntime
-from app.rag.repository._utils import copy_json_dict, datetime_to_iso
+from app.rag.repository.mappers import map_chunk_entity_to_record
 from app.rag.repository.models import ChunkEntity
+from app.rag.repository.read_models import ChunkRecord
 
 
 class ChunkRepository:
@@ -17,7 +18,7 @@ class ChunkRepository:
     def __init__(self, *, database_runtime: DatabaseRuntime) -> None:
         self._database_runtime = database_runtime
 
-    def add_records(self, *, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def add_records(self, *, records: list[dict[str, Any]]) -> list[ChunkRecord]:
         if not records:
             return []
         with self._database_runtime.session_scope() as session:
@@ -43,49 +44,27 @@ class ChunkRepository:
                 entities.append(entity)
             session.add_all(entities)
             session.flush()
-            return [self._to_payload(entity) for entity in entities]
+            return [map_chunk_entity_to_record(entity) for entity in entities]
 
-    def list_by_document_id(self, *, document_id: str) -> list[dict[str, Any]]:
+    def list_by_document_id(self, *, document_id: str) -> list[ChunkRecord]:
         with self._database_runtime.session_scope() as session:
             entities = session.scalars(
                 select(ChunkEntity)
                 .where(ChunkEntity.document_id == document_id)
                 .order_by(ChunkEntity.chunk_index.asc())
             ).all()
-            return [self._to_payload(entity) for entity in entities]
+            return [map_chunk_entity_to_record(entity) for entity in entities]
 
-    def get_chunk(self, *, chunk_id: str) -> dict[str, Any] | None:
+    def get_chunk(self, *, chunk_id: str) -> ChunkRecord | None:
         with self._database_runtime.session_scope() as session:
             entity = session.scalar(
                 select(ChunkEntity).where(ChunkEntity.chunk_id == chunk_id)
             )
             if entity is None:
                 return None
-            return self._to_payload(entity)
+            return map_chunk_entity_to_record(entity)
 
     def count_chunks(self) -> int:
         with self._database_runtime.session_scope() as session:
             value = session.scalar(select(func.count()).select_from(ChunkEntity))
             return int(value or 0)
-
-    @staticmethod
-    def _to_payload(entity: ChunkEntity) -> dict[str, Any]:
-        return {
-            "chunk_id": entity.chunk_id,
-            "build_id": entity.build_id,
-            "document_id": entity.document_id,
-            "document_version_id": entity.document_version_id,
-            "chunk_index": entity.chunk_index,
-            "token_count": entity.token_count,
-            "start_offset": entity.start_offset,
-            "end_offset": entity.end_offset,
-            "chunk_text_hash": entity.chunk_text_hash,
-            "chunk_preview": entity.chunk_preview,
-            "embedding_model_name": entity.embedding_model_name,
-            "vector_dimension": entity.vector_dimension,
-            "vector_collection": entity.vector_collection,
-            "vector_point_id": entity.vector_point_id,
-            "metadata_details": copy_json_dict(entity.metadata_details),
-            "created_at": datetime_to_iso(entity.created_at),
-        }
-

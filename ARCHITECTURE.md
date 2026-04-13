@@ -117,6 +117,21 @@
 
 ---
 
+### repository / 持久化实体分层
+当前控制面持久化升级完成后，数据库访问应遵守以下分层：
+
+- `app/db/`：提供数据库连接、session、事务、迁移等共享基础设施
+- `app/rag/repository/`：提供 `rag` 子域的数据访问封装
+- 持久化实体对象：用于表达表记录，例如 `DocumentRecord`、`BuildTaskRecord`、`ChunkRecord` 等
+- 领域对象 / read model：用于表达上层业务语义或查询结果摘要
+
+架构要求：
+
+- `repository` 层内部允许直接操作 ORM 持久化实体对象
+- `repository` 对外不应长期以裸 `dict` 作为核心返回形式
+- `services`、`runtime`、`inspector` 等上层应消费领域对象或 read model，而不是大量基于字符串键访问 `dict`
+- `*_details` 字段内部允许保持半结构化 `dict`，但查询结果整体不应长期维持为裸 `dict`
+
 ## 4. 工程基础设施平面
 
 `infra/` 负责：

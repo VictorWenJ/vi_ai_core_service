@@ -64,7 +64,11 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             status="active",
             latest_version_id=None,
         )
-        self.assertEqual(document_payload["document_id"], "doc-1")
+        self.assertEqual(document_payload.document_id, "doc-1")
+        self.assertNotIsInstance(document_payload, dict)
+        listed_documents = self.document_repository.list_documents()
+        self.assertEqual(len(listed_documents), 1)
+        self.assertNotIsInstance(listed_documents[0], dict)
         self.assertEqual(self.document_repository.count_documents(), 1)
 
         version_no = self.document_version_repository.next_version_no(document_id="doc-1")
@@ -84,14 +88,15 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             cleaner_name="DocumentCleaner",
             metadata_details={"uploaded_via": "test"},
         )
-        self.assertEqual(version_payload["version_id"], "ver-1")
+        self.assertEqual(version_payload.version_id, "ver-1")
+        self.assertNotIsInstance(version_payload, dict)
         reused_version_payload = self.document_version_repository.find_version_by_content_hash(
             document_id="doc-1",
             content_hash="hash-raw",
             hash_algorithm="sha1",
         )
         self.assertIsNotNone(reused_version_payload)
-        self.assertEqual(reused_version_payload["version_id"], "ver-1")
+        self.assertEqual(reused_version_payload.version_id, "ver-1")
         self.assertEqual(
             self.document_version_repository.count_versions(document_id="doc-1"),
             1,
@@ -105,7 +110,12 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             document_id="doc-1"
         )
         self.assertIsNotNone(latest_version_payload)
-        self.assertEqual(latest_version_payload["version_id"], "ver-1")
+        self.assertEqual(latest_version_payload.version_id, "ver-1")
+        latest_versions_for_build = (
+            self.document_version_repository.list_latest_versions_for_build()
+        )
+        self.assertEqual(len(latest_versions_for_build), 1)
+        self.assertNotIsInstance(latest_versions_for_build[0], dict)
 
         task_payload = self.build_task_repository.create_task(
             build_id="build-1",
@@ -117,7 +127,8 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             manifest_details={"document_ids": ["doc-1"]},
             started_at=utcnow(),
         )
-        self.assertEqual(task_payload["status"], "running")
+        self.assertEqual(task_payload.status, "running")
+        self.assertNotIsInstance(task_payload, dict)
         updated_task_payload = self.build_task_repository.update_task(
             build_id="build-1",
             status="succeeded",
@@ -126,7 +137,10 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             completed_at=utcnow(),
         )
         self.assertIsNotNone(updated_task_payload)
-        self.assertEqual(updated_task_payload["status"], "succeeded")
+        self.assertEqual(updated_task_payload.status, "succeeded")
+        listed_tasks = self.build_task_repository.list_tasks()
+        self.assertEqual(len(listed_tasks), 1)
+        self.assertNotIsInstance(listed_tasks[0], dict)
 
         build_document_payloads = self.build_document_repository.add_records(
             records=[
@@ -143,6 +157,7 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             ]
         )
         self.assertEqual(len(build_document_payloads), 1)
+        self.assertNotIsInstance(build_document_payloads[0], dict)
 
         chunk_payloads = self.chunk_repository.add_records(
             records=[
@@ -166,9 +181,14 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             ]
         )
         self.assertEqual(len(chunk_payloads), 1)
+        self.assertNotIsInstance(chunk_payloads[0], dict)
+        listed_chunks = self.chunk_repository.list_by_document_id(document_id="doc-1")
+        self.assertEqual(len(listed_chunks), 1)
+        self.assertNotIsInstance(listed_chunks[0], dict)
         chunk_payload = self.chunk_repository.get_chunk(chunk_id="chk-1")
         self.assertIsNotNone(chunk_payload)
-        self.assertEqual(chunk_payload["vector_point_id"], "chk-1")
+        self.assertEqual(chunk_payload.vector_point_id, "chk-1")
+        self.assertNotIsInstance(chunk_payload, dict)
         self.assertEqual(self.chunk_repository.count_chunks(), 1)
 
         run_payload = self.evaluation_run_repository.create_run(
@@ -183,7 +203,8 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             metadata_details={"build_id": "build-1"},
             started_at=utcnow(),
         )
-        self.assertEqual(run_payload["run_id"], "run-1")
+        self.assertEqual(run_payload.run_id, "run-1")
+        self.assertNotIsInstance(run_payload, dict)
 
         updated_run_payload = self.evaluation_run_repository.update_run(
             run_id="run-1",
@@ -193,7 +214,10 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             completed_at=utcnow(),
         )
         self.assertIsNotNone(updated_run_payload)
-        self.assertEqual(updated_run_payload["status"], "succeeded")
+        self.assertEqual(updated_run_payload.status, "succeeded")
+        listed_runs = self.evaluation_run_repository.list_runs()
+        self.assertEqual(len(listed_runs), 1)
+        self.assertNotIsInstance(listed_runs[0], dict)
 
         case_payloads = self.evaluation_case_repository.add_cases(
             cases=[
@@ -219,12 +243,14 @@ class RAGRepositoryPersistenceTests(unittest.TestCase):
             ]
         )
         self.assertEqual(len(case_payloads), 1)
+        self.assertNotIsInstance(case_payloads[0], dict)
 
         listed_cases = self.evaluation_case_repository.list_cases_by_run_id(run_id="run-1")
         self.assertEqual(len(listed_cases), 1)
-        self.assertTrue(listed_cases[0]["passed"])
+        self.assertTrue(listed_cases[0].passed)
+        self.assertNotIsInstance(listed_cases[0], dict)
 
         recent_build_statuses = self.build_task_repository.list_recent_statuses(limit=5)
         recent_evaluation_statuses = self.evaluation_run_repository.list_recent_statuses(limit=5)
-        self.assertEqual(recent_build_statuses[0]["status"], "succeeded")
-        self.assertEqual(recent_evaluation_statuses[0]["status"], "succeeded")
+        self.assertEqual(recent_build_statuses[0].status, "succeeded")
+        self.assertEqual(recent_evaluation_statuses[0].status, "succeeded")

@@ -5,6 +5,7 @@ from __future__ import annotations
 from time import perf_counter
 from typing import Any
 
+from app.observability import log_report
 from app.rag.content_store.local_store import LocalRAGContentStore
 from app.rag.ingestion.pipeline import KnowledgeIngestionPipeline
 from app.rag.models import KnowledgeDocument, compute_content_hash, generate_build_id
@@ -12,6 +13,7 @@ from app.rag.repository.build_document_repository import BuildDocumentRepository
 from app.rag.repository.build_task_repository import BuildTaskRepository
 from app.rag.repository.chunk_repository import ChunkRepository
 from app.rag.repository.document_version_repository import DocumentVersionRepository
+from app.rag.repository.read_models import BuildTaskRecord, LatestDocumentVersionRecord
 from app.rag.repository._utils import utcnow
 from app.rag.retrieval.vector_store import BaseVectorStore
 
@@ -50,21 +52,28 @@ class RAGBuildService:
         max_failure_ratio: float = 0.0,
         max_empty_chunk_ratio: float = 0.0,
     ) -> dict[str, Any]:
-        latest_versions = self._document_version_repository.list_latest_versions_for_build(
+        # 获取最新版本的文档信息
+        latest_version_document = self._document_version_repository.list_latest_versions_for_build(
             document_ids=force_rebuild_document_ids or None
         )
-        if not latest_versions:
+        log_report("RAGBuildService.create_build.latest_version_document", latest_version_document)
+        if not latest_version_document:
             raise ValueError("当前没有可构建的文档版本。")
 
         build_id = generate_build_id()
         build_version_id = (version_id or "").strip() or f"knowledge-{_utc_version_suffix()}"
+
         started_at = utcnow()
+
+        # 初始化快照信息
         manifest_details = self._build_manifest_details(
             build_version_id=build_version_id,
-            latest_versions=latest_versions,
+            latest_versions=latest_version_document,
             force_rebuild_document_ids=force_rebuild_document_ids or [],
         )
-        self._build_task_repository.create_task(
+
+        # 创建任务
+        task_detail = self._build_task_repository.create_task(
             build_id=build_id,
             build_version_id=build_version_id,
             status="running",
@@ -78,40 +87,42 @@ class RAGBuildService:
             manifest_details=manifest_details,
             started_at=started_at,
         )
+        log_report("RAGBuildService.create_build.task_detail", task_detail)
 
-        started_perf = perf_counter()
-        requested_document_count = len(latest_versions)
-        processed_document_count = 0
-        failed_document_count = 0
-        chunk_count = 0
-        vector_count = 0
-        embedding_batch_count = 0
-        empty_chunk_document_count = 0
-        build_document_records: list[dict[str, Any]] = []
-        chunk_records: list[dict[str, Any]] = []
+        started_perf = perf_counter()  # 构建流程性能计时起点（用于统计总耗时）。
+        requested_document_count = len(latest_version_document)  # 本次构建请求文档总数。
+        processed_document_count = 0  # 本次构建成功处理的文档数。
+        failed_document_count = 0  # 本次构建处理失败的文档数。
+        chunk_count = 0  # 本次构建累计产出的 chunk 数量。
+        vector_count = 0  # 本次构建累计向量写入数量。
+        embedding_batch_count = 0  # 本次构建累计 embedding 批处理次数。
+        empty_chunk_document_count = 0  # 本次构建中产出 0 个 chunk 的文档数。
+        build_document_records: list[dict[str, Any]] = []  # 构建文档级持久化记录列表。
+        chunk_records: list[dict[str, Any]] = []  # chunk 元数据持久化记录列表。
 
-        for item in latest_versions:
-            document_payload = dict(item["document"])
-            version_payload = dict(item["version"])
-            document_id = str(document_payload["document_id"])
-            version_key = str(version_payload["version_id"])
+        for version_document in latest_version_document:
+            document_payload = version_document.document
+            version_payload = version_document.version
+            document_id = document_payload.document_id
+            version_key = version_payload.version_id
             try:
+                # 获取存储的文本信息
                 normalized_text = self._content_store.read_normalized_text(
-                    storage_path=version_payload["normalized_storage_path"]
+                    storage_path=version_payload.normalized_storage_path
                 )
                 document = KnowledgeDocument(
                     document_id=document_id,
-                    title=document_payload["title"],
-                    source_type=document_payload["source_type"],
+                    title=document_payload.title,
+                    source_type=document_payload.source_type,
                     content=normalized_text,
-                    origin_uri=document_payload.get("origin_uri"),
-                    file_name=document_payload.get("file_name"),
-                    jurisdiction=document_payload.get("jurisdiction"),
-                    domain=document_payload.get("domain"),
-                    tags=list(document_payload.get("tags_details") or []),
-                    updated_at=document_payload.get("updated_at"),
-                    visibility=document_payload.get("visibility") or "internal",
-                    metadata=dict(version_payload.get("metadata_details") or {}),
+                    origin_uri=document_payload.origin_uri,
+                    file_name=document_payload.file_name,
+                    jurisdiction=document_payload.jurisdiction,
+                    domain=document_payload.domain,
+                    tags=list(document_payload.tags_details),
+                    updated_at=document_payload.updated_at,
+                    visibility=document_payload.visibility or "internal",
+                    metadata=dict(version_payload.metadata_details),
                 )
                 ingestion_result = self._pipeline.ingest_document(
                     document,
@@ -121,10 +132,13 @@ class RAGBuildService:
                         "document_version_id": version_key,
                     },
                 )
+                log_report("RAGBuildService.create_build.ingestion_result", ingestion_result)
+
                 processed_document_count += 1
                 chunk_count += ingestion_result.trace.chunk_count
                 vector_count += ingestion_result.trace.upserted_count
                 embedding_batch_count += ingestion_result.trace.embedding_batch_count
+
                 if ingestion_result.trace.chunk_count == 0:
                     empty_chunk_document_count += 1
 
@@ -133,7 +147,7 @@ class RAGBuildService:
                         "build_id": build_id,
                         "document_id": document_id,
                         "document_version_id": version_key,
-                        "content_hash": version_payload["content_hash"],
+                        "content_hash": version_payload.content_hash,
                         "action": "upsert",
                         "chunk_count": ingestion_result.trace.chunk_count,
                         "vector_count": ingestion_result.trace.upserted_count,
@@ -171,7 +185,7 @@ class RAGBuildService:
                         "build_id": build_id,
                         "document_id": document_id,
                         "document_version_id": version_key,
-                        "content_hash": version_payload["content_hash"],
+                        "content_hash": version_payload.content_hash,
                         "action": "failed",
                         "chunk_count": 0,
                         "vector_count": 0,
@@ -244,11 +258,11 @@ class RAGBuildService:
     def _build_manifest_details(
         *,
         build_version_id: str,
-        latest_versions: list[dict[str, Any]],
+        latest_versions: list[LatestDocumentVersionRecord],
         force_rebuild_document_ids: list[str],
     ) -> dict[str, Any]:
-        document_ids = [str(item["document"]["document_id"]) for item in latest_versions]
-        document_version_ids = [str(item["version"]["version_id"]) for item in latest_versions]
+        document_ids = [item.document.document_id for item in latest_versions]
+        document_version_ids = [item.version.version_id for item in latest_versions]
         return {
             "build_version_id": build_version_id,
             "document_ids": document_ids,
@@ -256,9 +270,9 @@ class RAGBuildService:
             "forced_document_ids": [str(item) for item in force_rebuild_document_ids],
             "documents": [
                 {
-                    "document_id": str(item["document"]["document_id"]),
-                    "document_version_id": str(item["version"]["version_id"]),
-                    "content_hash": str(item["version"]["content_hash"]),
+                    "document_id": item.document.document_id,
+                    "document_version_id": item.version.version_id,
+                    "content_hash": item.version.content_hash,
                 }
                 for item in latest_versions
             ],
@@ -296,24 +310,24 @@ class RAGBuildService:
             "max_empty_chunk_ratio": max_empty_chunk_ratio,
         }
 
-    def _to_build_detail_payload(self, task_payload: dict[str, Any]) -> dict[str, Any]:
-        build_id = str(task_payload["build_id"])
+    def _to_build_detail_payload(self, task_payload: BuildTaskRecord) -> dict[str, Any]:
+        build_id = task_payload.build_id
         build_documents = self._build_document_repository.list_by_build_id(build_id=build_id)
-        statistics_details = dict(task_payload.get("statistics_details") or {})
-        quality_gate_details = dict(task_payload.get("quality_gate_details") or {})
+        statistics_details = dict(task_payload.statistics_details or {})
+        quality_gate_details = dict(task_payload.quality_gate_details or {})
         return {
             "metadata": {
                 "build_id": build_id,
-                "version_id": task_payload["build_version_id"],  # 向后兼容
-                "build_version_id": task_payload["build_version_id"],
-                "status": task_payload["status"],
-                "chunk_strategy_name": task_payload["chunk_strategy_name"],
-                "chunk_strategy_version": task_payload["chunk_strategy_name"],  # 向后兼容
-                "embedding_model_name": task_payload["embedding_model_name"],
-                "embedding_model_version": task_payload["embedding_model_name"],  # 向后兼容
-                "started_at": task_payload["started_at"],
-                "completed_at": task_payload["completed_at"],
-                "created_at": task_payload["created_at"],
+                "version_id": task_payload.build_version_id,  # 向后兼容
+                "build_version_id": task_payload.build_version_id,
+                "status": task_payload.status,
+                "chunk_strategy_name": task_payload.chunk_strategy_name,
+                "chunk_strategy_version": task_payload.chunk_strategy_name,  # 向后兼容
+                "embedding_model_name": task_payload.embedding_model_name,
+                "embedding_model_version": task_payload.embedding_model_name,  # 向后兼容
+                "started_at": task_payload.started_at,
+                "completed_at": task_payload.completed_at,
+                "created_at": task_payload.created_at,
             },
             "statistics": {
                 "requested_document_count": int(
@@ -347,15 +361,15 @@ class RAGBuildService:
                     quality_gate_details.get("max_empty_chunk_ratio", 0.0)
                 ),
             },
-            "manifest": dict(task_payload.get("manifest_details") or {}),
+            "manifest": dict(task_payload.manifest_details or {}),
             "ingestion_results": [
                 {
-                    "document_id": record["document_id"],
-                    "document_version_id": record["document_version_id"],
-                    "chunk_count": record["chunk_count"],
-                    "vector_count": record["vector_count"],
-                    "action": record["action"],
-                    "error_message": record["error_message"],
+                    "document_id": record.document_id,
+                    "document_version_id": record.document_version_id,
+                    "chunk_count": record.chunk_count,
+                    "vector_count": record.vector_count,
+                    "action": record.action,
+                    "error_message": record.error_message,
                 }
                 for record in build_documents
             ],

@@ -74,6 +74,11 @@ class RAGDocumentService:
         content_hash = compute_content_hash(raw_content)
         normalized_text_hash = compute_content_hash(normalized_text)
         hash_algorithm = "sha1"
+        log_report("RAGDocumentService.upload_document.current_version",
+                   dict(resolved_document_id=resolved_document_id,
+                        content_hash=content_hash,
+                        normalized_text_hash=normalized_text_hash,
+                        hash_algorithm=hash_algorithm))
 
         # 同一逻辑文档内容 hash 一致时，直接复用已有版本，不重复创建。
         existing_version = self._document_version_repository.find_version_by_content_hash(
@@ -84,7 +89,8 @@ class RAGDocumentService:
         log_report("RAGDocumentService.upload_document.existing_version", existing_version)
 
         if existing_version is not None:
-            reused_version_id = str(existing_version["version_id"])
+            reused_version_id = existing_version.version_id
+            # 更新
             self._document_repository.upsert_document(
                 document_id=resolved_document_id,
                 title=parsed_document.title,
@@ -98,17 +104,10 @@ class RAGDocumentService:
                 status="active",
                 latest_version_id=reused_version_id,
             )
-            log_report(
-                "knowledge.document.version_reused",
-                {
-                    "document_id": resolved_document_id,
-                    "version_id": reused_version_id,
-                    "content_hash": content_hash,
-                    "hash_algorithm": hash_algorithm,
-                },
-            )
+
             return parsed_document
 
+        # 计算最新版本号
         version_no = self._document_version_repository.next_version_no(
             document_id=resolved_document_id
         )
@@ -118,17 +117,23 @@ class RAGDocumentService:
         normalized_storage_path = ""
 
         try:
+            # 保存原始文件并返回相对存储路径
             raw_storage_path = self._content_store.save_raw_file(
                 document_id=resolved_document_id,
                 version_id=version_id,
                 raw_bytes=raw_bytes,
             )
+            log_report("RAGDocumentService.upload_document.raw_storage_path", raw_storage_path)
+
+            # 保存 normalized 文本并返回相对存储路径
             normalized_storage_path = self._content_store.save_normalized_text(
                 document_id=resolved_document_id,
                 version_id=version_id,
                 normalized_text=normalized_text,
             )
+            log_report("RAGDocumentService.upload_document.normalized_storage_path", normalized_storage_path)
 
+            # 创建文档版本
             self._document_version_repository.create_version(
                 version_id=version_id,
                 document_id=resolved_document_id,
@@ -147,6 +152,8 @@ class RAGDocumentService:
                     "source_file_name": file_name,
                 },
             )
+
+            # 保存原始文档
             self._document_repository.upsert_document(
                 document_id=resolved_document_id,
                 title=parsed_document.title,
@@ -169,18 +176,15 @@ class RAGDocumentService:
             raise
 
         log_report(
-            "knowledge.document.uploaded",
+            "RAGDocumentService.upload_document.upload_result_data",
             {
-                "document_id": resolved_document_id,
                 "version_id": version_id,
-                "version_no": version_no,
-                "title": parsed_document.title,
-                "source_type": parsed_document.source_type,
-                "file_name": parsed_document.file_name,
                 "raw_storage_path": raw_storage_path,
                 "normalized_storage_path": normalized_storage_path,
+                "parsed_document": parsed_document,
             },
         )
+
         return parsed_document
 
     def count_documents(self) -> int:
@@ -192,25 +196,25 @@ class RAGDocumentService:
         latest_versions = self._document_version_repository.list_latest_versions_for_build()
         entities: list[KnowledgeDocument] = []
         for item in latest_versions:
-            document_payload = dict(item["document"])
-            version_payload = dict(item["version"])
+            document_payload = item.document
+            version_payload = item.version
             normalized_text = self._content_store.read_normalized_text(
-                storage_path=version_payload["normalized_storage_path"]
+                storage_path=version_payload.normalized_storage_path
             )
             entities.append(
                 KnowledgeDocument(
-                    document_id=document_payload["document_id"],
-                    title=document_payload["title"],
-                    source_type=document_payload["source_type"],
+                    document_id=document_payload.document_id,
+                    title=document_payload.title,
+                    source_type=document_payload.source_type,
                     content=normalized_text,
-                    origin_uri=document_payload.get("origin_uri"),
-                    file_name=document_payload.get("file_name"),
-                    jurisdiction=document_payload.get("jurisdiction"),
-                    domain=document_payload.get("domain"),
-                    tags=list(document_payload.get("tags_details") or []),
-                    updated_at=document_payload.get("updated_at"),
-                    visibility=document_payload.get("visibility") or "internal",
-                    metadata=dict(version_payload.get("metadata_details") or {}),
+                    origin_uri=document_payload.origin_uri,
+                    file_name=document_payload.file_name,
+                    jurisdiction=document_payload.jurisdiction,
+                    domain=document_payload.domain,
+                    tags=list(document_payload.tags_details),
+                    updated_at=document_payload.updated_at,
+                    visibility=document_payload.visibility or "internal",
+                    metadata=dict(version_payload.metadata_details),
                 )
             )
         return entities

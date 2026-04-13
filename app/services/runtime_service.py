@@ -32,6 +32,24 @@ class RuntimeService:
 
     def get_runtime_summary(self) -> dict[str, Any]:
         rag_config = self._app_config.rag_config
+        recent_build_statuses = [
+            {
+                "build_id": status.build_id,
+                "status": status.status,
+                "created_at": status.created_at,
+                "completed_at": status.completed_at,
+            }
+            for status in self._build_task_repository.list_recent_statuses(limit=5)
+        ]
+        recent_evaluation_statuses = [
+            {
+                "run_id": status.run_id,
+                "status": status.status,
+                "created_at": status.created_at,
+                "completed_at": status.completed_at,
+            }
+            for status in self._evaluation_run_repository.list_recent_statuses(limit=5)
+        ]
         return {
             "service": "vi_ai_core_service",
             "default_provider": self._app_config.default_provider,
@@ -46,10 +64,8 @@ class RuntimeService:
             "chunk_count": self._chunk_repository.count_chunks(),
             "build_count": self._build_task_repository.count_tasks(),
             "evaluation_run_count": self._evaluation_run_repository.count_runs(),
-            "recent_build_statuses": self._build_task_repository.list_recent_statuses(limit=5),
-            "recent_evaluation_statuses": self._evaluation_run_repository.list_recent_statuses(
-                limit=5
-            ),
+            "recent_build_statuses": recent_build_statuses,
+            "recent_evaluation_statuses": recent_evaluation_statuses,
         }
 
     def get_runtime_config_summary(self) -> dict[str, Any]:

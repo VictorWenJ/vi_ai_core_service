@@ -105,6 +105,7 @@
 - 删除 `RAGControlState` 正式控制面职责
 - 引入 `app/db/` 与 `app/rag/repository/` / `app/rag/content_store/` 分层
 - 在尽量不破坏现有 API contract 的前提下完成底层替换
+- 推进 repository 层标准化，逐步消除核心持久化查询结果对裸 `dict` 返回值的依赖
 
 ### 本轮默认技术方向
 
@@ -115,6 +116,7 @@
 - chunking：结构感知 + token-aware + overlap
 - 评估结果：run / case 全量落盘
 - 向量查看：按 `vector_point_id` 从 Qdrant 回读，而不是冗余写入 MySQL
+- repository 返回值：核心控制面查询逐步收敛为强类型持久化实体 + 领域对象 / read model，而不是裸 `dict`
 
 ### 本轮明确不做
 

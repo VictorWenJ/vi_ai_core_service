@@ -36,9 +36,11 @@ class StructuredTokenChunker:
         if overlap_token_size >= chunk_token_size:
             raise ValueError("overlap_token_size must be smaller than chunk_token_size.")
 
+        # 按段落、标题等粗分割
         structural_blocks = self._split_structural_blocks(document.content)
         log_report("StructuredTokenChunker.chunk_document.structural_blocks", structural_blocks)
 
+        # 按token数分割
         merged_blocks = self._merge_blocks_by_token_budget(
             blocks=structural_blocks,
             token_budget=chunk_token_size,
@@ -92,6 +94,8 @@ class StructuredTokenChunker:
 
         # 2) 先按 Markdown 标题边界进行一级切分，尽量保留结构语义。
         sections = self._HEADING_SPLIT.split(text)
+        log_report("StructuredTokenChunker._split_structural_blocks.sections", sections)
+
         blocks: list[str] = []
         for section in sections:
             stripped_section = section.strip()

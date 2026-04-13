@@ -7,8 +7,9 @@ from typing import Any
 from sqlalchemy import select
 
 from app.db.session import DatabaseRuntime
-from app.rag.repository._utils import datetime_to_iso
+from app.rag.repository.mappers import map_build_document_entity_to_record
 from app.rag.repository.models import BuildDocumentEntity
+from app.rag.repository.read_models import BuildDocumentRecord
 
 
 class BuildDocumentRepository:
@@ -17,7 +18,7 @@ class BuildDocumentRepository:
     def __init__(self, *, database_runtime: DatabaseRuntime) -> None:
         self._database_runtime = database_runtime
 
-    def add_records(self, *, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def add_records(self, *, records: list[dict[str, Any]]) -> list[BuildDocumentRecord]:
         if not records:
             return []
         with self._database_runtime.session_scope() as session:
@@ -36,28 +37,13 @@ class BuildDocumentRepository:
                 entities.append(entity)
             session.add_all(entities)
             session.flush()
-            return [self._to_payload(entity) for entity in entities]
+            return [map_build_document_entity_to_record(entity) for entity in entities]
 
-    def list_by_build_id(self, *, build_id: str) -> list[dict[str, Any]]:
+    def list_by_build_id(self, *, build_id: str) -> list[BuildDocumentRecord]:
         with self._database_runtime.session_scope() as session:
             entities = session.scalars(
                 select(BuildDocumentEntity)
                 .where(BuildDocumentEntity.build_id == build_id)
                 .order_by(BuildDocumentEntity.created_at.asc())
             ).all()
-            return [self._to_payload(entity) for entity in entities]
-
-    @staticmethod
-    def _to_payload(entity: BuildDocumentEntity) -> dict[str, Any]:
-        return {
-            "build_id": entity.build_id,
-            "document_id": entity.document_id,
-            "document_version_id": entity.document_version_id,
-            "content_hash": entity.content_hash,
-            "action": entity.action,
-            "chunk_count": entity.chunk_count,
-            "vector_count": entity.vector_count,
-            "error_message": entity.error_message,
-            "created_at": datetime_to_iso(entity.created_at),
-        }
-
+            return [map_build_document_entity_to_record(entity) for entity in entities]

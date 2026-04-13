@@ -90,6 +90,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 是否出现内存状态与 MySQL 并存的双真相源？
 - 是否在 `chunks` 表中错误冗余存储完整向量值？
 - 是否把 SQL 散落进 API / service，而不是收敛到 `repository`？
+- `repository` 是否仍大量返回裸 `dict`，而不是强类型持久化实体对象与明确的领域对象 / read model？
 
 7. 当前改动是在维护已落地的 Phase 2~6，还是在真实新增 Phase 7 评估 / 构建能力？
 8. 若涉及 retrieval、citation、chunking、embedding、benchmark、build 元数据，是否真的有对应代码落位在正确模块？
@@ -110,6 +111,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 ### Services 层
 - 是否仍保持按应用职责拆分，而不是把控制面能力塞进消费者导向的 God Service？
 - 是否仍然是编排层
+- 是否避免在 service 层通过字符串键直接消费 repository 返回的裸 `dict`？
 - 生命周期状态机、取消协调、完成态收口是否由 services 统一调度
 - 当前 request assembly 顺序是否仍为 system -> knowledge -> working memory -> rolling summary -> recent raw -> user
 - retrieval 是否由 services 编排，而不是散落到 api/provider/context
@@ -222,6 +224,12 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 原始文件与 normalized text 是否落到内容存储，而不是粗暴塞进 MySQL 控制面表？
 - hash、parser / cleaner 名称、manifest 输入快照等追溯信息是否保留？
 
+### 9.2 repository 实体标准化
+- 每张核心控制面表是否有明确的持久化实体对象，而不是依赖裸 `dict` 表达整条记录？
+- `repository` 对外返回值是否已收敛为领域对象或专用 read model？
+- 是否把 ORM 实体、领域对象、API 契约对象清晰分层，而不是互相混用？
+- `*_details` 这类半结构化字段是否仅在字段内部保留 `dict`，而不是整条结果都以裸 `dict` 暴露？
+
 ### 9.3 Chunking 与向量边界
 - `chunks` 是否只保存元数据、`vector_point_id`、向量维度与 collection，而不是完整向量值？
 - 查看向量详情是否通过 Inspector 按 `vector_point_id` 回读 Qdrant？
@@ -257,6 +265,7 @@ Code Review 不只是检查“能不能运行”，还要检查：
 - 以 Phase 6 为名偷偷引入长期记忆平台、Agent runtime、审批流或 Case Workspace
 - 把 citation 做成模型随意输出的字符串
 - 继续使用按字符硬切分作为正式 chunking 主策略
+- 在核心 repository 查询中长期返回裸 `dict`，并让上层以字符串键方式编排主要业务逻辑
 - 在没有抽象边界的前提下直接把 Qdrant/embedding 细节写死进业务层
 - 把尚未落地能力写进文档、skill 或测试完成态
 - 为了做评估或离线构建，直接把实验脚本逻辑塞进在线 chat / stream 主链路

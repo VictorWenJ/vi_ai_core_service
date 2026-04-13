@@ -7,8 +7,9 @@ from typing import Any
 from sqlalchemy import select
 
 from app.db.session import DatabaseRuntime
-from app.rag.repository._utils import copy_json_dict, copy_json_list, datetime_to_iso
+from app.rag.repository.mappers import map_evaluation_case_entity_to_record
 from app.rag.repository.models import EvaluationCaseEntity
+from app.rag.repository.read_models import EvaluationCaseRecord
 
 
 class EvaluationCaseRepository:
@@ -17,7 +18,7 @@ class EvaluationCaseRepository:
     def __init__(self, *, database_runtime: DatabaseRuntime) -> None:
         self._database_runtime = database_runtime
 
-    def add_cases(self, *, cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def add_cases(self, *, cases: list[dict[str, Any]]) -> list[EvaluationCaseRecord]:
         if not cases:
             return []
         with self._database_runtime.session_scope() as session:
@@ -47,39 +48,13 @@ class EvaluationCaseRepository:
                 entities.append(entity)
             session.add_all(entities)
             session.flush()
-            return [self._to_payload(entity) for entity in entities]
+            return [map_evaluation_case_entity_to_record(entity) for entity in entities]
 
-    def list_cases_by_run_id(self, *, run_id: str) -> list[dict[str, Any]]:
+    def list_cases_by_run_id(self, *, run_id: str) -> list[EvaluationCaseRecord]:
         with self._database_runtime.session_scope() as session:
             entities = session.scalars(
                 select(EvaluationCaseEntity)
                 .where(EvaluationCaseEntity.run_id == run_id)
                 .order_by(EvaluationCaseEntity.created_at.asc())
             ).all()
-            return [self._to_payload(entity) for entity in entities]
-
-    @staticmethod
-    def _to_payload(entity: EvaluationCaseEntity) -> dict[str, Any]:
-        return {
-            "case_id": entity.case_id,
-            "run_id": entity.run_id,
-            "sample_id": entity.sample_id,
-            "query_text": entity.query_text,
-            "metadata_filter_details": copy_json_dict(entity.metadata_filter_details),
-            "top_k": entity.top_k,
-            "retrieval_label_details": copy_json_dict(entity.retrieval_label_details),
-            "citation_label_details": copy_json_dict(entity.citation_label_details),
-            "answer_label_details": copy_json_dict(entity.answer_label_details),
-            "retrieved_chunk_ids": copy_json_list(entity.retrieved_chunk_ids),
-            "retrieved_document_ids": copy_json_list(entity.retrieved_document_ids),
-            "generated_citation_ids": copy_json_list(entity.generated_citation_ids),
-            "generated_citation_document_ids": copy_json_list(
-                entity.generated_citation_document_ids
-            ),
-            "answer_text": entity.answer_text,
-            "case_result_details": copy_json_dict(entity.case_result_details),
-            "passed": entity.passed,
-            "error_message": entity.error_message,
-            "created_at": datetime_to_iso(entity.created_at),
-        }
-
+            return [map_evaluation_case_entity_to_record(entity) for entity in entities]

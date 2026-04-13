@@ -23,6 +23,7 @@ from app.rag.inspector_service import RAGInspectorService
 from app.rag.models import generate_run_id, now_utc_iso
 from app.rag.repository.evaluation_case_repository import EvaluationCaseRepository
 from app.rag.repository.evaluation_run_repository import EvaluationRunRepository
+from app.rag.repository.read_models import EvaluationCaseRecord, EvaluationRunRecord
 from app.rag.repository._utils import utcnow
 
 
@@ -221,26 +222,26 @@ class RAGEvaluationService:
     def count_evaluation_runs(self) -> int:
         return self._evaluation_run_repository.count_runs()
 
-    def _to_run_result(self, run_payload: dict[str, Any]) -> EvaluationRunResult:
-        summary = self._summary_from_dict(dict(run_payload.get("summary_details") or {}))
+    def _to_run_result(self, run_payload: EvaluationRunRecord) -> EvaluationRunResult:
+        summary = self._summary_from_dict(dict(run_payload.summary_details or {}))
         case_payloads = self._evaluation_case_repository.list_cases_by_run_id(
-            run_id=run_payload["run_id"]
+            run_id=run_payload.run_id
         )
         cases = [self._case_from_payload(payload) for payload in case_payloads]
         return EvaluationRunResult.new(
-            run_id=run_payload["run_id"],
-            dataset_id=run_payload["dataset_id"],
-            dataset_version_id=run_payload["dataset_version_id"],
-            started_at=run_payload.get("started_at") or now_utc_iso(),
-            completed_at=run_payload.get("completed_at") or now_utc_iso(),
+            run_id=run_payload.run_id,
+            dataset_id=run_payload.dataset_id,
+            dataset_version_id=run_payload.dataset_version_id,
+            started_at=run_payload.started_at or now_utc_iso(),
+            completed_at=run_payload.completed_at or now_utc_iso(),
             cases=cases,
             summary=summary,
             metadata={
-                **dict(run_payload.get("metadata_details") or {}),
-                "status": run_payload.get("status"),
-                "build_id": run_payload.get("build_id"),
-                "trigger_type": run_payload.get("trigger_type"),
-                "triggered_by": run_payload.get("triggered_by"),
+                **dict(run_payload.metadata_details or {}),
+                "status": run_payload.status,
+                "build_id": run_payload.build_id,
+                "trigger_type": run_payload.trigger_type,
+                "triggered_by": run_payload.triggered_by,
             },
         )
 
@@ -258,13 +259,13 @@ class RAGEvaluationService:
         )
 
     @staticmethod
-    def _case_from_payload(payload: dict[str, Any]) -> EvaluationCaseResult:
-        details = dict(payload.get("case_result_details") or {})
+    def _case_from_payload(payload: EvaluationCaseRecord) -> EvaluationCaseResult:
+        details = dict(payload.case_result_details or {})
         retrieval_details = dict(details.get("retrieval") or {})
         citation_details = dict(details.get("citation") or {})
         answer_details = dict(details.get("answer") or {})
         return EvaluationCaseResult(
-            sample_id=str(payload["sample_id"]),
+            sample_id=payload.sample_id,
             retrieval=RetrievalEvaluationResult(
                 document_recall=float(retrieval_details.get("document_recall", 0.0)),
                 chunk_recall=float(retrieval_details.get("chunk_recall", 0.0)),
@@ -288,8 +289,8 @@ class RAGEvaluationService:
                 passed=bool(answer_details.get("passed", False)),
             ),
             retrieval_status=str(details.get("retrieval_status") or "unknown"),
-            passed=bool(details.get("passed", payload.get("passed", False))),
-            resolved_top_k=int(details.get("resolved_top_k", payload.get("top_k", 0))),
+            passed=bool(details.get("passed", payload.passed)),
+            resolved_top_k=int(details.get("resolved_top_k", payload.top_k or 0)),
         )
 
     def _build_dataset(

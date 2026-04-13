@@ -7,8 +7,12 @@ from typing import Any
 from sqlalchemy import Select, func, select
 
 from app.db.session import DatabaseRuntime
-from app.rag.repository._utils import copy_json_dict, datetime_to_iso
+from app.rag.repository.mappers import (
+    map_document_version_entity_to_record,
+    map_latest_document_version_record,
+)
 from app.rag.repository.models import DocumentEntity, DocumentVersionEntity
+from app.rag.repository.read_models import DocumentVersionRecord, LatestDocumentVersionRecord
 
 
 class DocumentVersionRepository:
@@ -42,7 +46,7 @@ class DocumentVersionRepository:
         parser_name: str,
         cleaner_name: str,
         metadata_details: dict[str, Any],
-    ) -> dict[str, Any]:
+    ) -> DocumentVersionRecord:
         with self._database_runtime.session_scope() as session:
             entity = DocumentVersionEntity(
                 version_id=version_id,
@@ -61,7 +65,7 @@ class DocumentVersionRepository:
             )
             session.add(entity)
             session.flush()
-            return self._to_payload(entity)
+            return map_document_version_entity_to_record(entity)
 
     def find_version_by_content_hash(
         self,
@@ -69,7 +73,7 @@ class DocumentVersionRepository:
         document_id: str,
         content_hash: str,
         hash_algorithm: str,
-    ) -> dict[str, Any] | None:
+    ) -> DocumentVersionRecord | None:
         with self._database_runtime.session_scope() as session:
             entity = session.scalar(
                 select(DocumentVersionEntity).where(
@@ -80,7 +84,7 @@ class DocumentVersionRepository:
             )
             if entity is None:
                 return None
-            return self._to_payload(entity)
+            return map_document_version_entity_to_record(entity)
 
     def count_versions(self, *, document_id: str | None = None) -> int:
         with self._database_runtime.session_scope() as session:
@@ -90,7 +94,7 @@ class DocumentVersionRepository:
             value = session.scalar(statement)
             return int(value or 0)
 
-    def get_version(self, *, version_id: str) -> dict[str, Any] | None:
+    def get_version(self, *, version_id: str) -> DocumentVersionRecord | None:
         with self._database_runtime.session_scope() as session:
             entity = session.scalar(
                 select(DocumentVersionEntity).where(
@@ -99,9 +103,9 @@ class DocumentVersionRepository:
             )
             if entity is None:
                 return None
-            return self._to_payload(entity)
+            return map_document_version_entity_to_record(entity)
 
-    def get_latest_version(self, *, document_id: str) -> dict[str, Any] | None:
+    def get_latest_version(self, *, document_id: str) -> DocumentVersionRecord | None:
         with self._database_runtime.session_scope() as session:
             document = session.scalar(
                 select(DocumentEntity).where(DocumentEntity.document_id == document_id)
@@ -115,13 +119,13 @@ class DocumentVersionRepository:
             )
             if version is None:
                 return None
-            return self._to_payload(version)
+            return map_document_version_entity_to_record(version)
 
     def list_latest_versions_for_build(
         self,
         *,
         document_ids: list[str] | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[LatestDocumentVersionRecord]:
         with self._database_runtime.session_scope() as session:
             statement: Select[tuple[DocumentEntity, DocumentVersionEntity]] = select(
                 DocumentEntity,
@@ -134,45 +138,9 @@ class DocumentVersionRepository:
                 statement = statement.where(DocumentEntity.document_id.in_(document_ids))
             statement = statement.order_by(DocumentEntity.updated_at.desc())
             rows = session.execute(statement).all()
-            payloads: list[dict[str, Any]] = []
+            payloads: list[LatestDocumentVersionRecord] = []
             for document_entity, version_entity in rows:
                 payloads.append(
-                    {
-                        "document": {
-                            "document_id": document_entity.document_id,
-                            "title": document_entity.title,
-                            "source_type": document_entity.source_type,
-                            "origin_uri": document_entity.origin_uri,
-                            "file_name": document_entity.file_name,
-                            "jurisdiction": document_entity.jurisdiction,
-                            "domain": document_entity.domain,
-                            "visibility": document_entity.visibility,
-                            "tags_details": list(document_entity.tags_details or []),
-                            "status": document_entity.status,
-                            "latest_version_id": document_entity.latest_version_id,
-                            "created_at": datetime_to_iso(document_entity.created_at),
-                            "updated_at": datetime_to_iso(document_entity.updated_at),
-                        },
-                        "version": self._to_payload(version_entity),
-                    }
+                    map_latest_document_version_record(document_entity, version_entity)
                 )
             return payloads
-
-    @staticmethod
-    def _to_payload(entity: DocumentVersionEntity) -> dict[str, Any]:
-        return {
-            "version_id": entity.version_id,
-            "document_id": entity.document_id,
-            "version_no": entity.version_no,
-            "content_hash": entity.content_hash,
-            "normalized_text_hash": entity.normalized_text_hash,
-            "hash_algorithm": entity.hash_algorithm,
-            "raw_storage_path": entity.raw_storage_path,
-            "normalized_storage_path": entity.normalized_storage_path,
-            "raw_file_size": entity.raw_file_size,
-            "normalized_char_count": entity.normalized_char_count,
-            "parser_name": entity.parser_name,
-            "cleaner_name": entity.cleaner_name,
-            "metadata_details": copy_json_dict(entity.metadata_details),
-            "created_at": datetime_to_iso(entity.created_at),
-        }

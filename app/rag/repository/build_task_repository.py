@@ -8,8 +8,13 @@ from typing import Any
 from sqlalchemy import Select, func, select
 
 from app.db.session import DatabaseRuntime
-from app.rag.repository._utils import copy_json_dict, datetime_to_iso, utcnow
+from app.rag.repository._utils import utcnow
+from app.rag.repository.mappers import (
+    map_build_task_entity_to_record,
+    map_build_task_entity_to_status_summary,
+)
 from app.rag.repository.models import BuildTaskEntity
+from app.rag.repository.read_models import BuildTaskRecord, BuildTaskStatusSummary
 
 
 class BuildTaskRepository:
@@ -33,7 +38,7 @@ class BuildTaskRepository:
         error_message: str | None = None,
         started_at: datetime | None = None,
         completed_at: datetime | None = None,
-    ) -> dict[str, Any]:
+    ) -> BuildTaskRecord:
         with self._database_runtime.session_scope() as session:
             entity = BuildTaskEntity(
                 build_id=build_id,
@@ -51,7 +56,7 @@ class BuildTaskRepository:
             )
             session.add(entity)
             session.flush()
-            return self._to_payload(entity)
+            return map_build_task_entity_to_record(entity)
 
     def update_task(
         self,
@@ -63,7 +68,7 @@ class BuildTaskRepository:
         quality_gate_details: dict[str, Any] | None = None,
         error_message: str | None = None,
         completed_at: datetime | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> BuildTaskRecord | None:
         with self._database_runtime.session_scope() as session:
             entity = session.scalar(
                 select(BuildTaskEntity).where(BuildTaskEntity.build_id == build_id)
@@ -84,7 +89,7 @@ class BuildTaskRepository:
                 entity.completed_at = completed_at
             session.add(entity)
             session.flush()
-            return self._to_payload(entity)
+            return map_build_task_entity_to_record(entity)
 
     def touch_failed(
         self,
@@ -93,7 +98,7 @@ class BuildTaskRepository:
         error_message: str,
         statistics_details: dict[str, Any] | None = None,
         quality_gate_details: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> BuildTaskRecord | None:
         return self.update_task(
             build_id=build_id,
             status="failed",
@@ -103,28 +108,28 @@ class BuildTaskRepository:
             completed_at=utcnow(),
         )
 
-    def list_tasks(self) -> list[dict[str, Any]]:
+    def list_tasks(self) -> list[BuildTaskRecord]:
         with self._database_runtime.session_scope() as session:
             entities = session.scalars(
                 select(BuildTaskEntity).order_by(BuildTaskEntity.created_at.desc())
             ).all()
-            return [self._to_payload(entity) for entity in entities]
+            return [map_build_task_entity_to_record(entity) for entity in entities]
 
-    def get_task(self, *, build_id: str) -> dict[str, Any] | None:
+    def get_task(self, *, build_id: str) -> BuildTaskRecord | None:
         with self._database_runtime.session_scope() as session:
             entity = session.scalar(
                 select(BuildTaskEntity).where(BuildTaskEntity.build_id == build_id)
             )
             if entity is None:
                 return None
-            return self._to_payload(entity)
+            return map_build_task_entity_to_record(entity)
 
     def count_tasks(self) -> int:
         with self._database_runtime.session_scope() as session:
             value = session.scalar(select(func.count()).select_from(BuildTaskEntity))
             return int(value or 0)
 
-    def list_recent_statuses(self, *, limit: int = 5) -> list[dict[str, Any]]:
+    def list_recent_statuses(self, *, limit: int = 5) -> list[BuildTaskStatusSummary]:
         with self._database_runtime.session_scope() as session:
             statement: Select[BuildTaskEntity] = (
                 select(BuildTaskEntity)
@@ -132,31 +137,4 @@ class BuildTaskRepository:
                 .limit(limit)
             )
             entities = session.scalars(statement).all()
-            return [
-                {
-                    "build_id": entity.build_id,
-                    "status": entity.status,
-                    "created_at": datetime_to_iso(entity.created_at),
-                    "completed_at": datetime_to_iso(entity.completed_at),
-                }
-                for entity in entities
-            ]
-
-    @staticmethod
-    def _to_payload(entity: BuildTaskEntity) -> dict[str, Any]:
-        return {
-            "build_id": entity.build_id,
-            "build_version_id": entity.build_version_id,
-            "status": entity.status,
-            "chunk_strategy_name": entity.chunk_strategy_name,
-            "chunk_strategy_details": copy_json_dict(entity.chunk_strategy_details),
-            "embedding_model_name": entity.embedding_model_name,
-            "manifest_details": copy_json_dict(entity.manifest_details),
-            "statistics_details": copy_json_dict(entity.statistics_details),
-            "quality_gate_details": copy_json_dict(entity.quality_gate_details),
-            "error_message": entity.error_message,
-            "started_at": datetime_to_iso(entity.started_at),
-            "completed_at": datetime_to_iso(entity.completed_at),
-            "created_at": datetime_to_iso(entity.created_at),
-        }
-
+            return [map_build_task_entity_to_status_summary(entity) for entity in entities]

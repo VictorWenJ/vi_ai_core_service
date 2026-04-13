@@ -48,6 +48,15 @@ async def upload_document(
     domain: str | None = Form(default=None),
     tags: str | None = Form(default=None),
 ) -> KnowledgeDocumentUploadResponse:
+    log_report("Knowledge.upload_document.upload_request",
+               dict(document_id=document_id,
+                    title=title,
+                    origin_uri=origin_uri,
+                    source_type=source_type,
+                    jurisdiction=jurisdiction,
+                    domain=domain,
+                    tags=tags))
+
     started_at = perf_counter()
     service = _get_document_service()
     try:
@@ -85,30 +94,33 @@ async def upload_document(
 
 
 @router.post("/knowledge/builds", response_model=BuildDetailResponse)
-def create_build(payload: BuildCreateRequest) -> BuildDetailResponse:
+def create_build(request: BuildCreateRequest) -> BuildDetailResponse:
+    log_report("Knowledge.create_build.upload_request", request)
+
     started_at = perf_counter()
     service = _get_build_service()
     try:
-        build_payload = service.create_build(
-            version_id=payload.version_id,
-            force_rebuild_document_ids=payload.force_rebuild_document_ids,
-            max_failure_ratio=payload.max_failure_ratio,
-            max_empty_chunk_ratio=payload.max_empty_chunk_ratio,
+        build_response = service.create_build(
+            version_id=request.version_id,
+            force_rebuild_document_ids=request.force_rebuild_document_ids,
+            max_failure_ratio=request.max_failure_ratio,
+            max_empty_chunk_ratio=request.max_empty_chunk_ratio,
         )
+        log_report("Knowledge.create_build.build_response", build_response)
     except Exception as exc:
         raise build_service_http_exception(
             exc,
             started_at=started_at,
             event_prefix="api.knowledge.create_build",
         ) from exc
-    return BuildDetailResponse(**_normalize_build_payload(build_payload))
+    return BuildDetailResponse(**_normalize_build_response(build_response))
 
 
 @router.get("/knowledge/builds", response_model=list[BuildSummaryResponse])
 def list_builds() -> list[BuildSummaryResponse]:
     service = _get_inspector_service()
     return [
-        BuildSummaryResponse(**_build_summary_payload(build_payload))
+        BuildSummaryResponse(**_build_summary_response(build_payload))
         for build_payload in service.list_builds()
     ]
 
@@ -119,7 +131,7 @@ def get_build(build_id: str) -> BuildDetailResponse:
     build_payload = service.get_build(build_id)
     if build_payload is None:
         raise HTTPException(status_code=404, detail=f"build_id '{build_id}' 不存在。")
-    return BuildDetailResponse(**_normalize_build_payload(build_payload))
+    return BuildDetailResponse(**_normalize_build_response(build_payload))
 
 
 @router.get("/knowledge/documents", response_model=list[KnowledgeDocumentSummaryResponse])
@@ -202,18 +214,18 @@ def _parse_tags(raw_tags: str | None) -> list[str]:
     return [segment.strip() for segment in raw_tags.split(",") if segment.strip()]
 
 
-def _build_summary_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    payload = _normalize_build_payload(payload)
+def _build_summary_response(response: dict[str, Any]) -> dict[str, Any]:
+    response = _normalize_build_response(response)
     return {
-        "metadata": payload["metadata"],
-        "statistics": payload["statistics"],
-        "quality_gate": payload["quality_gate"],
+        "metadata": response["metadata"],
+        "statistics": response["statistics"],
+        "quality_gate": response["quality_gate"],
     }
 
 
-def _normalize_build_payload(payload: Any) -> dict[str, Any]:
-    if isinstance(payload, dict):
-        return payload
-    if hasattr(payload, "to_dict"):
-        return dict(payload.to_dict())
-    raise ValueError("build payload 格式不正确。")
+def _normalize_build_response(response: Any) -> dict[str, Any]:
+    if isinstance(response, dict):
+        return response
+    if hasattr(response, "to_dict"):
+        return dict(response.to_dict())
+    raise ValueError("build response 格式不正确。")
