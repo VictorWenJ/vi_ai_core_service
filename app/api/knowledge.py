@@ -26,6 +26,7 @@ from app.api.schemas.control_plane import (
     RetrievalDebugRequest,
     RetrievalDebugResponse,
 )
+from app.observability import log_report
 
 router = APIRouter(tags=["knowledge"])
 _get_document_service = get_rag_document_service
@@ -41,6 +42,7 @@ async def upload_document(
     file: UploadFile = File(...),
     document_id: str | None = Form(default=None),
     title: str | None = Form(default=None),
+    origin_uri: str | None = Form(default=None),
     source_type: str | None = Form(default=None),
     jurisdiction: str | None = Form(default=None),
     domain: str | None = Form(default=None),
@@ -55,6 +57,7 @@ async def upload_document(
         document = service.upload_document(
             content=content,
             file_name=file.filename or "uploaded.txt",
+            origin_uri=origin_uri,
             document_id=document_id,
             title=title,
             source_type=source_type,
@@ -63,6 +66,7 @@ async def upload_document(
             tags=tag_list,
             metadata={"uploaded_via": "control_api"},
         )
+        log_report("Knowledge.upload_document.document", document)
     except Exception as exc:
         raise build_service_http_exception(
             exc,

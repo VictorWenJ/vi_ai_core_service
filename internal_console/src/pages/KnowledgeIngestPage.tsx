@@ -39,12 +39,20 @@ export function KnowledgeIngestPage(): JSX.Element {
     setTitle,
     documentId,
     setDocumentId,
+    originUri,
+    setOriginUri,
     sourceType,
     setSourceType,
+    jurisdiction,
+    setJurisdiction,
+    domain,
+    setDomain,
     tags,
     setTags,
     versionId,
     setVersionId,
+    forceRebuildDocumentIds,
+    setForceRebuildDocumentIds,
     maxFailureRatio,
     setMaxFailureRatio,
     maxEmptyChunkRatio,
@@ -140,11 +148,37 @@ export function KnowledgeIngestPage(): JSX.Element {
           </div>
           <div className="inline-grid">
             <label>
+              Origin URI (optional)
+              <input
+                value={originUri}
+                onChange={(event) => setOriginUri(event.target.value)}
+                placeholder="https://example.com/source"
+              />
+            </label>
+            <label>
               Source Type (optional)
               <input
                 value={sourceType}
                 onChange={(event) => setSourceType(event.target.value)}
                 placeholder="raw_text / markdown_file / text_file"
+              />
+            </label>
+            <label>
+              Jurisdiction (optional)
+              <input
+                value={jurisdiction}
+                onChange={(event) => setJurisdiction(event.target.value)}
+                placeholder="cn / us / eu"
+              />
+            </label>
+          </div>
+          <div className="inline-grid">
+            <label>
+              Domain (optional)
+              <input
+                value={domain}
+                onChange={(event) => setDomain(event.target.value)}
+                placeholder="law / finance / policy"
               />
             </label>
             <label>
@@ -192,6 +226,14 @@ export function KnowledgeIngestPage(): JSX.Element {
               value={maxEmptyChunkRatio}
               onChange={(event) => setMaxEmptyChunkRatio(event.target.value)}
               placeholder="0.2"
+            />
+          </label>
+          <label>
+            Force Rebuild Document IDs (CSV)
+            <input
+              value={forceRebuildDocumentIds}
+              onChange={(event) => setForceRebuildDocumentIds(event.target.value)}
+              placeholder="doc-1,doc-2"
             />
           </label>
         </div>

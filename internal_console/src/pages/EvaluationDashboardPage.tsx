@@ -28,16 +28,40 @@ export function EvaluationDashboardPage(): JSX.Element {
     setDatasetId,
     versionId,
     setVersionId,
+    runMetadataJson,
+    setRunMetadataJson,
+    sampleId,
+    setSampleId,
     queryText,
     setQueryText,
+    sampleTopK,
+    setSampleTopK,
+    sampleMetadataFilterJson,
+    setSampleMetadataFilterJson,
+    sampleMetadataJson,
+    setSampleMetadataJson,
     expectedDocumentIds,
     setExpectedDocumentIds,
     expectedChunkIds,
     setExpectedChunkIds,
+    retrievalMinRecall,
+    setRetrievalMinRecall,
+    expectedCitationIds,
+    setExpectedCitationIds,
+    expectedCitationDocumentIds,
+    setExpectedCitationDocumentIds,
+    citationMinRecall,
+    setCitationMinRecall,
+    citationMinPrecision,
+    setCitationMinPrecision,
     requiredTerms,
     setRequiredTerms,
     forbiddenTerms,
     setForbiddenTerms,
+    minRequiredTermHitRatio,
+    setMinRequiredTermHitRatio,
+    maxForbiddenTermHitCount,
+    setMaxForbiddenTermHitCount,
     selectedRunId,
     setSelectedRunId,
     selectedCaseId,
@@ -82,42 +106,164 @@ export function EvaluationDashboardPage(): JSX.Element {
               <input value={versionId} onChange={(event) => setVersionId(event.target.value)} />
             </label>
             <label>
+              Run Metadata JSON (optional)
+              <textarea
+                rows={2}
+                className="textarea-mono"
+                value={runMetadataJson}
+                onChange={(event) => setRunMetadataJson(event.target.value)}
+                placeholder='{"trigger":"console"}'
+              />
+            </label>
+          </div>
+
+          <h4>Sample Input</h4>
+          <div className="inline-grid">
+            <label>
+              Sample ID (optional)
+              <input value={sampleId} onChange={(event) => setSampleId(event.target.value)} />
+            </label>
+            <label>
               Query Text (optional, empty = auto-generated from documents)
               <input value={queryText} onChange={(event) => setQueryText(event.target.value)} />
             </label>
           </div>
           <div className="inline-grid">
             <label>
-              Expected Document IDs (CSV)
-              <input
-                value={expectedDocumentIds}
-                onChange={(event) => setExpectedDocumentIds(event.target.value)}
-              />
+              Top K (optional)
+              <input value={sampleTopK} onChange={(event) => setSampleTopK(event.target.value)} placeholder="4" />
             </label>
             <label>
-              Expected Chunk IDs (CSV)
-              <input
-                value={expectedChunkIds}
-                onChange={(event) => setExpectedChunkIds(event.target.value)}
+              Metadata Filter JSON (optional)
+              <textarea
+                rows={2}
+                className="textarea-mono"
+                value={sampleMetadataFilterJson}
+                onChange={(event) => setSampleMetadataFilterJson(event.target.value)}
+                placeholder='{"domain":"law"}'
               />
             </label>
           </div>
-          <div className="inline-grid">
-            <label>
-              Required Terms (CSV)
-              <input
-                value={requiredTerms}
-                onChange={(event) => setRequiredTerms(event.target.value)}
-              />
-            </label>
-            <label>
-              Forbidden Terms (CSV)
-              <input
-                value={forbiddenTerms}
-                onChange={(event) => setForbiddenTerms(event.target.value)}
-              />
-            </label>
-          </div>
+          <label>
+            Sample Metadata JSON (optional)
+            <textarea
+              rows={2}
+              className="textarea-mono"
+              value={sampleMetadataJson}
+              onChange={(event) => setSampleMetadataJson(event.target.value)}
+              placeholder='{"note":"manual-case"}'
+            />
+          </label>
+
+          <details>
+            <summary>Retrieval Label</summary>
+            <div className="form-grid">
+              <div className="inline-grid">
+                <label>
+                  Expected Document IDs (CSV)
+                  <input
+                    value={expectedDocumentIds}
+                    onChange={(event) => setExpectedDocumentIds(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Expected Chunk IDs (CSV)
+                  <input
+                    value={expectedChunkIds}
+                    onChange={(event) => setExpectedChunkIds(event.target.value)}
+                  />
+                </label>
+              </div>
+              <label>
+                Min Recall (optional, default 1.0)
+                <input
+                  value={retrievalMinRecall}
+                  onChange={(event) => setRetrievalMinRecall(event.target.value)}
+                  placeholder="1.0"
+                />
+              </label>
+            </div>
+          </details>
+
+          <details>
+            <summary>Citation Label</summary>
+            <div className="form-grid">
+              <div className="inline-grid">
+                <label>
+                  Expected Citation IDs (CSV)
+                  <input
+                    value={expectedCitationIds}
+                    onChange={(event) => setExpectedCitationIds(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Expected Citation Document IDs (CSV)
+                  <input
+                    value={expectedCitationDocumentIds}
+                    onChange={(event) => setExpectedCitationDocumentIds(event.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="inline-grid">
+                <label>
+                  Min Recall (optional, default 1.0)
+                  <input
+                    value={citationMinRecall}
+                    onChange={(event) => setCitationMinRecall(event.target.value)}
+                    placeholder="1.0"
+                  />
+                </label>
+                <label>
+                  Min Precision (optional, default 0.0)
+                  <input
+                    value={citationMinPrecision}
+                    onChange={(event) => setCitationMinPrecision(event.target.value)}
+                    placeholder="0.0"
+                  />
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Answer Label</summary>
+            <div className="form-grid">
+              <div className="inline-grid">
+                <label>
+                  Required Terms (CSV)
+                  <input
+                    value={requiredTerms}
+                    onChange={(event) => setRequiredTerms(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Forbidden Terms (CSV)
+                  <input
+                    value={forbiddenTerms}
+                    onChange={(event) => setForbiddenTerms(event.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="inline-grid">
+                <label>
+                  Min Required Term Hit Ratio (optional, default 1.0)
+                  <input
+                    value={minRequiredTermHitRatio}
+                    onChange={(event) => setMinRequiredTermHitRatio(event.target.value)}
+                    placeholder="1.0"
+                  />
+                </label>
+                <label>
+                  Max Forbidden Term Hit Count (optional, default 0)
+                  <input
+                    value={maxForbiddenTermHitCount}
+                    onChange={(event) => setMaxForbiddenTermHitCount(event.target.value)}
+                    placeholder="0"
+                  />
+                </label>
+              </div>
+            </div>
+          </details>
         </div>
         <div className="button-row">
           <button type="button" className="accent" disabled={createRunPending} onClick={createRun}>

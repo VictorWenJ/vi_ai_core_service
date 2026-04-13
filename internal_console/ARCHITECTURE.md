@@ -145,6 +145,24 @@
 
 如果后端接口变更，应先更新契约类型，再更新页面逻辑。
 
+### 7.1 request 参数链路一致性
+对于任何带 request body、query、path、form-data 的后端公开接口，前端必须保证以下链路一致：
+- 类型定义
+- API client
+- feature hook / 状态管理
+- 页面输入项
+- 提交时的参数映射
+
+尤其对于 `knowledge`、`evaluation`、`runtime` 等领域表单页面，不能只在 API client 中声明字段，却遗漏页面与 hook 的承接。
+
+### 7.2 契约变更同步要求
+当后端接口新增、删除或调整 request 参数时，前端必须同步检查并更新：
+1. `types/` 中的 request 类型
+2. `api/` 中的 client 参数结构
+3. `features/` 中的 hook 状态与提交逻辑
+4. `pages/` 中的输入表单与展示逻辑
+5. 相关测试或最小验证路径
+
 ---
 
 ## 8. 错误处理原则

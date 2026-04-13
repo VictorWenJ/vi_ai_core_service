@@ -26,14 +26,24 @@ const parseOptionalNumber = (value: string): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseCsvIds = (rawValue: string): string[] =>
+  rawValue
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 export function useKnowledgeIngest() {
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [documentId, setDocumentId] = useState("");
+  const [originUri, setOriginUri] = useState("");
   const [sourceType, setSourceType] = useState("");
+  const [jurisdiction, setJurisdiction] = useState("");
+  const [domain, setDomain] = useState("");
   const [tags, setTags] = useState("");
   const [versionId, setVersionId] = useState("");
+  const [forceRebuildDocumentIds, setForceRebuildDocumentIds] = useState("");
   const [maxFailureRatio, setMaxFailureRatio] = useState("");
   const [maxEmptyChunkRatio, setMaxEmptyChunkRatio] = useState("");
   const [selectedBuildId, setSelectedBuildId] = useState<string | null>(null);
@@ -63,17 +73,20 @@ export function useKnowledgeIngest() {
   const uploadMutation = useMutation({
     mutationFn: () => {
       if (!selectedFile) {
-        throw new Error("请选择要上传的文档。");
+        throw new Error("Please select a file to upload.");
       }
       return knowledgeApi.uploadDocument(selectedFile, {
         title,
-        documentId,
-        sourceType,
+        document_id: documentId,
+        origin_uri: originUri,
+        source_type: sourceType,
+        jurisdiction,
+        domain,
         tags,
       });
     },
     onSuccess: (response) => {
-      setMessage(`上传成功：${response.document_id}`);
+      setMessage(`Upload succeeded: ${response.document_id}`);
       queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] }).catch(() => undefined);
     },
     onError: (error) => setMessage(getErrorMessage(error)),
@@ -81,15 +94,17 @@ export function useKnowledgeIngest() {
 
   const buildMutation = useMutation({
     mutationFn: () => {
+      const rebuiltIds = parseCsvIds(forceRebuildDocumentIds);
       const payload: BuildCreatePayload = {
         version_id: versionId.trim() || undefined,
+        force_rebuild_document_ids: rebuiltIds.length > 0 ? rebuiltIds : undefined,
         max_failure_ratio: parseOptionalNumber(maxFailureRatio),
         max_empty_chunk_ratio: parseOptionalNumber(maxEmptyChunkRatio),
       };
       return knowledgeApi.createBuild(payload);
     },
     onSuccess: (result) => {
-      setMessage(`构建完成：${result.metadata.build_id}`);
+      setMessage(`Build completed: ${result.metadata.build_id}`);
       setSelectedBuildId(result.metadata.build_id);
       queryClient.invalidateQueries({ queryKey: ["knowledge-builds"] }).catch(() => undefined);
       queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] }).catch(() => undefined);
@@ -112,12 +127,20 @@ export function useKnowledgeIngest() {
     setTitle,
     documentId,
     setDocumentId,
+    originUri,
+    setOriginUri,
     sourceType,
     setSourceType,
+    jurisdiction,
+    setJurisdiction,
+    domain,
+    setDomain,
     tags,
     setTags,
     versionId,
     setVersionId,
+    forceRebuildDocumentIds,
+    setForceRebuildDocumentIds,
     maxFailureRatio,
     setMaxFailureRatio,
     maxEmptyChunkRatio,
@@ -142,4 +165,3 @@ export function useKnowledgeIngest() {
     buildPending: buildMutation.isPending,
   };
 }
-

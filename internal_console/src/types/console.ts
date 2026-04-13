@@ -9,6 +9,16 @@ export type KnowledgeDocumentUploadResponse = {
   metadata: Record<string, unknown>;
 };
 
+export type KnowledgeDocumentUploadPayload = {
+  title?: string;
+  document_id?: string;
+  origin_uri?: string;
+  source_type?: string;
+  jurisdiction?: string;
+  domain?: string;
+  tags?: string;
+};
+
 export type BuildCreatePayload = {
   version_id?: string;
   force_rebuild_document_ids?: string[];

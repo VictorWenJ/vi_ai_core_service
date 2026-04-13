@@ -7,6 +7,7 @@ import type {
   KnowledgeChunkVectorDetail,
   KnowledgeChunkSummary,
   KnowledgeDocumentDetail,
+  KnowledgeDocumentUploadPayload,
   KnowledgeDocumentSummary,
   KnowledgeDocumentUploadResponse,
   RetrievalDebugPayload,
@@ -15,25 +16,21 @@ import type {
 
 const toFormData = (
   file: File,
-  extra: {
-    title?: string;
-    documentId?: string;
-    sourceType?: string;
-    jurisdiction?: string;
-    domain?: string;
-    tags?: string;
-  },
+  extra: KnowledgeDocumentUploadPayload,
 ): FormData => {
   const formData = new FormData();
   formData.append("file", file);
   if (extra.title?.trim()) {
     formData.append("title", extra.title.trim());
   }
-  if (extra.documentId?.trim()) {
-    formData.append("document_id", extra.documentId.trim());
+  if (extra.document_id?.trim()) {
+    formData.append("document_id", extra.document_id.trim());
   }
-  if (extra.sourceType?.trim()) {
-    formData.append("source_type", extra.sourceType.trim());
+  if (extra.origin_uri?.trim()) {
+    formData.append("origin_uri", extra.origin_uri.trim());
+  }
+  if (extra.source_type?.trim()) {
+    formData.append("source_type", extra.source_type.trim());
   }
   if (extra.jurisdiction?.trim()) {
     formData.append("jurisdiction", extra.jurisdiction.trim());
@@ -50,14 +47,7 @@ const toFormData = (
 export const knowledgeApi = {
   uploadDocument(
     file: File,
-    extra: {
-      title?: string;
-      documentId?: string;
-      sourceType?: string;
-      jurisdiction?: string;
-      domain?: string;
-      tags?: string;
-    } = {},
+    extra: KnowledgeDocumentUploadPayload = {},
   ): Promise<KnowledgeDocumentUploadResponse> {
     const formData = toFormData(file, extra);
     return httpRequest<KnowledgeDocumentUploadResponse>("/knowledge/documents/upload", {

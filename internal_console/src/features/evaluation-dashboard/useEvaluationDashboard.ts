@@ -22,16 +22,75 @@ const parseCsv = (raw: string): string[] =>
     .map((segment) => segment.trim())
     .filter(Boolean);
 
+const parseOptionalNumber = (value: string, fieldName: string): number | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${fieldName} must be numeric.`);
+  }
+  return parsed;
+};
+
+const parseOptionalInteger = (value: string, fieldName: string): number | undefined => {
+  const parsed = parseOptionalNumber(value, fieldName);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${fieldName} must be integer.`);
+  }
+  return parsed;
+};
+
+const parseOptionalJsonObject = (
+  value: string,
+  fieldName: string,
+): Record<string, unknown> | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`${fieldName} must be JSON object.`);
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new Error(`${fieldName} must be valid JSON object.`);
+  }
+};
+
 export function useEvaluationDashboard() {
   const queryClient = useQueryClient();
   const [buildId, setBuildId] = useState("");
   const [datasetId, setDatasetId] = useState("");
   const [versionId, setVersionId] = useState("");
+  const [runMetadataJson, setRunMetadataJson] = useState("");
+
+  const [sampleId, setSampleId] = useState("");
   const [queryText, setQueryText] = useState("");
+  const [sampleTopK, setSampleTopK] = useState("");
+  const [sampleMetadataFilterJson, setSampleMetadataFilterJson] = useState("");
+  const [sampleMetadataJson, setSampleMetadataJson] = useState("");
+
   const [expectedDocumentIds, setExpectedDocumentIds] = useState("");
   const [expectedChunkIds, setExpectedChunkIds] = useState("");
+  const [retrievalMinRecall, setRetrievalMinRecall] = useState("");
+
+  const [expectedCitationIds, setExpectedCitationIds] = useState("");
+  const [expectedCitationDocumentIds, setExpectedCitationDocumentIds] = useState("");
+  const [citationMinRecall, setCitationMinRecall] = useState("");
+  const [citationMinPrecision, setCitationMinPrecision] = useState("");
+
   const [requiredTerms, setRequiredTerms] = useState("");
   const [forbiddenTerms, setForbiddenTerms] = useState("");
+  const [minRequiredTermHitRatio, setMinRequiredTermHitRatio] = useState("");
+  const [maxForbiddenTermHitCount, setMaxForbiddenTermHitCount] = useState("");
+
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [message, setMessage] = useState("Ready.");
@@ -59,23 +118,42 @@ export function useEvaluationDashboard() {
         build_id: buildId.trim() || undefined,
         dataset_id: datasetId.trim() || undefined,
         version_id: versionId.trim() || undefined,
+        metadata: parseOptionalJsonObject(runMetadataJson, "run metadata") ?? undefined,
       };
       if (queryText.trim()) {
         payload.samples = [
           {
-            sample_id: "manual-1",
+            sample_id: sampleId.trim() || undefined,
             query_text: queryText.trim(),
+            metadata_filter:
+              parseOptionalJsonObject(sampleMetadataFilterJson, "sample metadata_filter") ??
+              undefined,
+            top_k: parseOptionalInteger(sampleTopK, "sample top_k"),
             retrieval_label: {
               expected_document_ids: parseCsv(expectedDocumentIds),
               expected_chunk_ids: parseCsv(expectedChunkIds),
-              min_recall: 1.0,
+              min_recall: parseOptionalNumber(retrievalMinRecall, "retrieval min_recall"),
+            },
+            citation_label: {
+              expected_citation_ids: parseCsv(expectedCitationIds),
+              expected_document_ids: parseCsv(expectedCitationDocumentIds),
+              min_recall: parseOptionalNumber(citationMinRecall, "citation min_recall"),
+              min_precision: parseOptionalNumber(citationMinPrecision, "citation min_precision"),
             },
             answer_label: {
               required_terms: parseCsv(requiredTerms),
               forbidden_terms: parseCsv(forbiddenTerms),
-              min_required_term_hit_ratio: 1.0,
-              max_forbidden_term_hit_count: 0,
+              min_required_term_hit_ratio: parseOptionalNumber(
+                minRequiredTermHitRatio,
+                "answer min_required_term_hit_ratio",
+              ),
+              max_forbidden_term_hit_count: parseOptionalInteger(
+                maxForbiddenTermHitCount,
+                "answer max_forbidden_term_hit_count",
+              ),
             },
+            metadata:
+              parseOptionalJsonObject(sampleMetadataJson, "sample metadata") ?? undefined,
           },
         ];
       } else {
@@ -86,7 +164,7 @@ export function useEvaluationDashboard() {
     onSuccess: (response) => {
       setSelectedRunId(response.run_id);
       setSelectedCaseId(null);
-      setMessage(`评测完成：${response.run_id}`);
+      setMessage(`Evaluation completed: ${response.run_id}`);
       queryClient.invalidateQueries({ queryKey: ["evaluation-runs"] }).catch(() => undefined);
     },
     onError: (error) => setMessage(getErrorMessage(error)),
@@ -107,16 +185,40 @@ export function useEvaluationDashboard() {
     setDatasetId,
     versionId,
     setVersionId,
+    runMetadataJson,
+    setRunMetadataJson,
+    sampleId,
+    setSampleId,
     queryText,
     setQueryText,
+    sampleTopK,
+    setSampleTopK,
+    sampleMetadataFilterJson,
+    setSampleMetadataFilterJson,
+    sampleMetadataJson,
+    setSampleMetadataJson,
     expectedDocumentIds,
     setExpectedDocumentIds,
     expectedChunkIds,
     setExpectedChunkIds,
+    retrievalMinRecall,
+    setRetrievalMinRecall,
+    expectedCitationIds,
+    setExpectedCitationIds,
+    expectedCitationDocumentIds,
+    setExpectedCitationDocumentIds,
+    citationMinRecall,
+    setCitationMinRecall,
+    citationMinPrecision,
+    setCitationMinPrecision,
     requiredTerms,
     setRequiredTerms,
     forbiddenTerms,
     setForbiddenTerms,
+    minRequiredTermHitRatio,
+    setMinRequiredTermHitRatio,
+    maxForbiddenTermHitCount,
+    setMaxForbiddenTermHitCount,
     selectedRunId,
     setSelectedRunId,
     selectedCaseId,

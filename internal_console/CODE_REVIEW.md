@@ -38,13 +38,28 @@
 如果页面需要的数据当前后端没有提供，应先补后端 API，而不是前端绕过边界。
 页面与 API client 应按 chat / knowledge / evaluation / runtime 等领域拆分，不延续 `*_console` 风格命名。
 
-### 3.3 SSE 处理必须按事件语义实现
+### 3.3 前后端参数一致性必须审查
+代码评审时必须检查前端 request 参数链路是否与后端 contract 完整一致。
+
+至少要核对：
+- `types/` 中的 request 类型是否覆盖后端字段
+- `api/` 中的 client 是否透传全部必要参数
+- `features/` 中的 hook 是否维护了对应状态
+- `pages/` 中的表单是否提供了对应输入项或明确的默认策略
+
+以下情况应视为缺陷：
+- 后端已公开字段，页面没有输入项
+- API client 支持字段，但 hook 未传递
+- 页面有输入项，但 API client 未透传
+- 通过前端硬编码默认值掩盖契约遗漏
+
+### 3.4 SSE 处理必须按事件语义实现
 对 `/chat_stream`：
 - 不允许把所有事件都当普通字符串流处理
 - 必须正确处理 started / delta / heartbeat / completed / cancelled / error
 - cancel 场景必须能正确收口 UI 状态
 
-### 3.4 错误必须可见
+### 3.5 错误必须可见
 禁止：
 - 请求失败只在控制台打印，不在页面可见
 - stream 失败无状态反馈
@@ -72,6 +87,8 @@
 - 构建失败状态明确
 - 结果摘要清晰
 - 不在前端伪造构建结果
+- 上传 request 参数与后端 contract 完整一致
+- 表单、hook、API client 不得遗漏 `jurisdiction`、`domain` 等已公开字段
 
 ## 4.3 Chunk / Vector Inspector
 审查重点：
@@ -117,6 +134,7 @@
 - cancel 状态流转
 - 错误状态展示
 - API 响应映射
+- request 参数从页面到 API client 的映射完整性
 
 ---
 

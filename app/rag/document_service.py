@@ -37,6 +37,7 @@ class RAGDocumentService:
         *,
         content: str,
         file_name: str,
+        origin_uri: str | None = None,
         title: str | None = None,
         document_id: str | None = None,
         source_type: str | None = None,
@@ -57,7 +58,7 @@ class RAGDocumentService:
             title=resolved_title,
             source_type=resolved_source_type,
             document_id=document_id,
-            origin_uri=file_name,
+            origin_uri=origin_uri,
             file_name=file_name,
             jurisdiction=jurisdiction,
             domain=domain,
@@ -80,6 +81,8 @@ class RAGDocumentService:
             content_hash=content_hash,
             hash_algorithm=hash_algorithm,
         )
+        log_report("RAGDocumentService.upload_document.existing_version", existing_version)
+
         if existing_version is not None:
             reused_version_id = str(existing_version["version_id"])
             self._document_repository.upsert_document(

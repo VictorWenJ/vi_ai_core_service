@@ -12,6 +12,7 @@ export function ChatPlaygroundPage(): JSX.Element {
     syncResponse,
     chatPending,
     cancelPending,
+    canCancel,
     streamStatus,
     streamText,
     streamCitations,
@@ -28,8 +29,7 @@ export function ChatPlaygroundPage(): JSX.Element {
       <article className="panel">
         <h2>Chat Playground</h2>
         <p className="muted">
-          Use `/chat`, `/chat_stream`, and `/chat_stream_cancel` against current
-          backend contract.
+          Use `/chat`, `/chat_stream`, and `/chat_stream_cancel` against current backend contract.
         </p>
 
         <div className="form-grid">
@@ -79,6 +79,50 @@ export function ChatPlaygroundPage(): JSX.Element {
 
           <div className="inline-grid">
             <label>
+              Temperature (optional)
+              <input
+                value={form.temperature}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    temperature: event.target.value,
+                  }))
+                }
+                placeholder="0.7"
+              />
+            </label>
+            <label>
+              Max Tokens (optional)
+              <input
+                value={form.maxTokens}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    maxTokens: event.target.value,
+                  }))
+                }
+                placeholder="1024"
+              />
+            </label>
+          </div>
+
+          <label>
+            System Prompt (optional)
+            <textarea
+              rows={3}
+              value={form.systemPrompt}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  systemPrompt: event.target.value,
+                }))
+              }
+              placeholder="Override system prompt"
+            />
+          </label>
+
+          <div className="inline-grid">
+            <label>
               Session ID (optional)
               <input
                 value={form.sessionId}
@@ -105,6 +149,137 @@ export function ChatPlaygroundPage(): JSX.Element {
               />
             </label>
           </div>
+
+          <div className="inline-grid">
+            <label>
+              Request ID (optional)
+              <input
+                value={form.requestId}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    requestId: event.target.value,
+                  }))
+                }
+                placeholder="req-xxx"
+              />
+            </label>
+            <label>
+              Metadata JSON (optional)
+              <textarea
+                rows={2}
+                className="textarea-mono"
+                value={form.metadataJson}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    metadataJson: event.target.value,
+                  }))
+                }
+                placeholder='{"trace_tag":"manual-test"}'
+              />
+            </label>
+          </div>
+
+          <details>
+            <summary>Stream Options (optional)</summary>
+            <div className="form-grid">
+              <div className="inline-grid">
+                <label>
+                  stream_heartbeat_interval_seconds
+                  <input
+                    value={form.streamHeartbeatIntervalSeconds}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        streamHeartbeatIntervalSeconds: event.target.value,
+                      }))
+                    }
+                    placeholder="15"
+                  />
+                </label>
+                <label>
+                  stream_request_timeout_seconds
+                  <input
+                    value={form.streamRequestTimeoutSeconds}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        streamRequestTimeoutSeconds: event.target.value,
+                      }))
+                    }
+                    placeholder="120"
+                  />
+                </label>
+              </div>
+              <div className="inline-grid">
+                <label>
+                  stream_emit_usage
+                  <select
+                    value={form.streamEmitUsage}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        streamEmitUsage: event.target.value as "" | "true" | "false",
+                      }))
+                    }
+                  >
+                    <option value="">default</option>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                </label>
+                <label>
+                  stream_emit_trace
+                  <select
+                    value={form.streamEmitTrace}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        streamEmitTrace: event.target.value as "" | "true" | "false",
+                      }))
+                    }
+                  >
+                    <option value="">default</option>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Cancel Override (optional)</summary>
+            <div className="inline-grid">
+              <label>
+                request_id
+                <input
+                  value={form.cancelRequestId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      cancelRequestId: event.target.value,
+                    }))
+                  }
+                  placeholder="req-from-other-window"
+                />
+              </label>
+              <label>
+                assistant_message_id
+                <input
+                  value={form.cancelAssistantMessageId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      cancelAssistantMessageId: event.target.value,
+                    }))
+                  }
+                  placeholder="msg-assistant-xxx"
+                />
+              </label>
+            </div>
+          </details>
         </div>
 
         <div className="button-row">
@@ -117,7 +292,7 @@ export function ChatPlaygroundPage(): JSX.Element {
           <button
             type="button"
             className="danger"
-            disabled={!streamRequestId || cancelPending}
+            disabled={!canCancel || cancelPending}
             onClick={() => void cancelStream()}
           >
             {cancelPending ? "Cancelling..." : "Cancel Stream"}

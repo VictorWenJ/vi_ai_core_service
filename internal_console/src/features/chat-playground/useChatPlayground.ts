@@ -16,16 +16,38 @@ type FormState = {
   userPrompt: string;
   provider: string;
   model: string;
+  temperature: string;
+  maxTokens: string;
+  systemPrompt: string;
   sessionId: string;
   conversationId: string;
+  requestId: string;
+  metadataJson: string;
+  streamHeartbeatIntervalSeconds: string;
+  streamRequestTimeoutSeconds: string;
+  streamEmitUsage: "" | "true" | "false";
+  streamEmitTrace: "" | "true" | "false";
+  cancelRequestId: string;
+  cancelAssistantMessageId: string;
 };
 
 const initialFormState: FormState = {
   userPrompt: "",
   provider: "",
   model: "",
+  temperature: "",
+  maxTokens: "",
+  systemPrompt: "",
   sessionId: "",
   conversationId: "",
+  requestId: "",
+  metadataJson: "",
+  streamHeartbeatIntervalSeconds: "",
+  streamRequestTimeoutSeconds: "",
+  streamEmitUsage: "",
+  streamEmitTrace: "",
+  cancelRequestId: "",
+  cancelAssistantMessageId: "",
 };
 
 const trimOrUndefined = (value: string): string | undefined => {
@@ -33,18 +55,103 @@ const trimOrUndefined = (value: string): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
+const parseOptionalNumber = (
+  value: string,
+  fieldName: string,
+): number | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${fieldName} must be numeric.`);
+  }
+  return parsed;
+};
+
+const parseOptionalInt = (value: string, fieldName: string): number | undefined => {
+  const parsed = parseOptionalNumber(value, fieldName);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${fieldName} must be an integer.`);
+  }
+  return parsed;
+};
+
+const parseOptionalJsonObject = (
+  value: string,
+  fieldName: string,
+): Record<string, unknown> | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`${fieldName} must be a JSON object.`);
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new Error(`${fieldName} must be valid JSON object.`);
+  }
+};
+
+const parseTriStateBoolean = (value: "" | "true" | "false"): boolean | undefined => {
+  if (value === "") {
+    return undefined;
+  }
+  return value === "true";
+};
+
 const buildPayloadFromForm = (form: FormState): ChatRequestPayload => ({
   user_prompt: form.userPrompt.trim(),
   provider: trimOrUndefined(form.provider),
   model: trimOrUndefined(form.model),
+  temperature: parseOptionalNumber(form.temperature, "temperature"),
+  max_tokens: parseOptionalInt(form.maxTokens, "max_tokens"),
+  system_prompt: trimOrUndefined(form.systemPrompt),
   session_id: trimOrUndefined(form.sessionId),
   conversation_id: trimOrUndefined(form.conversationId),
+  request_id: trimOrUndefined(form.requestId),
+  metadata: parseOptionalJsonObject(form.metadataJson, "metadata"),
 });
 
-const buildStreamPayloadFromForm = (form: FormState): ChatStreamRequestPayload => ({
-  ...buildPayloadFromForm(form),
-  stream: true,
-});
+const buildStreamPayloadFromForm = (form: FormState): ChatStreamRequestPayload => {
+  const basePayload = buildPayloadFromForm(form);
+  const streamHeartbeat = parseOptionalNumber(
+    form.streamHeartbeatIntervalSeconds,
+    "stream_heartbeat_interval_seconds",
+  );
+  const streamTimeout = parseOptionalNumber(
+    form.streamRequestTimeoutSeconds,
+    "stream_request_timeout_seconds",
+  );
+  const streamEmitUsage = parseTriStateBoolean(form.streamEmitUsage);
+  const streamEmitTrace = parseTriStateBoolean(form.streamEmitTrace);
+
+  const streamOptions =
+    streamHeartbeat !== undefined ||
+    streamTimeout !== undefined ||
+    streamEmitUsage !== undefined ||
+    streamEmitTrace !== undefined
+      ? {
+          stream_heartbeat_interval_seconds: streamHeartbeat,
+          stream_request_timeout_seconds: streamTimeout,
+          stream_emit_usage: streamEmitUsage,
+          stream_emit_trace: streamEmitTrace,
+        }
+      : undefined;
+
+  return {
+    ...basePayload,
+    stream: true,
+    stream_options: streamOptions,
+  };
+};
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof ApiClientError) {
@@ -67,12 +174,8 @@ export function useChatPlayground() {
     null,
   );
   const [streamMessage, setStreamMessage] = useState<string>("");
-  const [streamRequestId, setStreamRequestId] = useState<string | undefined>(
-    undefined,
-  );
-  const [assistantMessageId, setAssistantMessageId] = useState<
-    string | undefined
-  >(undefined);
+  const [streamRequestId, setStreamRequestId] = useState<string | undefined>(undefined);
+  const [assistantMessageId, setAssistantMessageId] = useState<string | undefined>(undefined);
   const [streamEventCount, setStreamEventCount] = useState(0);
 
   const activeConnectionRef = useRef<{ close: () => void } | null>(null);
@@ -87,7 +190,7 @@ export function useChatPlayground() {
     mutationFn: (payload: ChatRequestPayload) => chatApi.sendChat(payload),
     onSuccess: (response) => {
       setSyncResponse(response);
-      setStreamMessage("`/chat` 请求成功。");
+      setStreamMessage("/chat request succeeded.");
     },
     onError: (error) => {
       setStreamMessage(getErrorMessage(error));
@@ -95,20 +198,24 @@ export function useChatPlayground() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: () =>
-      chatApi.cancelStream({
-        request_id: streamRequestId,
-        assistant_message_id: assistantMessageId,
+    mutationFn: () => {
+      const requestId = trimOrUndefined(form.cancelRequestId) ?? streamRequestId;
+      const resolvedAssistantMessageId =
+        trimOrUndefined(form.cancelAssistantMessageId) ?? assistantMessageId;
+      return chatApi.cancelStream({
+        request_id: requestId,
+        assistant_message_id: resolvedAssistantMessageId,
         session_id: trimOrUndefined(form.sessionId),
         conversation_id: trimOrUndefined(form.conversationId),
-      }),
+      });
+    },
     onSuccess: (response) => {
       setStreamMessage(
         response.cancelled
-          ? "取消请求已提交。"
+          ? "Cancel request submitted."
           : response.already_cancelled
-            ? "流已取消，无需重复取消。"
-            : "未找到可取消的流。",
+            ? "Stream is already cancelled."
+            : "No active stream matched cancellation conditions.",
       );
     },
     onError: (error) => {
@@ -129,7 +236,7 @@ export function useChatPlayground() {
       updateStreamStatus("started");
       setStreamRequestId(event.data.request_id);
       setAssistantMessageId(event.data.assistant_message_id);
-      setStreamMessage("流式会话已开始。");
+      setStreamMessage("Stream started.");
       return;
     }
     if (event.event === "response.delta") {
@@ -139,7 +246,7 @@ export function useChatPlayground() {
     }
     if (event.event === "response.heartbeat") {
       updateStreamStatus("heartbeat");
-      setStreamMessage("收到 heartbeat。");
+      setStreamMessage("Heartbeat received.");
       return;
     }
     if (event.event === "response.completed") {
@@ -147,7 +254,7 @@ export function useChatPlayground() {
       setStreamCitations(event.data.citations ?? []);
       setStreamTrace((event.data.trace ?? null) as Record<string, unknown> | null);
       setStreamMessage(
-        `流式完成，finish_reason=${event.data.finish_reason ?? "unknown"}`,
+        `Stream completed: finish_reason=${event.data.finish_reason ?? "unknown"}`,
       );
       stopStream();
       return;
@@ -155,44 +262,54 @@ export function useChatPlayground() {
     if (event.event === "response.cancelled") {
       updateStreamStatus("cancelled");
       setStreamTrace((event.data.trace ?? null) as Record<string, unknown> | null);
-      setStreamMessage("流式会话已取消。");
+      setStreamMessage("Stream cancelled.");
       stopStream();
       return;
     }
     if (event.event === "response.error") {
       updateStreamStatus("error");
       setStreamTrace((event.data.trace ?? null) as Record<string, unknown> | null);
-      setStreamMessage(
-        `流式错误：${event.data.error_code} - ${event.data.message}`,
-      );
+      setStreamMessage(`Stream error: ${event.data.error_code} - ${event.data.message}`);
       stopStream();
     }
   };
 
   const sendChat = async () => {
     if (!form.userPrompt.trim()) {
-      setStreamMessage("请输入 user prompt。");
+      setStreamMessage("Please input user prompt.");
       return;
     }
-    await chatMutation.mutateAsync(buildPayloadFromForm(form));
+    try {
+      await chatMutation.mutateAsync(buildPayloadFromForm(form));
+    } catch {
+      // onError handles user-facing message.
+    }
   };
 
   const startStream = () => {
     if (!form.userPrompt.trim()) {
-      setStreamMessage("请输入 user prompt。");
+      setStreamMessage("Please input user prompt.");
       return;
     }
+    let streamPayload: ChatStreamRequestPayload;
+    try {
+      streamPayload = buildStreamPayloadFromForm(form);
+    } catch (error) {
+      setStreamMessage(getErrorMessage(error));
+      return;
+    }
+
     stopStream();
     updateStreamStatus("idle");
     setStreamText("");
-        setStreamCitations([]);
+    setStreamCitations([]);
     setStreamTrace(null);
     setStreamRequestId(undefined);
     setAssistantMessageId(undefined);
     setStreamEventCount(0);
-    setStreamMessage("正在连接 `/chat_stream` ...");
+    setStreamMessage("Connecting /chat_stream ...");
 
-    const connection = chatApi.streamChat(buildStreamPayloadFromForm(form), {
+    const connection = chatApi.streamChat(streamPayload, {
       onEvent: handleStreamEvent,
       onError: (error) => {
         updateStreamStatus("error");
@@ -202,14 +319,25 @@ export function useChatPlayground() {
       onClose: () => {
         const terminalStatus = streamStatusRef.current;
         if (terminalStatus !== "completed" && terminalStatus !== "cancelled") {
-          setStreamMessage("流连接已关闭。");
+          setStreamMessage("Stream connection closed.");
         }
       },
     });
     activeConnectionRef.current = connection;
   };
 
+  const canCancel = Boolean(
+    streamRequestId ||
+      assistantMessageId ||
+      trimOrUndefined(form.cancelRequestId) ||
+      trimOrUndefined(form.cancelAssistantMessageId),
+  );
+
   const cancelStream = async () => {
+    if (!canCancel) {
+      setStreamMessage("request_id or assistant_message_id is required for cancellation.");
+      return;
+    }
     await cancelMutation.mutateAsync();
   };
 
@@ -226,10 +354,7 @@ export function useChatPlayground() {
     setStreamEventCount(0);
   };
 
-  const metadataSummary = useMemo(
-    () => syncResponse?.metadata ?? null,
-    [syncResponse],
-  );
+  const metadataSummary = useMemo(() => syncResponse?.metadata ?? null, [syncResponse]);
 
   return {
     form,
@@ -241,6 +366,7 @@ export function useChatPlayground() {
     syncResponse,
     chatPending: chatMutation.isPending,
     cancelPending: cancelMutation.isPending,
+    canCancel,
     streamStatus,
     streamText,
     streamCitations,
