@@ -1,4 +1,4 @@
-"""系统运行态摘要应用服务。"""
+"""Runtime summary application service."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from app.rag.repository.evaluation_run_repository import EvaluationRunRepository
 
 
 class RuntimeService:
-    """聚合 runtime/config/health 摘要给 API 层消费。"""
+    """Aggregate runtime/config/health payloads for API routes."""
 
     def __init__(
         self,
@@ -79,6 +79,7 @@ class RuntimeService:
                 "qdrant_collection": self._app_config.rag_config.qdrant_collection,
                 "embedding_provider": self._app_config.rag_config.embedding_provider,
                 "embedding_model": self._app_config.rag_config.embedding_model,
+                "embedding_dimension": self._app_config.rag_config.embedding_dimension,
                 "retrieval_top_k": self._app_config.rag_config.retrieval_top_k,
                 "score_threshold": self._app_config.rag_config.score_threshold,
                 "content_store_root": self._app_config.rag_content_store_config.root_path,
@@ -98,4 +99,3 @@ class RuntimeService:
             "checked_at": now_utc_iso(),
             "summary": summary,
         }
-

@@ -19,11 +19,16 @@ export type BuildCreatePayload = {
 export type BuildMetadata = {
   build_id: string;
   version_id: string;
-  chunk_strategy_version: string;
-  embedding_model_version: string;
-  build_mode: string;
+  build_version_id?: string | null;
+  status?: string | null;
+  chunk_strategy_name?: string | null;
+  chunk_strategy_version?: string | null;
+  embedding_model_name?: string | null;
+  embedding_model_version?: string | null;
+  build_mode?: string | null;
   started_at: string;
-  completed_at: string;
+  completed_at?: string | null;
+  created_at?: string | null;
 };
 
 export type BuildStatistics = {
@@ -52,9 +57,18 @@ export type BuildSummary = {
   quality_gate: BuildQualityGate;
 };
 
+export type BuildIngestionResult = {
+  document_id: string;
+  document_version_id?: string | null;
+  chunk_count: number;
+  vector_count: number;
+  action: string;
+  error_message?: string | null;
+};
+
 export type BuildDetail = BuildSummary & {
   manifest: Record<string, unknown>;
-  ingestion_results: Array<Record<string, unknown>>;
+  ingestion_results: BuildIngestionResult[];
 };
 
 export type KnowledgeDocumentSummary = {
@@ -65,16 +79,17 @@ export type KnowledgeDocumentSummary = {
   file_name?: string | null;
   jurisdiction?: string | null;
   domain?: string | null;
-  tags: string[];
-  effective_at?: string | null;
-  updated_at?: string | null;
   visibility: string;
+  tags: string[];
   metadata: Record<string, unknown>;
   chunk_count: number;
+  effective_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type KnowledgeDocumentDetail = KnowledgeDocumentSummary & {
   content: string;
+  latest_version_id?: string | null;
 };
 
 export type KnowledgeChunkSummary = {
@@ -85,16 +100,25 @@ export type KnowledgeChunkSummary = {
   embedding_model: string;
   chunk_text_preview: string;
   metadata: Record<string, unknown>;
+  vector_point_id?: string | null;
+  vector_dimension?: number | null;
+  vector_collection?: string | null;
 };
 
 export type KnowledgeChunkDetail = {
   chunk_id: string;
   document_id: string;
+  document_version_id?: string | null;
+  build_id?: string | null;
   chunk_index: number;
   token_count: number;
   embedding_model: string;
   chunk_text: string;
+  chunk_text_preview?: string | null;
   metadata: Record<string, unknown>;
+  vector_point_id?: string | null;
+  vector_dimension?: number | null;
+  vector_collection?: string | null;
 };
 
 export type KnowledgeChunkVectorDetail = {
@@ -104,6 +128,7 @@ export type KnowledgeChunkVectorDetail = {
   found: boolean;
   vector: number[];
   vector_dimension: number;
+  embedding_model_name?: string | null;
   payload: Record<string, unknown>;
 };
 
@@ -165,6 +190,7 @@ export type EvaluationSamplePayload = {
 };
 
 export type EvaluationRunCreatePayload = {
+  build_id?: string;
   dataset_id?: string;
   version_id?: string;
   samples?: EvaluationSamplePayload[];
@@ -173,10 +199,12 @@ export type EvaluationRunCreatePayload = {
 
 export type EvaluationRunSummary = {
   run_id: string;
+  build_id?: string | null;
   dataset_id: string | null;
   dataset_version_id: string | null;
   started_at: string;
   completed_at: string;
+  status?: string | null;
   summary: Record<string, unknown>;
   metadata: Record<string, unknown>;
   case_count: number;
@@ -190,6 +218,16 @@ export type EvaluationRunCase = {
   retrieval_status: string;
   passed: boolean;
   resolved_top_k: number;
+};
+
+export type RuntimeRecentStatus = {
+  id?: string;
+  build_id?: string;
+  run_id?: string;
+  status?: string;
+  created_at?: string;
+  started_at?: string;
+  completed_at?: string;
 };
 
 export type RuntimeSummary = {
@@ -206,13 +244,26 @@ export type RuntimeSummary = {
   chunk_count: number;
   build_count: number;
   evaluation_run_count: number;
+  recent_build_statuses: RuntimeRecentStatus[];
+  recent_evaluation_statuses: RuntimeRecentStatus[];
 };
 
 export type RuntimeConfigSummary = {
   default_provider: string;
-  providers: Record<string, unknown>;
+  providers: Record<string, Record<string, unknown>>;
   streaming: Record<string, unknown>;
-  rag: Record<string, unknown>;
+  rag: {
+    enabled?: boolean;
+    qdrant_url?: string;
+    qdrant_collection?: string;
+    embedding_provider?: string;
+    embedding_model?: string;
+    embedding_dimension?: number;
+    retrieval_top_k?: number;
+    score_threshold?: number | null;
+    content_store_root?: string;
+  };
+  database?: Record<string, unknown>;
 };
 
 export type RuntimeHealth = {

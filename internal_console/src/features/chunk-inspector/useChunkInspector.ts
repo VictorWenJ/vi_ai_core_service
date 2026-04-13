@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { ApiClientError } from "@/api/errors";
@@ -29,6 +29,11 @@ const parseFilterInput = (rawValue: string): Record<string, unknown> => {
   } catch {
     return {};
   }
+};
+
+const parseTopK = (rawValue: string): number | undefined => {
+  const parsed = Number(rawValue);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 };
 
 export function useChunkInspector() {
@@ -68,15 +73,18 @@ export function useChunkInspector() {
     enabled: Boolean(selectedChunkId),
   });
 
+  const parsedDebugTopK = useMemo(() => parseTopK(debugTopK), [debugTopK]);
+  const parsedDebugFilter = useMemo(() => parseFilterInput(debugFilterJson), [debugFilterJson]);
+
   const retrievalDebugMutation = useMutation({
     mutationFn: () =>
       knowledgeApi.retrievalDebug({
         query_text: debugQueryText.trim(),
-        top_k: Number.isFinite(Number(debugTopK)) ? Number(debugTopK) : undefined,
-        metadata_filter: parseFilterInput(debugFilterJson),
+        top_k: parsedDebugTopK,
+        metadata_filter: parsedDebugFilter,
       }),
     onSuccess: (response) => {
-      setMessage(`检索调试完成，status=${response.status}，hits=${response.hits.length}`);
+      setMessage(`检索调试完成：status=${response.status}，hits=${response.hits.length}`);
     },
     onError: (error) => setMessage(getErrorMessage(error)),
   });
@@ -112,6 +120,8 @@ export function useChunkInspector() {
     retrievalDebugError: retrievalDebugMutation.error
       ? getErrorMessage(retrievalDebugMutation.error)
       : null,
+    resolvedDebugTopK: parsedDebugTopK,
+    resolvedDebugFilter: parsedDebugFilter,
     runRetrievalDebug: () => retrievalDebugMutation.mutate(),
   };
 }

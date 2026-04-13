@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiClientError } from "@/api/errors";
@@ -24,6 +24,7 @@ const parseCsv = (raw: string): string[] =>
 
 export function useEvaluationDashboard() {
   const queryClient = useQueryClient();
+  const [buildId, setBuildId] = useState("");
   const [datasetId, setDatasetId] = useState("");
   const [versionId, setVersionId] = useState("");
   const [queryText, setQueryText] = useState("");
@@ -32,6 +33,7 @@ export function useEvaluationDashboard() {
   const [requiredTerms, setRequiredTerms] = useState("");
   const [forbiddenTerms, setForbiddenTerms] = useState("");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [message, setMessage] = useState("Ready.");
 
   const runsQuery = useQuery({
@@ -54,6 +56,7 @@ export function useEvaluationDashboard() {
   const createRunMutation = useMutation({
     mutationFn: () => {
       const payload: EvaluationRunCreatePayload = {
+        build_id: buildId.trim() || undefined,
         dataset_id: datasetId.trim() || undefined,
         version_id: versionId.trim() || undefined,
       };
@@ -82,13 +85,24 @@ export function useEvaluationDashboard() {
     },
     onSuccess: (response) => {
       setSelectedRunId(response.run_id);
-      setMessage(`评估完成：${response.run_id}`);
+      setSelectedCaseId(null);
+      setMessage(`评测完成：${response.run_id}`);
       queryClient.invalidateQueries({ queryKey: ["evaluation-runs"] }).catch(() => undefined);
     },
     onError: (error) => setMessage(getErrorMessage(error)),
   });
 
+  const runCases = runCasesQuery.data ?? [];
+  const selectedCase = useMemo(() => {
+    if (!selectedCaseId) {
+      return null;
+    }
+    return runCases.find((item) => item.sample_id === selectedCaseId) ?? null;
+  }, [runCases, selectedCaseId]);
+
   return {
+    buildId,
+    setBuildId,
     datasetId,
     setDatasetId,
     versionId,
@@ -105,13 +119,16 @@ export function useEvaluationDashboard() {
     setForbiddenTerms,
     selectedRunId,
     setSelectedRunId,
+    selectedCaseId,
+    setSelectedCaseId,
+    selectedCase,
     message,
     runs: runsQuery.data ?? [],
     runsLoading: runsQuery.isLoading,
     runsError: runsQuery.error ? getErrorMessage(runsQuery.error) : null,
     runDetail: runDetailQuery.data ?? null,
     runDetailLoading: runDetailQuery.isFetching,
-    runCases: runCasesQuery.data ?? [],
+    runCases,
     runCasesLoading: runCasesQuery.isFetching,
     createRun: () => createRunMutation.mutate(),
     createRunPending: createRunMutation.isPending,

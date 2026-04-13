@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiClientError } from "@/api/errors";
 import { knowledgeApi } from "@/api/knowledgeApi";
+import { runtimeApi } from "@/api/runtimeApi";
 import type { BuildCreatePayload } from "@/types/console";
 
 const getErrorMessage = (error: unknown): string => {
@@ -49,6 +50,16 @@ export function useKnowledgeIngest() {
     enabled: Boolean(selectedBuildId),
   });
 
+  const runtimeSummaryQuery = useQuery({
+    queryKey: ["runtime-summary"],
+    queryFn: () => runtimeApi.getSummary(),
+  });
+
+  const runtimeConfigQuery = useQuery({
+    queryKey: ["runtime-config-summary"],
+    queryFn: () => runtimeApi.getConfigSummary(),
+  });
+
   const uploadMutation = useMutation({
     mutationFn: () => {
       if (!selectedFile) {
@@ -82,11 +93,17 @@ export function useKnowledgeIngest() {
       setSelectedBuildId(result.metadata.build_id);
       queryClient.invalidateQueries({ queryKey: ["knowledge-builds"] }).catch(() => undefined);
       queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] }).catch(() => undefined);
+      queryClient.invalidateQueries({ queryKey: ["runtime-summary"] }).catch(() => undefined);
     },
     onError: (error) => setMessage(getErrorMessage(error)),
   });
 
   const latestBuild = useMemo(() => buildsQuery.data?.[0] ?? null, [buildsQuery.data]);
+  const runtimeError = runtimeSummaryQuery.error
+    ? getErrorMessage(runtimeSummaryQuery.error)
+    : runtimeConfigQuery.error
+      ? getErrorMessage(runtimeConfigQuery.error)
+      : null;
 
   return {
     selectedFile,
@@ -115,9 +132,14 @@ export function useKnowledgeIngest() {
     buildDetail: buildDetailQuery.data ?? null,
     buildDetailLoading: buildDetailQuery.isFetching,
     latestBuild,
+    runtimeSummary: runtimeSummaryQuery.data ?? null,
+    runtimeConfig: runtimeConfigQuery.data ?? null,
+    runtimeLoading: runtimeSummaryQuery.isFetching || runtimeConfigQuery.isFetching,
+    runtimeError,
     uploadDocument: () => uploadMutation.mutate(),
     uploadPending: uploadMutation.isPending,
     triggerBuild: () => buildMutation.mutate(),
     buildPending: buildMutation.isPending,
   };
 }
+
